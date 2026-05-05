@@ -60,7 +60,7 @@ const SwipeCardComponent = ({
     onLike: swipeRight,
     onSuperLike,
   })
-  const [isDragging, setIsDragging] = useState(false)
+  const [_, setIsDragging] = useState(false)
 
   const likeOpacity = useTransform(x, [0, 80], [0, 1])
   const dislikeOpacity = useTransform(x, [-80, 0], [1, 0])
@@ -99,7 +99,7 @@ const SwipeCardComponent = ({
       <div className="relative h-full w-full">
         <ImageCarousel
           enabledImageSwiping={!superLike.isSuperLikeMode}
-          images={['/images/test.jpg', '/images/test1.jpg', '/images/test2.jpg']}
+          images={photos.length < 0 ? photos : ['/images/test.jpg', '/images/test1.jpg', '/images/test2.jpg']}
           imageAlt={name ?? ''}
           blur={superLike.isSuperLikeMode}
           isTop={isTop}
