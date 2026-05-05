@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.venv/
+venv/
+ENV/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Static files
+static/
+
+# Monitoring data (не коммитить данные, только конфиги)
+prometheus-data/
+grafana-data/
+
+# Docker
+*.pid
+
+# OS
+.DS_Store
+Thumbs.db
+hf_model_cache/

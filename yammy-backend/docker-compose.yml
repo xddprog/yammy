@@ -1,0 +1,219 @@
+version: '3.0'
+
+
+x-app-env: &app-env
+  - DATABASE_CONFIG__DB_NAME=postgres123
+  - DATABASE_CONFIG__DB_HOST=db
+  - DATABASE_CONFIG__DB_PORT=5432
+  - DATABASE_CONFIG__DB_USER=postgres123
+  - DATABASE_CONFIG__DB_PASS=postgres123
+
+  # Redis
+  - REDIS_CONFIG__REDIS_HOST=redis
+  - REDIS_CONFIG__REDIS_PORT=6379
+
+  # Elasticsearch
+  - ELASTICSEARCH_CONFIG__ES_HOST=elasticsearch
+  - ELASTICSEARCH_CONFIG__ES_PORT=9200
+  - ELASTICSEARCH_CONFIG__ES_SCHEME=http
+  - ELASTICSEARCH_CONFIG__ES_USER=
+  - ELASTICSEARCH_CONFIG__ES_PASSWORD=
+
+  # JWT
+  - JWT_CONFIG__SECRET_KEY=your-secret-key-change-in-production-4roads-2025
+  - JWT_CONFIG__ALGORITHM=HS256
+  - JWT_CONFIG__ACCESS_TOKEN_EXPIRE_MINUTES=30
+  - JWT_CONFIG__REFRESH_TOKEN_EXPIRE_DAYS=3
+
+  # Telegram
+  - TELEGRAM_CONFIG__ADMIN_CHAT_ID=-1003670057573
+  - TELEGRAM_CONFIG__BOT_TOKEN=7792052665:AAH2JOi1_cduXPhqjXY6hbMLBmCoWzb0aew
+
+  # App
+  - APP_CONFIG__APP_NAME=lascovo-api
+  - APP_CONFIG__DEBUG=true
+  - APP_CONFIG__BASE_URL=https://api.lascovo.ru
+  - APP_CONFIG__STATIC_URL=https://api.lascovo.ru/static/images
+  - APP_CONFIG__SLOW_REQUEST_THRESHOLD=1.0
+
+  # Yandex Pay
+  - YANDEX_PAY_CONFIG__API_URL=https://pay.yandex.ru
+  - YANDEX_PAY_CONFIG__API_KEY=1a89262ed19e418f8049baaad98fbc32.nK53EUIhIdahvJZSSOsePcWljFk0rlJD
+  - YANDEX_PAY_CONFIG__ON_ERROR_REDIRECT_URL=https://www.lascovo.ru/
+  - YANDEX_PAY_CONFIG__ON_SUCCESS_REDIRECT_URL=https://www.lascovo.ru/
+  - YANDEX_PAY_CONFIG__ON_ABORT_REDIRECT_URL=https://www.lascovo.ru/
+  - YANDEX_PAY_CONFIG__CALLBACK_URL=https://api.lascovo.ru/api/v1/order/callback
+  - YANDEX_PAY_CONFIG__REQUEST_TIMEOUT=10
+  - YANDEX_PAY_CONFIG__MAX_RETRIES=3
+
+  # GigData (университеты)
+  - GIGDATA_CONFIG__API_URL_SUGGEST_EDUCATIONS=https://api.gigdata.ru/api/v2/suggest/educations
+  - GIGDATA_CONFIG__API_KEY_SUGGEST_EDUCATIONS=tqxccbn7lxjk4jqhuzrfh353f4cjtba0jkdeuozo
+  - GIGDATA_CONFIG__REQUEST_TIMEOUT_SUGGEST_EDUCATIONS=10
+
+  # CORS
+  - APP_CONFIG__CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,https://www.lascovo.ru,https://lascovo.ru
+  
+  # Other
+  - APP_CONFIG__SITEMAP_PASSWORD=m_8jMpDsZ09yF1AphJnnEOg_zW0UOe4KXM4cvr_BkvY
+  - APP_CONFIG__MAX_IMAGE_SIZE_MB=10
+  - APP_CONFIG__WEBP_QUALITY=85
+  - HF_HOME=/app/model_cache
+
+x-backend-build: &backend-build
+  context: ./backend
+  dockerfile: Dockerfile
+
+x-backend-image: &backend-image yammy-backend:local
+
+
+services:
+
+  redis:
+    image: redis:7
+    container_name: redis-store
+    networks:
+      - app-network
+
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: elasticsearch-store
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    image: *backend-image
+    container_name: taskiq-worker
+    command: taskiq worker app.core.clients.taskiq_client:broker --fs-discover --no-parse
+    environment: *app-env
+    depends_on:
+      redis: { condition: service_started }
+      db: { condition: service_healthy }
+    networks:
+      - app-network
+    volumes:
+      - ./static:/app/static
+
+  scheduler:
+    image: *backend-image
+    container_name: taskiq-scheduler
+    command: taskiq scheduler app.core.clients.taskiq_client:scheduler
+    environment: *app-env
+    depends_on:
+      redis: { condition: service_started }
+    networks:
+      - app-network
+
+  db:
+    image: postgres:15
+    container_name: db-store
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_USER: postgres123
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: postgres123
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d postgres -U postgres -h 127.0.0.1" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #   container_name: frontend-store
+  #   ports:
+  #     - "5173:80"
+  #   depends_on:
+  #     - app 
+  #   restart: always
+  #   networks:
+  #     - app-network
+
+  # nginx:
+  #   image: nginx:latest
+  #   container_name: nginx-proxy
+  #   volumes:
+  #     - /etc/nginx/sites-available/lascovo.ru:/etc/nginx/conf.d/lascovo.ru.conf
+  #     - /etc/letsencrypt:/etc/letsencrypt:ro
+  #     - ./static:/var/www/static
+  #   ports:
+  #     - "443:443"
+  #   depends_on:
+  #     - app
+  #   networks:
+  #     - app-network
+
+  app:
+    image: *backend-image
+    build: *backend-build
+    container_name: app-store
+    environment: *app-env
+    
+    depends_on:
+      db: 
+        condition: service_healthy
+      redis:
+        condition: service_started
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - app-network
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./static:/app/static
+      - ./hf_model_cache:/app/model_cache
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    env_file:
+      - ./grafana/config.monitoring
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  elasticsearch-data:
+  prometheus-data:
+  grafana-data:
