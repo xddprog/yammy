@@ -64,7 +64,7 @@ const NavContent = ({ icon: Icon, isActive }: NavContentProps): JSX.Element => (
       strokeWidth={STROKE_WIDTH}
       className={cn(
         'shrink-0 transition-all duration-200',
-        isActive ? 'text-accent' : 'text-background/80 group-hover:text-background group-active:text-primary',
+        isActive ? 'text-accent' : 'text-background/80 group-hover:text-background group-active:text-accent',
       )}
       aria-hidden="true"
     />

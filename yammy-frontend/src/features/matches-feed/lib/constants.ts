@@ -26,9 +26,9 @@ export const MATCHES_OVERLAY_TRANSFORM_CARD_MARGIN_END = 1 / 5
 export const MATCHES_OVERLAY_CONTAINER_RADIUS = 40
 export const MATCHES_OVERLAY_CONTENT_AREA_DEFAULT_HEIGHT = 600
 
-// Соотношение высот в оверлее: карусель 40% / карточка с информацией 60% контент-области (всегда)
-export const MATCHES_OVERLAY_CAROUSEL_HEIGHT_RATIO = 0.4
-export const MATCHES_OVERLAY_CAROUSEL_CARD_GAP_PX = 12
+// Соотношение высот в оверлее: карусель 50% / карточка с информацией 50% контент-области (всегда)
+export const MATCHES_OVERLAY_CAROUSEL_HEIGHT_RATIO = 0.5
+export const MATCHES_OVERLAY_CAROUSEL_CARD_GAP_PX = 0
 
 // Отступы оверлея: сверху — padding корня, снизу — резерв в контенте (одинаково на всех экранах, в т.ч. SE)
 export const MATCHES_OVERLAY_PADDING_VERTICAL_PX = 16

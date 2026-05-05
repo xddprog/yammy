@@ -2,8 +2,8 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Heart, Flame, X, Flag } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { Heart, Flame, X, MapPin } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 import type { UseSuperLikeInteractionsResult } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
@@ -20,6 +20,9 @@ interface MatchesCardContentProps {
   age: number
   city: string
   bio: string
+  filters?: Record<string, Record<string, string[]>>
+  traits?: Record<string, Record<string, string[]>>
+  reportTriggerKey?: number
   actionIndicator: React.ReactNode
   onDislike: () => void
   onSuperLikeClick: () => void
@@ -38,12 +41,15 @@ export const MatchesCardContent = ({
   age,
   city,
   bio,
+  filters,
+  traits,
+  reportTriggerKey = 0,
   actionIndicator,
   onDislike,
   onSuperLikeClick,
   superLikeHandlers,
 }: MatchesCardContentProps) => {
-  const [isReportMode, setIsReportMode] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isReportSubmitted, setIsReportSubmitted] = useState(false)
 
   const form = useForm<z.infer<typeof reportFormSchema>>({
@@ -52,7 +58,7 @@ export const MatchesCardContent = ({
   })
 
   const handleCloseReport = useCallback(() => {
-    setIsReportMode(false)
+    setIsReportModalOpen(false)
     setIsReportSubmitted(false)
     form.reset()
   }, [form])
@@ -64,153 +70,173 @@ export const MatchesCardContent = ({
     setIsReportSubmitted(true)
   }, [])
 
-  const handleFlagClick = useCallback(() => {
-    setIsReportMode(true)
-  }, [])
+  useEffect(() => {
+    if (reportTriggerKey > 0) {
+      setIsReportModalOpen(true)
+      setIsReportSubmitted(false)
+      form.reset()
+    }
+  }, [reportTriggerKey, form])
+
+  const groupedTraits = useMemo(() => {
+    const source = traits ?? filters
+    if (source == null) return []
+
+    return Object.entries(source)
+      .map(([groupTitle, subgroups]) => {
+        const values = Array.from(
+          new Set(
+            Object.values(subgroups)
+              .flat()
+              .map((value) => value?.trim())
+              .filter((value): value is string => value != null && value.length > 0),
+          ),
+        )
+
+        return { groupTitle, values }
+      })
+      .filter((group) => group.values.length > 0)
+  }, [traits, filters])
 
   return (
-    <motion.div className="mx-auto h-full w-full">
+    <motion.div className="relative mx-auto w-full">
       <SheetCard
-        className="h-full w-full"
+        className="w-full rounded-none overflow-visible bg-background text-white"
         indicator={actionIndicator}
-        contentClassName="overflow-y-auto px-7 pt-2 pb-4 no-scrollbar"
+        contentClassName="px-6 pt-4 pb-32"
         footer={
-          <div className="flex items-center justify-between px-7 pb-5 pt-3 bg-white z-20">
-            {!isReportMode ? (
-              <>
-                <Button type="button" variant="black" size="icon-lg" onClick={onDislike}>
-                  <X className="size-7" />
-                </Button>
-                <div className="relative space-x-2">
-                  <Button
-                    type="button"
-                    variant="black"
-                    size="icon-lg"
-                    onPointerDown={superLikeHandlers.handleLikePointerDown}
-                    onPointerUp={superLikeHandlers.handleLikePointerUp}
-                    onPointerLeave={superLikeHandlers.handleLikePointerLeave}
-                    className="group"
-                  >
-                    <Heart
-                      className="size-7 text-white transition-colors group-active:text-primary group-active:fill-primary"
-                      fill="transparent"
-                    />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon-lg"
-                    onClick={onSuperLikeClick}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    <Flame className="size-7" strokeWidth={1.6} fill="white" />
-                  </Button>
-                </div>
-              </>
-            ) : isReportSubmitted ? (
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 bg-background px-7 pb-5 pt-3">
+            <div className="pointer-events-auto mx-auto flex w-full max-w-md items-center justify-center gap-[12%] px-4">
               <Button
                 type="button"
-                variant="black"
-                size="lg"
-                className="w-full rounded-full"
+                variant="ghost"
+                size="icon-lg"
                 onClick={onDislike}
+                className="h-14 w-14 rounded-full !bg-[#BC97FF]/35 !text-white transition-colors !hover:bg-[#BC97FF]/55 !hover:text-white !active:bg-[#BC97FF] !focus-visible:ring-[#BC97FF]/60 !focus-visible:border-transparent"
               >
-                Продолжить
+                <X className="size-7" strokeWidth={1.6} />
               </Button>
-            ) : (
-              <div className="w-full flex gap-2 items-center">
+              <Button
+                type="button"
+                variant="default"
+                size="icon-2xl"
+                onPointerDown={superLikeHandlers.handleLikePointerDown}
+                onPointerUp={superLikeHandlers.handleLikePointerUp}
+                onPointerLeave={superLikeHandlers.handleLikePointerLeave}
+                className="h-[72px] w-[72px] rounded-full bg-primary hover:bg-primary/90"
+              >
+                <Heart className="size-8 text-white" fill="white" strokeWidth={1.4} />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-lg"
+                onClick={onSuperLikeClick}
+                className="h-14 w-14 rounded-full !bg-[#BC97FF]/35 !text-white transition-colors !hover:bg-[#BC97FF]/55 !hover:text-white !active:bg-[#BC97FF] !focus-visible:ring-[#BC97FF]/60 !focus-visible:border-transparent"
+              >
+                <Flame className="size-7" strokeWidth={1.4} fill="white" />
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <motion.div
+          key="profile"
+          variants={contentVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={contentVariants.transition}
+          className="min-h-0"
+        >
+          <div className="mb-1 flex items-start justify-between gap-3">
+            <h2 className="text-[28px] font-medium leading-[120%] tracking-[0] text-white">
+              {name}, {age}
+            </h2>
+          </div>
+          <div className="space-y-4 text-sm leading-[1.4]">
+            <div className="flex items-center gap-1 text-[15px] font-thin leading-[120%] tracking-[0] text-white/85">
+              <MapPin size={17} strokeWidth={1.2} aria-hidden />
+              {city}
+            </div>
+            {bio && <p className="text-[15px] font-thin leading-[120%] tracking-[0] text-white/85">{bio}</p>}
+            {groupedTraits.map((group) => (
+              <div key={group.groupTitle} className="mt-4">
+                <h3 className="mb-2 text-[13px] font-semibold tracking-wide text-white/75 uppercase">
+                  {group.groupTitle}
+                </h3>
+                <div className="-mx-6 overflow-x-scroll px-6 no-scrollbar touch-pan-x [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="inline-flex w-max gap-1.5 whitespace-nowrap">
+                    {group.values.map((value) => (
+                      <span
+                        key={`${group.groupTitle}:${value}`}
+                        className="rounded-[16px] bg-accent px-6 py-2 text-[16px] font-semibold text-accent-foreground whitespace-nowrap"
+                      >
+                        {value}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </SheetCard>
+
+      <AnimatePresence>
+        {isReportModalOpen ? (
+          <motion.div
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 px-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="w-full max-w-[420px] rounded-[28px] bg-background p-6 text-white"
+              initial={{ opacity: 0, y: 18, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.97 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <h2 className="text-[28px] font-semibold leading-[1.1] tracking-[0] text-white">Жалоба</h2>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-lg"
                   onClick={handleCloseReport}
                   aria-label="Закрыть режим жалобы"
+                  className="h-11 w-11 rounded-full !bg-[#BC97FF]/30 !text-white !hover:bg-[#BC97FF]/45 !hover:text-white !active:bg-[#BC97FF]/55 !focus-visible:ring-[#BC97FF]/60 !focus-visible:border-transparent"
                 >
-                  <X className="size-7" />
+                  <X className="size-6" />
                 </Button>
-                <div className="w-full">
+              </div>
+
+              {isReportSubmitted ? (
+                <div className="space-y-5">
+                  <p className="text-white/90 text-sm leading-[1.5]">
+                    Жалоба успешно отправлена, наша модерация рассмотрит ее и примет необходимые меры.
+                  </p>
                   <Button
-                    type="submit"
-                    form="report-form"
-                    variant="black"
+                    type="button"
+                    variant="default"
                     size="lg"
-                    className="rounded-full w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!form.formState.isDirty}
+                    className="w-full rounded-full bg-[#BC97FF] text-[#2F1E66] hover:bg-[#C7A8FF]"
+                    onClick={handleCloseReport}
                   >
-                    Отправить
+                    Готово
                   </Button>
                 </div>
-              </div>
-            )}
-          </div>
-        }
-      >
-        <AnimatePresence mode="wait">
-          {!isReportMode ? (
-            <motion.div
-              key="profile"
-              variants={contentVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={contentVariants.transition}
-              className="h-full"
-            >
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <h2 className="text-[32px] font-semibold leading-[1.1] tracking-[0]">{name}</h2>
-                <button
-                  type="button"
-                  onClick={handleFlagClick}
-                  className="p-1 -m-1 rounded-full hover:bg-neutral-100 transition-colors cursor-pointer touch-manipulation"
-                  aria-label="Пожаловаться"
-                >
-                  <Flag className="size-6 text-neutral-700" />
-                </button>
-              </div>
-              <div className="space-y-3 text-sm leading-[1.4]">
-                {bio && (
-                  <p className="text-neutral-900">{bio}</p>
-                )}
-                <div className="mt-4 grid grid-cols-[auto,1fr] gap-x-6 gap-y-2 text-sm">
-                  <span className="text-neutral-400">возраст</span>
-                  <span className="text-neutral-900">{age}</span>
-                  <span className="text-neutral-400">город</span>
-                  <span className="text-neutral-900">{city}</span>
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key={isReportSubmitted ? 'report-success' : 'report'}
-              variants={contentVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={contentVariants.transition}
-              className="h-full flex flex-col"
-            >
-              <h2 className="text-[32px] font-semibold leading-[1.1] tracking-[0] mb-6">Жалоба</h2>
-              {isReportSubmitted ? (
-                <p className="text-neutral-900 text-sm leading-[1.5]">
-                  Жалоба успешно отправлена, наша модерация рассмотрит её и примет необходимые меры!
-                </p>
               ) : (
                 <Form {...form}>
-                  <form
-                    id="report-form"
-                    onSubmit={form.handleSubmit(handleSubmitReport)}
-                    className="flex-1 flex flex-col"
-                  >
+                  <form id="report-form" onSubmit={form.handleSubmit(handleSubmitReport)} className="space-y-5">
                     <FormField
                       control={form.control}
                       name="reason"
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <RadioGroup
-                              value={field.value ?? ''}
-                              onValueChange={field.onChange}
-                              className="grid gap-3"
-                            >
+                            <RadioGroup value={field.value ?? ''} onValueChange={field.onChange} className="grid gap-3">
                               {(
                                 Object.entries(REPORT_REASON_LABELS) as [
                                   keyof typeof REPORT_REASON_LABELS,
@@ -218,10 +244,14 @@ export const MatchesCardContent = ({
                                 ][]
                               ).map(([value, label]) => (
                                 <div key={value} className="flex items-center gap-3">
-                                  <RadioGroupItem value={value} id={`report-${value}`} />
+                                  <RadioGroupItem
+                                    value={value}
+                                    id={`report-${value}`}
+                                    className="data-[state=checked]:border-[#BC97FF] focus-visible:border-[#BC97FF] focus-visible:ring-[#BC97FF]/40 [&_[data-slot=radio-group-indicator]>span]:bg-[#BC97FF]"
+                                  />
                                   <label
                                     htmlFor={`report-${value}`}
-                                    className="font-light text-zinc-400 cursor-pointer select-none flex-1"
+                                    className="font-light text-white/80 cursor-pointer select-none flex-1"
                                   >
                                     {label}
                                   </label>
@@ -232,13 +262,23 @@ export const MatchesCardContent = ({
                         </FormItem>
                       )}
                     />
+
+                    <Button
+                      type="submit"
+                      variant="default"
+                      size="lg"
+                      className="w-full rounded-full !bg-[#BC97FF] !text-[#2F1E66] transition-colors !hover:bg-[#BC97FF] !active:bg-[#BC97FF] disabled:!bg-[#BC97FF] disabled:opacity-100 disabled:cursor-not-allowed"
+                      disabled={!form.formState.isDirty}
+                    >
+                      Отправить
+                    </Button>
                   </form>
                 </Form>
               )}
             </motion.div>
-          )}
-        </AnimatePresence>
-      </SheetCard>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </motion.div>
   )
 }

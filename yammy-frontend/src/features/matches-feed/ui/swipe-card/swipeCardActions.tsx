@@ -80,7 +80,7 @@ const SwipeCardActionsComponent = ({
           aria-hidden
         />
 
-        <div className="relative m-[5px] flex h-[calc(100%-10px)] w-[calc(100%-10px)] items-center justify-center rounded-full bg-accent">
+        <div className="relative m-[8px] flex h-[calc(100%-16px)] w-[calc(100%-16px)] items-center justify-center rounded-full bg-accent">
           <span className="text-[20px] font-semibold text-accent-foreground">{clamped}</span>
         </div>
       </button>

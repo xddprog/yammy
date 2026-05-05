@@ -80,7 +80,7 @@ const RateCardComponent = ({
       }}
       initial={false}
     >
-      <div className="relative flex-1 min-h-0 overflow-hidden rounded-[48px] bg-card">
+      <div className="relative flex-1 min-h-0 overflow-hidden rounded-[48px] bg-transparent [backface-visibility:hidden] [transform:translateZ(0)]">
         <ImageCarousel
           enabledImageSwiping={true}
           images={

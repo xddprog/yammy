@@ -68,14 +68,25 @@ export function useCarouselZones({
     [isTop],
   )
 
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragStartRef.current) return
-    const deltaX = Math.abs(e.clientX - dragStartRef.current.x)
-    const deltaY = Math.abs(e.clientY - dragStartRef.current.y)
-    if (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD) {
-      setIsDragging(true)
-    }
-  }, [])
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!dragStartRef.current) return
+
+      const deltaX = Math.abs(e.clientX - dragStartRef.current.x)
+      const deltaY = Math.abs(e.clientY - dragStartRef.current.y)
+
+      // Вертикальный жест отдаем родительскому скроллу профиля.
+      if (deltaY > DRAG_THRESHOLD && deltaY > deltaX) {
+        clearDrag()
+        return
+      }
+
+      if (deltaX > DRAG_THRESHOLD) {
+        setIsDragging(true)
+      }
+    },
+    [clearDrag],
+  )
 
   const handlePointerUp = useCallback(() => {
     if (!dragStartRef.current) return

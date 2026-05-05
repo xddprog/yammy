@@ -166,8 +166,8 @@ const ImageCarouselComponent = ({
 
   const indicatorPositionClass =
     align === 'bottom'
-      ? 'absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-5rem)] z-10'
-      : 'absolute top-6 left-1/2 -translate-x-1/2 w-[calc(100%-5rem)] z-10'
+      ? 'absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2.5rem)] z-10'
+      : 'absolute top-6 left-1/2 -translate-x-1/2 w-[calc(100%-2.5rem)] z-10'
 
   return (
     <div className={cn('absolute inset-0 overflow-hidden', className)}>
@@ -190,9 +190,9 @@ const ImageCarouselComponent = ({
       </div>
 
       {isTop && enabledImageSwiping && (
-        <div className="absolute inset-0 z-[1] flex pointer-events-auto" aria-hidden>
+        <div className="absolute inset-0 z-[1] flex pointer-events-auto touch-pan-y" aria-hidden>
           <div
-            className="flex-1"
+            className="flex-1 touch-pan-y"
             onPointerDown={zones.handleLeftPointerDown}
             onPointerMove={zones.handlePointerMove}
             onPointerUp={zones.handlePointerUp}
@@ -200,7 +200,7 @@ const ImageCarouselComponent = ({
             aria-label="Предыдущее фото"
           />
           <div
-            className="flex-1"
+            className="flex-1 touch-pan-y"
             onPointerDown={zones.handleCenterPointerDown}
             onPointerMove={zones.handlePointerMove}
             onPointerUp={zones.handlePointerUp}
@@ -208,7 +208,7 @@ const ImageCarouselComponent = ({
             aria-label="Центральная зона"
           />
           <div
-            className="flex-1"
+            className="flex-1 touch-pan-y"
             onPointerDown={zones.handleRightPointerDown}
             onPointerMove={zones.handlePointerMove}
             onPointerUp={zones.handlePointerUp}

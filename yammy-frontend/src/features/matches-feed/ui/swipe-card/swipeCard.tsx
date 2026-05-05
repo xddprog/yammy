@@ -1,5 +1,5 @@
 import { motion, type MotionValue, useTransform } from 'framer-motion'
-import { Heart, X } from 'lucide-react'
+import { Heart, MapPin, X } from 'lucide-react'
 import { memo, useState } from 'react'
 
 import { useSuperLikeInteractions } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
@@ -74,7 +74,7 @@ const SwipeCardComponent = ({
   return (
     <motion.div
       className={cn(
-        'absolute inset-0 touch-none select-none overflow-hidden rounded-[2rem] bg-card',
+        'absolute inset-0 touch-none select-none bg-transparent [backface-visibility:hidden] [transform:translateZ(0)]',
         className,
       )}
       style={{
@@ -96,7 +96,7 @@ const SwipeCardComponent = ({
       }}
       initial={false}
     >
-      <div className="relative h-full w-full">
+      <div className="relative h-full w-full overflow-hidden rounded-[2rem] [backface-visibility:hidden] [transform:translateZ(0)]">
         <ImageCarousel
           enabledImageSwiping={!superLike.isSuperLikeMode}
           images={photos.length < 0 ? photos : ['/images/test.jpg', '/images/test1.jpg', '/images/test2.jpg']}
@@ -146,14 +146,17 @@ const SwipeCardComponent = ({
         <div className="pointer-events-none absolute inset-x-0 bottom-3 sm:bottom-4 flex flex-col justify-end z-10 w-full">
           {(name != null || age != null || city != null) && (
             <div
-              className={cn('flex flex-col gap-2 text-white px-7 pb-4', superLike.isSuperLikeMode && 'blur-[2px]')}
+              className={cn('flex flex-col gap-1 text-white px-5 pb-4', superLike.isSuperLikeMode && 'blur-[2px]')}
             >
-              {city != null && (
-                <span className="text-base font-normal leading-[120%] tracking-[0]">{city}</span>
-              )}
               {(name != null || age != null) && (
-                <span className="text-[34px] font-bold leading-[120%] tracking-[0]">
+                <span className="text-[28px] font-medium leading-[120%] tracking-[0]">
                   {[name, age != null ? `${age}` : null].filter(Boolean).join(', ')}
+                </span>
+              )}
+              {city != null && (
+                <span className="flex items-center gap-1 text-[15px] font-thin leading-[120%] tracking-[0] text-white/85">
+                  <MapPin size={17} strokeWidth={1.2} aria-hidden />
+                  {city}
                 </span>
               )}
             </div>

@@ -1,10 +1,9 @@
-import { motion } from 'framer-motion'
-import { memo, useCallback } from 'react'
+import { animate, motion, useSpring } from 'framer-motion'
+import { ChevronLeft, Flag, Heart } from 'lucide-react'
+import { memo, useCallback, useRef, useState } from 'react'
 
-import { useContentAreaHeight } from '@/features/matches-feed/hooks/useContentAreaHeight'
-import { useMatchesOverlayMotion } from '@/features/matches-feed/hooks/useMatchesOverlayMotion'
 import { useSuperLikeInteractions } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
-import { ImageCarousel, useOverlay } from '@/shared'
+import { Button, ImageCarousel, useOverlay } from '@/shared'
 
 import type { UserSearchResult } from '@/entities/user/types/types'
 import {
@@ -12,10 +11,7 @@ import {
   MATCHES_OVERLAY_ENTER_DURATION,
   MATCHES_OVERLAY_INITIAL_ENTER_SCALE,
   MATCHES_OVERLAY_INITIAL_ENTER_Y,
-  MATCHES_OVERLAY_PADDING_HORIZONTAL_PX,
-  MATCHES_OVERLAY_PADDING_VERTICAL_PX,
 } from '../../lib/constants'
-import { DragIndicator } from '../sheet-card'
 import { SuperLikeOverlayContentMemo } from '../super-like-overlay/superLikeOverlay'
 import { MatchesCardContent } from './matchesCard'
 
@@ -35,7 +31,15 @@ const OverlayContent = ({
   onLike,
   onSuperLike,
 }: MatchesOverlayProps): React.JSX.Element => {
-  const { name, age, city, photos, match_percentage, bio } = item
+  const { name, age, city, photos, bio } = item
+  const [reportTriggerKey, setReportTriggerKey] = useState(0)
+  const pullDownY = useSpring(0, { stiffness: 360, damping: 34, mass: 0.55 })
+  const swipeStartYRef = useRef<number | null>(null)
+
+  const applySwipeResistance = useCallback((distance: number) => {
+    if (distance <= 180) return distance * 0.72
+    return 129.6 + (distance - 180) * 0.2
+  }, [])
 
   const handleLike = useCallback(() => {
     onLike?.()
@@ -51,38 +55,42 @@ const OverlayContent = ({
     onClose()
   }, [onDislike, onClose])
 
+  const handleCloseSwipeStart = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    swipeStartYRef.current = event.clientY
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }, [])
+
+  const handleCloseSwipeMove = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (swipeStartYRef.current == null) return
+
+      const deltaY = Math.max(0, event.clientY - swipeStartYRef.current)
+      pullDownY.set(applySwipeResistance(deltaY))
+    },
+    [applySwipeResistance, pullDownY],
+  )
+
+  const handleCloseSwipeEnd = useCallback(() => {
+    const shouldClose = pullDownY.get() > 84
+
+    swipeStartYRef.current = null
+    if (shouldClose) {
+      onClose()
+      return
+    }
+
+    animate(pullDownY, 0, { duration: 0.24, ease: MATCHES_OVERLAY_EASE_ENTER })
+  }, [onClose, pullDownY])
+
   const superLike = useSuperLikeInteractions({
     onLike: handleLike,
     onSuperLike: handleSuperLikeClick,
   })
 
-  const { ref: contentAreaRef, heightPx: contentAreaHeightPx, widthPx: contentAreaWidthPx } = useContentAreaHeight()
-  const motionProps = useMatchesOverlayMotion(contentAreaHeightPx, contentAreaWidthPx)
-  const {
-    dragY,
-    dragControls,
-    isExpanded,
-    cardInitialTop,
-    dragLimit,
-    containerHeight,
-    containerWidth,
-    containerRadius,
-    carouselOpacity,
-    pillContentOpacity,
-    pillContentScale,
-    cardMarginTop,
-    cardHeight,
-    handleDragEnd,
-    handleIndicatorClick,
-  } = motionProps
-
   return (
     <motion.div
-      className="box-border w-full h-full pointer-events-none"
-      style={{
-        paddingTop: MATCHES_OVERLAY_PADDING_VERTICAL_PX,
-        paddingBottom: 0,
-      }}
+      className="box-border h-full w-full"
+      style={{ y: pullDownY }}
       initial={{
         opacity: 0,
         y: MATCHES_OVERLAY_INITIAL_ENTER_Y,
@@ -95,90 +103,86 @@ const OverlayContent = ({
         transition: { duration: MATCHES_OVERLAY_ENTER_DURATION, ease: MATCHES_OVERLAY_EASE_ENTER },
       }}
     >
-      <div
-        ref={contentAreaRef}
-        className="relative w-full h-full min-h-0 pointer-events-auto flex justify-center"
-      >
-        <motion.div
-          className="absolute z-20 overflow-hidden origin-top
-                     bg-black/40 backdrop-blur-xl border border-white/10"
-          style={{
-            height: containerHeight,
-            width: containerWidth,
-            borderRadius: containerRadius,
-            left: '50%',
-            x: '-50%',
-          }}
+      <div className="relative flex h-full w-full min-h-0 justify-center">
+        <div
+          className="relative h-full w-full overflow-y-auto bg-background no-scrollbar"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          <motion.div className="absolute inset-0" style={{ opacity: carouselOpacity }}>
-            <div className={isExpanded ? 'pointer-events-none h-full' : 'h-full'}>
+          <div className="sticky top-0 z-40 flex justify-center bg-background px-6 pt-10">
+            <button
+              type="button"
+              aria-label="Закрыть свайпом вниз"
+              className="h-5 w-24 touch-none cursor-grab active:cursor-grabbing"
+              onPointerDown={handleCloseSwipeStart}
+              onPointerMove={handleCloseSwipeMove}
+              onPointerUp={handleCloseSwipeEnd}
+              onPointerCancel={handleCloseSwipeEnd}
+            >
+              <span className="mx-auto block h-1 w-12 rounded-full bg-white" />
+            </button>
+          </div>
+
+          <div className="w-full px-6 pt-1 pb-3">
+            <div className="relative h-full w-full overflow-hidden rounded-[32px]">
+              <div className="absolute left-4 right-4 top-4 z-30 flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-12 w-12 rounded-full !bg-[#BC97FF]/35 !text-white !hover:bg-[#BC97FF]/50 !hover:text-white !active:bg-[#BC97FF]/60 !focus-visible:ring-[#BC97FF]/60 !focus-visible:border-transparent"
+                  aria-label="Назад"
+                  onClick={onClose}
+                >
+                  <ChevronLeft size={20} strokeWidth={1.8} aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-12 w-12 rounded-full !bg-[#BC97FF]/35 !text-white !hover:bg-[#BC97FF]/50 !hover:text-white !active:bg-[#BC97FF]/60 !focus-visible:ring-[#BC97FF]/60 !focus-visible:border-transparent"
+                  aria-label="Пожаловаться"
+                  onClick={() => setReportTriggerKey((value) => value + 1)}
+                >
+                  <Flag size={19} strokeWidth={1.8} aria-hidden />
+                </Button>
+              </div>
+
+              <div className="h-[50vh] min-h-[300px] w-full">
               <ImageCarousel
-                images={photos}
+                images={photos.length < 0 ? photos : ['/images/test.jpg', '/images/test1.jpg', '/images/test2.jpg']}
                 imageAlt={name}
                 isTop
-                showIndicators
+                showIndicators={false}
                 align="bottom"
-                enabledImageSwiping={!isExpanded}
+                enabledImageSwiping
               />
-            </div>
-          </motion.div>
+              </div>
 
-          <motion.div
-            className="absolute inset-0 flex items-center justify-center gap-2"
-            style={{ opacity: pillContentOpacity, scale: pillContentScale }}
-          >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pink-500/80 p-1">
-              <img
-                src="/images/logo.png"
-                alt="Yammy"
-                className="h-full w-full object-contain object-center"
-              />
+              <div className="absolute bottom-4 left-4 z-30 rounded-full bg-accent px-4 py-2 text-accent-foreground">
+                <div className="flex items-center justify-center gap-1 leading-none">
+                  <Heart size={18} strokeWidth={2} />
+                  <span className="text-[16px] font-bold leading-none">{item.match_percentage}%</span>
+                </div>
+              </div>
             </div>
-            <div className="flex min-w-0 flex-col leading-[1.1]">
-              <span className="text-[14px] font-bold text-white tracking-tight">
-                {match_percentage}% Мэтч
-              </span>
-              <span className="text-[10px] text-neutral-400 font-medium tracking-wide leading-none">
-                Вы на одной волне
-              </span>
-            </div>
-          </motion.div>
-        </motion.div>
+          </div>
 
-        <motion.div
-          className="absolute left-0 right-0 z-10 flex flex-col"
-          style={{
-            top: cardInitialTop,
-            y: dragY,
-            height: cardHeight,
-            boxSizing: 'border-box',
-            paddingTop: cardMarginTop,
-            paddingLeft: MATCHES_OVERLAY_PADDING_HORIZONTAL_PX,
-            paddingRight: MATCHES_OVERLAY_PADDING_HORIZONTAL_PX,
-          }}
-          drag="y"
-          dragConstraints={{ top: dragLimit, bottom: 0 }}
-          dragControls={dragControls}
-          dragElastic={0.1}
-          dragListener={false}
-          onDragEnd={handleDragEnd}
-        >
-          <MatchesCardContent
-            name={name}
-            age={age}
-            city={city}
-            bio={bio}
-            actionIndicator={
-              <DragIndicator
-                onPointerDown={(e) => dragControls.start(e)}
-                onClick={handleIndicatorClick}
-              />
-            }
-            onDislike={handleDislike}
-            onSuperLikeClick={handleSuperLikeClick}
-            superLikeHandlers={superLike}
-          />
-        </motion.div>
+          <div className="w-full pb-6">
+            <MatchesCardContent
+              name={name}
+              age={age}
+              city={city}
+              bio={bio}
+              filters={item.filters}
+              traits={item.traits}
+              reportTriggerKey={reportTriggerKey}
+              actionIndicator={null}
+              onDislike={handleDislike}
+              onSuperLikeClick={handleSuperLikeClick}
+              superLikeHandlers={superLike}
+            />
+          </div>
+        </div>
       </div>
     </motion.div>
   )
@@ -204,7 +208,8 @@ export const useMatchesOverlay = () => {
   const openProfileDetails = useCallback(
     (options: OpenProfileDetailsOptions) => {
       const overlayId = open({
-        panelClassName: 'relative w-full max-w-md h-full',
+        backdropClassName: 'bg-transparent backdrop-blur-0',
+        panelClassName: 'relative w-full h-full',
         content: (closeOverlay) => (
           <OverlayContentMemo
             item={options.item}
