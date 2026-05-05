@@ -26,7 +26,6 @@ export interface SwipeCardProps {
   className?: string
   stackIndex?: number
   stackProgress?: MotionValue<number>
-  /** Открытие детальной карточки профиля из стека свайпов. */
   onOpenDetails?: () => void
 }
 
