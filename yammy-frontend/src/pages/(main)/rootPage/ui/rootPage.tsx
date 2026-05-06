@@ -18,7 +18,7 @@ const RootPage = (): JSX.Element => {
     <Suspense>
       <div
         className={cn(
-          'relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overscroll-none pt-[75px]',
+          'relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overscroll-none pt-[90px]',
           isChatDetail ? '' : isDashboardPage ? 'px-4 pb-7 pt-[75px]' : isLikesPage ? 'px-4' : 'px-4 pb-7',
         )}
       >
