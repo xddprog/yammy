@@ -8,6 +8,7 @@ import {
   MATCHES_OVERLAY_CAROUSEL_HEIGHT_RATIO,
   MATCHES_OVERLAY_CONTAINER_RADIUS,
   MATCHES_OVERLAY_DRAG_VELOCITY_THRESHOLD,
+  MATCHES_OVERLAY_EXPANDED_TOP_PADDING_PX,
   MATCHES_OVERLAY_PADDING_HORIZONTAL_PX,
   MATCHES_OVERLAY_PILL_HEIGHT,
   MATCHES_OVERLAY_PILL_TOP_MARGIN,
@@ -31,14 +32,28 @@ export function useMatchesOverlayMotion(contentAreaHeightPx: number, contentArea
     const carouselHeight = contentHeight * MATCHES_OVERLAY_CAROUSEL_HEIGHT_RATIO
     const cardHeightBase = contentHeight * (1 - MATCHES_OVERLAY_CAROUSEL_HEIGHT_RATIO)
     const cardInitialTop = carouselHeight
-    const dragLimit = -(carouselHeight - TOP_SAFE_AREA)
+    const dragLimit = -Math.max(
+      0,
+      carouselHeight - TOP_SAFE_AREA - MATCHES_OVERLAY_EXPANDED_TOP_PADDING_PX,
+    )
     return { carouselHeight, cardHeightBase, cardInitialTop, dragLimit }
   }, [contentAreaHeightPx])
 
+  /** Ненулевой конец диапазона для useTransform, когда разворот недоступен (dragLimit === 0) */
+  const motionDragEnd = dragLimit < 0 ? dragLimit : -1e-6
+
+  const expandedCarouselHeight = MATCHES_OVERLAY_PILL_HEIGHT + MATCHES_OVERLAY_EXPANDED_TOP_PADDING_PX
+
   const containerHeight = useTransform(
     dragY,
-    [0, dragLimit],
-    [carouselHeight, MATCHES_OVERLAY_PILL_HEIGHT],
+    [0, motionDragEnd],
+    [carouselHeight, expandedCarouselHeight],
+  )
+
+  const pillPaddingTop = useTransform(
+    dragY,
+    [0, motionDragEnd],
+    [0, MATCHES_OVERLAY_EXPANDED_TOP_PADDING_PX],
   )
 
   const fullWidth = Math.max(
@@ -48,37 +63,43 @@ export function useMatchesOverlayMotion(contentAreaHeightPx: number, contentArea
 
   const containerWidth = useTransform(
     dragY,
-    [0, dragLimit * 0.25, dragLimit * 0.55, dragLimit * 0.8, dragLimit],
+    [
+      0,
+      motionDragEnd * 0.25,
+      motionDragEnd * 0.55,
+      motionDragEnd * 0.8,
+      motionDragEnd,
+    ],
     [fullWidth, fullWidth * 0.88, fullWidth * 0.62, MATCHES_OVERLAY_PILL_WIDTH * 1.15, MATCHES_OVERLAY_PILL_WIDTH],
   )
 
   const containerRadius = useTransform(
     dragY,
-    [0, dragLimit],
+    [0, motionDragEnd],
     [MATCHES_OVERLAY_CONTAINER_RADIUS, MATCHES_OVERLAY_PILL_HEIGHT / 2],
   )
 
   const carouselOpacity = useTransform(
     dragY,
-    [0, dragLimit * MATCHES_OVERLAY_TRANSFORM_CAROUSEL_OPACITY_END],
+    [0, motionDragEnd * MATCHES_OVERLAY_TRANSFORM_CAROUSEL_OPACITY_END],
     [1, 0],
   )
 
   const pillContentOpacity = useTransform(
     dragY,
-    [dragLimit * MATCHES_OVERLAY_TRANSFORM_PILL_OPACITY_START, dragLimit],
+    [motionDragEnd * MATCHES_OVERLAY_TRANSFORM_PILL_OPACITY_START, motionDragEnd],
     [0, 1],
   )
 
   const pillContentScale = useTransform(
     dragY,
-    [dragLimit * MATCHES_OVERLAY_TRANSFORM_PILL_OPACITY_START, dragLimit],
+    [motionDragEnd * MATCHES_OVERLAY_TRANSFORM_PILL_OPACITY_START, motionDragEnd],
     [0.8, 1],
   )
 
   const cardMarginTop = useTransform(
     dragY,
-    [0, dragLimit * MATCHES_OVERLAY_TRANSFORM_CARD_MARGIN_END],
+    [0, motionDragEnd * MATCHES_OVERLAY_TRANSFORM_CARD_MARGIN_END],
     [MATCHES_OVERLAY_CAROUSEL_CARD_GAP_PX, 0],
   )
 
@@ -88,7 +109,7 @@ export function useMatchesOverlayMotion(contentAreaHeightPx: number, contentArea
     (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
       const shouldExpand =
         info.velocity.y < MATCHES_OVERLAY_DRAG_VELOCITY_THRESHOLD ||
-        dragY.get() < dragLimit * MATCHES_OVERLAY_TRANSFORM_CAROUSEL_OPACITY_END
+        dragY.get() < motionDragEnd * MATCHES_OVERLAY_TRANSFORM_CAROUSEL_OPACITY_END
       const targetY = shouldExpand ? dragLimit : 0
       animate(dragY, targetY, {
         type: 'spring',
@@ -96,7 +117,7 @@ export function useMatchesOverlayMotion(contentAreaHeightPx: number, contentArea
         onComplete: () => setIsExpanded(shouldExpand),
       })
     },
-    [dragY, dragLimit],
+    [dragY, dragLimit, motionDragEnd],
   )
 
   const handleIndicatorClick = useCallback(() => {
@@ -117,6 +138,7 @@ export function useMatchesOverlayMotion(contentAreaHeightPx: number, contentArea
     carouselOpacity,
     pillContentOpacity,
     pillContentScale,
+    pillPaddingTop,
     cardMarginTop,
     cardHeight,
     handleDragEnd,

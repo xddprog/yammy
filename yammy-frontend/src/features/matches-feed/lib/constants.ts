@@ -36,6 +36,9 @@ export const MATCHES_OVERLAY_PADDING_HORIZONTAL_PX = 16
 /** Резерв снизу внутри контент-области, чтобы всегда было ровно 16px отступа на SE и iOS */
 export const MATCHES_OVERLAY_BOTTOM_RESERVE_PX = 16
 
+/** Доп. отступ сверху у блока с мэтчем в развёрнутом оверлее (согласован с высотой контейнера и dragLimit) */
+export const MATCHES_OVERLAY_EXPANDED_TOP_PADDING_PX = 95
+
 // Плашка‑пилюля с мэтчем
 export const MATCHES_OVERLAY_PILL_HEIGHT = 42
 export const MATCHES_OVERLAY_PILL_WIDTH = 190

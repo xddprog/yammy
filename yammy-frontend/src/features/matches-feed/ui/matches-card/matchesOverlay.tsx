@@ -92,6 +92,7 @@ const OverlayContent = ({
     carouselOpacity,
     pillContentOpacity,
     pillContentScale,
+    pillPaddingTop,
     cardMarginTop,
     cardHeight,
     handleDragEnd,
@@ -123,7 +124,7 @@ const OverlayContent = ({
         className="relative w-full h-full min-h-0 pointer-events-auto flex justify-center"
       >
         <motion.div
-          className="absolute z-20 overflow-visible origin-top"
+          className="absolute z-20 overflow-hidden origin-top"
           style={{
             height: containerHeight,
             width: containerWidth,
@@ -143,8 +144,12 @@ const OverlayContent = ({
           </motion.div>
 
           <motion.div
-            className="absolute inset-0 flex items-center justify-center gap-2"
-            style={{ opacity: pillContentOpacity, scale: pillContentScale }}
+            className="absolute inset-0 box-border flex items-center justify-center gap-2"
+            style={{
+              opacity: pillContentOpacity,
+              scale: pillContentScale,
+              paddingTop: pillPaddingTop,
+            }}
           >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FF6BA4] p-1">
               <img

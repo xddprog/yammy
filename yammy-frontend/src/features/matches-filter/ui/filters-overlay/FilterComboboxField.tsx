@@ -50,14 +50,14 @@ const FilterComboboxFieldComponent = ({
       />
 
       {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] z-30 w-full overflow-hidden rounded-2xl border border-[#14141426] bg-white ring-1 ring-[#141414]/10">
+        <div className="absolute top-[calc(100%+8px)] z-30 w-full overflow-hidden rounded-2xl bg-white">
           {items.length > 0 ? (
             <ul className="max-h-52 overflow-y-auto py-1">
               {items.map((item) => (
                 <li key={item}>
                   <button
                     type="button"
-                    className="w-full cursor-pointer px-4 py-2 text-left text-[13px] text-[#141414] hover:bg-[#F2F2F2]"
+                    className="w-full cursor-pointer px-4 py-2 text-left text-[13px] font-[200] text-[#141414] hover:bg-[#F2F2F2]"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
                       onChange(item)
@@ -70,7 +70,7 @@ const FilterComboboxFieldComponent = ({
               ))}
             </ul>
           ) : (
-            <p className="px-4 py-2 text-[13px] text-neutral-500">Ничего не найдено</p>
+            <p className="px-4 py-2 text-[13px] font-[200] text-neutral-500">Ничего не найдено</p>
           )}
         </div>
       )}
