@@ -30,7 +30,7 @@ const ChatsPage = (): JSX.Element => {
   }
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-background text-foreground">
+    <div className="relative flex h-full min-h-0 flex-col gap-4 overflow-hidden overflow-x-hidden bg-background text-foreground">
       <header className="flex h-11 shrink-0 items-center gap-2">
         <div className="relative flex h-11 min-w-0 flex-1 items-center">
           <AnimatePresence initial={false} mode="popLayout">
@@ -105,7 +105,7 @@ const ChatsPage = (): JSX.Element => {
         </motion.button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar">
+      <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none no-scrollbar">
         <div className="flex flex-col gap-4 pb-6">
           <ChatsStoriesRow chats={MOCK_CHATS} onStoryClick={(id) => navigate(`/chats/${id}`)} />
           <div className="flex flex-col gap-2.5">

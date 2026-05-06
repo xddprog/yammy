@@ -3,7 +3,8 @@ import type { JSX } from 'react'
 
 import type { MockChat } from '@/pages/(main)/chatsPage/lib/mockChats'
 
-const STORY_RING = 'ring-2 ring-[#FF6BA4] ring-offset-2 ring-offset-background'
+/** Без ring-offset — offset рисуется снаружи кнопки и даёт лишнюю ширину / дёрганье по X у всей страницы */
+const STORY_RING = 'ring-2 ring-[#FF6BA4] ring-inset'
 
 interface ChatsStoriesRowProps {
   chats: MockChat[]
@@ -14,7 +15,7 @@ export const ChatsStoriesRow = ({ chats, onStoryClick }: ChatsStoriesRowProps): 
   const slice = chats.slice(0, 8)
 
   return (
-    <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1 pt-1">
+    <div className="no-scrollbar flex min-w-0 gap-3 overflow-x-auto overflow-y-hidden pb-1 pt-1">
       <button
         type="button"
         className="flex size-[50px] shrink-0 items-center justify-center rounded-full bg-card text-foreground transition-transform active:scale-95"

@@ -18,14 +18,14 @@ const RootPage = (): JSX.Element => {
     <Suspense>
       <div
         className={cn(
-          'relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overscroll-none',
-          isChatDetail ? 'pt-[50px]' : isDashboardPage ? 'px-4 pt-[50px] pb-7' : isLikesPage ? 'px-4' : 'px-4 pt-[50px]',
+          'relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overscroll-none pt-[70px]',
+          isChatDetail ? '  ' : isDashboardPage ? 'px-4 pb-7' : isLikesPage ? 'px-4' : 'px-4 pb-7',
         )}
       >
         {isDashboardPage && <Header />}
         <motion.main
           key={location.pathname}
-          className="flex-1 min-h-0"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
