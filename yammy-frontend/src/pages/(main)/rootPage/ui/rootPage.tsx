@@ -19,7 +19,7 @@ const RootPage = (): JSX.Element => {
       <div
         className={cn(
           'relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overscroll-none',
-          isChatDetail ? 'p-0' : isDashboardPage ? 'px-4 pt-10 pb-7' : isLikesPage ? 'px-4' : 'px-4 pt-10',
+          isChatDetail ? 'pt-[50px]' : isDashboardPage ? 'px-4 pt-[50px] pb-7' : isLikesPage ? 'px-4' : 'px-4 pt-[50px]',
         )}
       >
         {isDashboardPage && <Header />}

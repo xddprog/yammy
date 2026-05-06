@@ -1,5 +1,7 @@
 export { ChatHeader } from './ui/chat-header/chatHeader'
 export { ChatItem } from './ui/chat-item/chatItem'
+export { ChatsSearchField } from './ui/chats-search-field/chatsSearchField'
+export { ChatsStoriesRow } from './ui/chats-stories-row/chatsStoriesRow'
 export { MessageInput } from './ui/message-input/messageInput'
 export { MessageList } from './ui/message-list/messageList'
 export { SearchBar } from './ui/search-bar/searchBar'
