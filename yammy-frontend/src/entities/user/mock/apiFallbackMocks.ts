@@ -1,5 +1,11 @@
 import type { FiltersMetadataResponse, UserSearchResult } from '../types/types'
 
+/** Локальные ассеты из `public/images` — внешние URL в фолбэке часто не грузятся (сеть/CORS). */
+const P1 = '/images/photo_2025-12-23_22-41-09.jpg'
+const P2 = '/images/photo_2025-12-16_22-32-35.jpg'
+const P3 = '/images/photo_2025-04-10_00-42-15.jpg'
+const P4 = '/images/i.webp'
+
 const RAW_USERS_SEARCH_FALLBACK: Array<Omit<UserSearchResult, 'username'>> = [
   {
     name: 'Ульяна',
@@ -16,11 +22,7 @@ const RAW_USERS_SEARCH_FALLBACK: Array<Omit<UserSearchResult, 'username'>> = [
     boost_expires_at: '2026-05-05T14:04:09.719113Z',
     last_seen: '2026-05-05T11:07:09.719110Z',
     is_banned: false,
-    photos: [
-      'https://api.lascovo.ru/static/images/test_photos/photo_1.jpg',
-      'https://api.lascovo.ru/static/images/test_photos/photo_4.jpg',
-      'https://api.lascovo.ru/static/images/test_photos/photo_6.jpg',
-    ],
+    photos: [P1, P2, P3],
     user_id: '6b1a982e-b090-449f-811b-f6dd386cc239',
     filters: {
       appearance: {
@@ -53,11 +55,7 @@ const RAW_USERS_SEARCH_FALLBACK: Array<Omit<UserSearchResult, 'username'>> = [
     boost_expires_at: '2026-05-05T14:04:09.760599Z',
     last_seen: '2026-05-05T10:26:09.760597Z',
     is_banned: false,
-    photos: [
-      'https://api.lascovo.ru/static/images/test_photos/photo_1.jpg',
-      'https://api.lascovo.ru/static/images/test_photos/photo_1.jpg',
-      'https://api.lascovo.ru/static/images/test_photos/photo_10.jpg',
-    ],
+    photos: [P1, P1, P4],
     user_id: '69f480a0-e0a7-4729-b551-494487cec62b',
     filters: {
       interests: {
@@ -89,7 +87,7 @@ const RAW_USERS_SEARCH_FALLBACK: Array<Omit<UserSearchResult, 'username'>> = [
     boost_expires_at: '2026-05-05T14:04:09.753793Z',
     last_seen: '2026-05-05T10:30:09.753791Z',
     is_banned: false,
-    photos: ['https://api.lascovo.ru/static/images/test_photos/photo_5.jpg'],
+    photos: [P2],
     user_id: 'd1d56c41-52e9-4ba4-8f21-0cbcbcf10dc5',
     filters: {
       interests: {
@@ -124,10 +122,7 @@ const RAW_USERS_SEARCH_FALLBACK: Array<Omit<UserSearchResult, 'username'>> = [
     boost_expires_at: null,
     last_seen: '2026-05-02T17:03:09.728342Z',
     is_banned: false,
-    photos: [
-      'https://api.lascovo.ru/static/images/test_photos/photo_5.jpg',
-      'https://api.lascovo.ru/static/images/test_photos/photo_5.jpg',
-    ],
+    photos: [P2, P2],
     user_id: '8700934c-c838-4163-ae5f-2df817db285d',
     filters: {
       lifestyle: {
@@ -160,7 +155,7 @@ const RAW_USERS_SEARCH_FALLBACK: Array<Omit<UserSearchResult, 'username'>> = [
     boost_expires_at: null,
     last_seen: '2026-04-30T19:16:09.746535Z',
     is_banned: false,
-    photos: ['https://api.lascovo.ru/static/images/test_photos/photo_6.jpg'],
+    photos: [P3],
     user_id: '419578a2-bddd-44a3-8a74-a879bd56ea47',
     filters: {
       appearance: {
@@ -191,10 +186,7 @@ const RAW_USERS_SEARCH_FALLBACK: Array<Omit<UserSearchResult, 'username'>> = [
     boost_expires_at: null,
     last_seen: '2026-04-30T13:08:09.729734Z',
     is_banned: false,
-    photos: [
-      'https://api.lascovo.ru/static/images/test_photos/photo_2.jpg',
-      'https://api.lascovo.ru/static/images/test_photos/photo_3.jpg',
-    ],
+    photos: [P1, P4],
     user_id: '7d551821-b9e6-4716-8726-8c36ba6234e5',
     filters: {
       appearance: {

@@ -1,6 +1,6 @@
 import { motion, type MotionValue, useTransform } from 'framer-motion'
 import { Heart, X } from 'lucide-react'
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 
 import { useSuperLikeInteractions } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
 import { useSwipeCardDrag } from '@/features/matches-feed/hooks/useSwipeCardDrag'
@@ -52,7 +52,7 @@ const SwipeCardComponent = ({
   onOpenDetails,
 }: SwipeCardProps): React.JSX.Element => {
   const feedPhotos = photos.filter(Boolean)
-  const carouselImages = feedPhotos.length < 0 ? feedPhotos : MOCK_FEED_PHOTOS
+  const carouselImages = feedPhotos.length > 0 ? feedPhotos : MOCK_FEED_PHOTOS
 
   const { x, rotate, y, scale, progress } = useSwipeCardMotion({
     stackIndex,
@@ -70,12 +70,14 @@ const SwipeCardComponent = ({
     onSuperLike,
   })
 
-  const [isDragging, setIsDragging] = useState(false)
+  const [carouselImageIndex, setCarouselImageIndex] = useState(0)
+
+  useEffect(() => {
+    setCarouselImageIndex(0)
+  }, [feedPhotos.join('|')])
 
   const likeOpacity = useTransform(x, [0, 80], [0, 1])
   const dislikeOpacity = useTransform(x, [-80, 0], [1, 0])
-
-  const bottomBlurOpacity = useTransform(x, [-50, -15, 0, 15, 50], [0, 1, 1, 1, 0])
 
   const overlayOpacity = useTransform(
     progress,
@@ -101,10 +103,8 @@ const SwipeCardComponent = ({
       dragDirectionLock
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.6}
-      onDragStart={() => setIsDragging(true)}
       onDragEnd={(e, info) => {
         handleDragEnd(e, info)
-        setTimeout(() => setIsDragging(false), 450)
       }}
       initial={false}
     >
@@ -113,17 +113,26 @@ const SwipeCardComponent = ({
           enabledImageSwiping={!superLike.isSuperLikeMode}
           images={carouselImages}
           imageAlt={name ?? ''}
-          blur={superLike.isSuperLikeMode}
+          blur={false}
           isTop={isTop}
+          onImageChange={setCarouselImageIndex}
         />
+
+        {superLike.isSuperLikeMode && (
+          <div
+            className="pointer-events-none absolute inset-0 z-[1] rounded-[48px] bg-black/40"
+            aria-hidden
+          />
+        )}
 
         {isTop && (
           <motion.div
-            className="pointer-events-none absolute inset-0 rounded-[48px]"
+            className="pointer-events-none absolute inset-0 z-[1] rounded-[48px]"
             style={{
               opacity: overlayOpacity,
               backgroundColor: '#14141440',
               backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
             }}
           />
         )}
@@ -146,25 +155,17 @@ const SwipeCardComponent = ({
           </>
         )}
 
-        {!isDragging && (
-          <motion.div
-            className="pointer-events-none absolute -inset-x-1 -bottom-1 z-0 h-[calc(25%+40px)] rounded-b-[48px]"
-            style={{
-              opacity: bottomBlurOpacity,
-              backdropFilter: 'blur(32px)',
-              WebkitBackdropFilter: 'blur(32px)',
-              maskImage: 'linear-gradient(to top, black 0%, black 30%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to top, black 0%, black 30%, transparent 100%)',
-            }}
-          />
-        )}
+        <div
+          key={carouselImageIndex}
+          className="pointer-events-none absolute -inset-x-px -bottom-px z-0 h-[45%] bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+        />
 
         <div className="pointer-events-none absolute inset-x-0 bottom-6 sm:bottom-8 flex flex-col justify-end z-10 w-full">
           {(name != null || age != null || city != null) && (
             <div
               className={cn(
                 'flex flex-col gap-2 text-white px-7 pb-4',
-                superLike.isSuperLikeMode && 'blur-[2px]',
+                superLike.isSuperLikeMode && 'opacity-75',
               )}
             >
               {city != null && (

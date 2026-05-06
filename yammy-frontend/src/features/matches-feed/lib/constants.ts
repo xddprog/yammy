@@ -37,7 +37,7 @@ export const MATCHES_OVERLAY_PADDING_HORIZONTAL_PX = 16
 export const MATCHES_OVERLAY_BOTTOM_RESERVE_PX = 16
 
 /** Доп. отступ сверху у блока с мэтчем в развёрнутом оверлее (согласован с высотой контейнера и dragLimit) */
-export const MATCHES_OVERLAY_EXPANDED_TOP_PADDING_PX = 95
+export const MATCHES_OVERLAY_EXPANDED_TOP_PADDING_PX = 85
 
 // Плашка‑пилюля с мэтчем
 export const MATCHES_OVERLAY_PILL_HEIGHT = 42
