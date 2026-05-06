@@ -40,7 +40,7 @@ const navItemBaseClasses = cn(
   'group relative flex flex-1 items-center justify-center',
   'min-w-0 p-0',
   'cursor-pointer select-none touch-manipulation',
-  'transition-transform duration-200 ease-out active:scale-[0.96]',
+  'transition-transform duration-200 ease-out active:scale-[0.92]',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6BA4]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
 )
 
@@ -53,23 +53,26 @@ const NavContent = ({ icon: Icon, isActive }: NavContentProps): JSX.Element => (
   <span
     className={cn(
       'flex shrink-0 items-center justify-center rounded-full bg-transparent',
-      'transition-all duration-300 ease-out group-active:scale-[0.97]',
-      isActive ? 'h-[77px] w-[77px] bg-black text-[#FF6BA4] scale-100' : 'h-14 w-14 text-black/70 group-hover:text-black',
+      'transition-all duration-100 ease-out group-active:scale-[0.92]',
+      isActive
+        ? 'h-[77px] w-[77px] bg-black text-[#FF6BA4] scale-100'
+        : 'h-14 w-14 text-black/70 group-hover:text-black',
     )}
   >
-    <Icon
-      size={ICON_SIZE}
-      className="shrink-0 transition-colors duration-200"
-      aria-hidden="true"
-    />
+    <Icon size={ICON_SIZE} className="shrink-0 transition-colors duration-200" aria-hidden="true" />
   </span>
 )
 
-const Navbar = (): JSX.Element => (
+interface NavbarProps {
+  className?: string
+}
+
+const Navbar = ({ className }: NavbarProps): JSX.Element => (
   <nav
     className={cn(
       'mx-auto mb-2 mt-5 flex h-[84px] w-[82%] shrink-0 items-center justify-around overflow-hidden rounded-full border border-black/10 bg-white px-2',
       'transition-all duration-300',
+      className,
     )}
     role="navigation"
     aria-label="Основная навигация"

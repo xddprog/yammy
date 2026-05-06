@@ -14,7 +14,7 @@ export const FilterSection = ({
   children,
   className,
 }: FilterSectionProps): React.JSX.Element => (
-  <section className={cn('flex flex-col gap-3', className)}>
+  <section className={cn('flex w-full min-w-0 flex-col gap-3', className)}>
     {label != null && label !== '' && (
       <p className="text-sm font-normal text-neutral-500">{label}</p>
     )}

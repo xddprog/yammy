@@ -9,8 +9,9 @@ const LikesPage = (): JSX.Element => {
   const { openProfileDetails } = useMatchesOverlay()
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto no-scrollbar pb-4">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="h-full min-h-0 overflow-y-auto no-scrollbar pb-4 pt-10">
+      <h1 className="mb-4 text-[24px] font-bold leading-none tracking-tight text-white">Ваши лайки</h1>
+      <div className="grid grid-cols-2 gap-[15px]">
         {MOCK_LIKES.map((item) => (
           <LikesCard
             key={item.user_id}
@@ -22,8 +23,6 @@ const LikesPage = (): JSX.Element => {
                 onDislike: () => console.log('Дизлайк', item.user_id),
               })
             }
-            onLike={() => console.log('Быстрый Лайк', item.user_id)}
-            onDislike={() => console.log('Быстрый Дизлайк', item.user_id)}
           />
         ))}
       </div>

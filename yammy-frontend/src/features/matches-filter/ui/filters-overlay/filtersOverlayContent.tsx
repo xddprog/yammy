@@ -10,13 +10,10 @@ import { Button } from '@/shared'
 
 import { GENDER_OPTIONS } from '../../lib/constants'
 import { useFiltersState } from '../../model/useFiltersState'
-import { AgeRangeSlider } from './AgeRangeSlider'
-import { CityInput } from './CityInput'
-import { EducationInstitutionInput } from './EducationInstitutionInput'
 import { FilterChipGroup } from './FilterChipGroup'
+import { FilterComboboxField } from './FilterComboboxField'
 import { FilterRadioGroup } from './FilterRadioGroup'
 import { FilterSection } from './FilterSection'
-import { PremiumToggle } from './PremiumToggle'
 import { PrioritySliders } from './PrioritySliders'
 
 const DRAG_CLOSE_THRESHOLD = 120
@@ -30,6 +27,46 @@ const EDUCATION_LEVEL_TO_API: Record<(typeof EDUCATION_LEVEL_OPTIONS)[number], s
   'Среднее специальное': 'secondary_special',
   Высшее: 'higher',
 }
+
+const RELATIONSHIP_GOAL_OPTIONS = [
+  { label: 'Серьезные отношения', value: 'serious' },
+  { label: 'Знакомства', value: 'dating' },
+  { label: 'Дружба', value: 'friendship' },
+] as const
+
+const CITY_MOCK_OPTIONS = [
+  'Москва',
+  'Санкт-Петербург',
+  'Казань',
+  'Екатеринбург',
+  'Новосибирск',
+  'Нижний Новгород',
+  'Краснодар',
+  'Ростов-на-Дону',
+  'Самара',
+  'Воронеж',
+] as const
+
+const WORK_SPHERE_MOCK_OPTIONS = [
+  { label: 'IT', value: 'it' },
+  { label: 'Дизайн', value: 'design' },
+  { label: 'Маркетинг', value: 'marketing' },
+  { label: 'Финансы', value: 'finance' },
+  { label: 'Образование', value: 'education' },
+] as const
+
+const EDUCATION_INSTITUTION_MOCK_OPTIONS = [
+  'МГУ',
+  'МГТУ им. Н.Э. Баумана',
+  'ВШЭ',
+  'СПбГУ',
+  'МФТИ',
+  'ИТМО',
+  'МГИМО',
+  'РАНХиГС',
+  'КФУ',
+  'УрФУ',
+] as const
 
 const getEducationLabelFromState = (value: string | null): string | null => {
   if (!value) return null
@@ -84,9 +121,9 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
   const isApplyDisabled = isEqual(filters.state, filters.appliedState)
 
   return (
-    <div className="h-full p-4 flex flex-col min-h-0">
+    <div className="h-full w-full p-4 flex flex-col min-h-0 min-w-0">
       <motion.div
-        className="flex flex-1 min-h-0 w-full flex-col"
+        className="flex flex-1 min-h-0 min-w-0 w-full flex-col"
         style={{ y: dragY }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -99,7 +136,7 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
         onDragEnd={handleDragEnd}
       >
         <SheetCard
-          className="flex min-h-0 flex-1 flex-col"
+          className="flex min-h-0 min-w-0 w-full flex-1 flex-col"
           indicator={
             <DragIndicator
               onPointerDown={(e) => dragControls.start(e)}
@@ -132,7 +169,7 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
               </div>
             </div>
           }
-          contentClassName="px-6 flex flex-col min-h-0 overflow-hidden"
+          contentClassName="px-6 flex flex-col min-h-0 min-w-0 overflow-hidden"
         >
           <div className="mb-5 flex flex-col items-start gap-3 shrink-0">
             <div className="w-full flex items-center justify-between">
@@ -143,8 +180,8 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto pb-4 -mx-1 px-1">
-            <div className="flex flex-col gap-6">
+          <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pb-4 -mx-1 px-1">
+            <div className="flex w-full min-w-0 flex-col gap-6">
               <FilterSection label="Пол">
                 <FilterRadioGroup
                   options={GENDER_OPTIONS}
@@ -153,14 +190,51 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                   aria-label="Пол"
                 />
               </FilterSection>
-              <FilterSection label="Возраст">
-                <AgeRangeSlider
-                  value={filters.state.ageRange}
-                  onValueChange={filters.setAgeRange}
+
+              <FilterSection label="Цель отношений">
+                <FilterChipGroup
+                  options={RELATIONSHIP_GOAL_OPTIONS.map((option) => option.label)}
+                  value={RELATIONSHIP_GOAL_OPTIONS.filter((option) =>
+                    filters.state.relationshipGoals.includes(option.value),
+                  ).map((option) => option.label)}
+                  onChange={(nextLabels) => {
+                    const nextValues = RELATIONSHIP_GOAL_OPTIONS.filter((option) =>
+                      nextLabels.includes(option.label),
+                    ).map((option) => option.value)
+                    filters.setRelationshipGoals(nextValues.slice(0, 1))
+                  }}
+                  multiple={false}
+                  aria-label="Цель отношений"
                 />
               </FilterSection>
+
               <FilterSection label="Город">
-                <CityInput value={filters.state.city} onChange={filters.setCity} />
+                <FilterComboboxField
+                  value={filters.state.city}
+                  onChange={filters.setCity}
+                  options={CITY_MOCK_OPTIONS}
+                  placeholder="Город"
+                  ariaLabel="Город"
+                />
+              </FilterSection>
+
+              <FilterSection label="Сфера работы">
+                <FilterComboboxField
+                  value={
+                    WORK_SPHERE_MOCK_OPTIONS.find((option) =>
+                      filters.state.workFields.includes(option.value),
+                    )?.label ?? ''
+                  }
+                  onChange={(value) => {
+                    const selected = WORK_SPHERE_MOCK_OPTIONS.find(
+                      (option) => option.label === value,
+                    )
+                    filters.setWorkFields(selected ? [selected.value] : value ? [value] : [])
+                  }}
+                  options={WORK_SPHERE_MOCK_OPTIONS.map((option) => option.label)}
+                  placeholder="Сфера работы"
+                  ariaLabel="Сфера работы"
+                />
               </FilterSection>
 
               <FilterSection label="Образование">
@@ -188,47 +262,16 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                 {getEducationLabelFromState(filters.state.educationLevel) ===
                   HIGHER_EDUCATION_LEVEL_LABEL && (
                   <div className="mt-2">
-                    <EducationInstitutionInput
+                    <FilterComboboxField
                       value={filters.state.educationInstitution}
                       onChange={filters.setEducationInstitution}
+                      options={EDUCATION_INSTITUTION_MOCK_OPTIONS}
+                      placeholder="Учебное заведение"
+                      ariaLabel="Учебное заведение"
                     />
                   </div>
                 )}
               </FilterSection>
-
-              {filtersMetadata &&
-                filtersMetadata.map((category) =>
-                  category.subcategories.map((subcategory) => {
-                    const optionNames = subcategory.options.map((option) => option.name)
-                    const selectedSlugs =
-                      filters.state.filters[category.slug]?.[subcategory.slug] ?? []
-
-                    const selectedNames = subcategory.options
-                      .filter((option) => selectedSlugs.includes(option.slug))
-                      .map((option) => option.name)
-
-                    return (
-                      <FilterSection
-                        key={`${category.slug}:${subcategory.slug}`}
-                        label={subcategory.name}
-                      >
-                        <FilterChipGroup
-                          options={optionNames as readonly string[]}
-                          value={selectedNames}
-                          onChange={(nextNames) => {
-                            const nextSlugs = subcategory.options
-                              .filter((option) => nextNames.includes(option.name))
-                              .map((option) => option.slug)
-
-                            filters.setFilterValue(category.slug, subcategory.slug, nextSlugs)
-                          }}
-                          multiple
-                          aria-label={subcategory.name}
-                        />
-                      </FilterSection>
-                    )
-                  }),
-                )}
 
               <FilterSection label="Приоритеты (Веса)">
                 <PrioritySliders
@@ -236,12 +279,47 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                   onValueChange={filters.setPriorities}
                 />
               </FilterSection>
-              <FilterSection label="Показывать в ленте">
-                <PremiumToggle
-                  checked={filters.state.premiumOnly}
-                  onCheckedChange={filters.setPremiumOnly}
-                />
-              </FilterSection>
+
+              {filtersMetadata &&
+                filtersMetadata.map((category) => (
+                  <FilterSection key={category.slug} label={category.name}>
+                    <div className="flex w-full min-w-0 flex-col gap-4">
+                      {category.subcategories.map((subcategory) => {
+                        const optionNames = subcategory.options.map((option) => option.name)
+                        const selectedSlugs =
+                          filters.state.filters[category.slug]?.[subcategory.slug] ?? []
+
+                        const selectedNames = subcategory.options
+                          .filter((option) => selectedSlugs.includes(option.slug))
+                          .map((option) => option.name)
+
+                        return (
+                          <div
+                            key={`${category.slug}:${subcategory.slug}`}
+                            className="w-full min-w-0 space-y-2"
+                          >
+                            <p className="font-[160] text-[13px] text-neutral-500">
+                              {subcategory.name}
+                            </p>
+                            <FilterChipGroup
+                              options={optionNames as readonly string[]}
+                              value={selectedNames}
+                              onChange={(nextNames) => {
+                                const nextSlugs = subcategory.options
+                                  .filter((option) => nextNames.includes(option.name))
+                                  .map((option) => option.slug)
+
+                                filters.setFilterValue(category.slug, subcategory.slug, nextSlugs)
+                              }}
+                              multiple
+                              aria-label={subcategory.name}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </FilterSection>
+                ))}
             </div>
           </div>
         </SheetCard>

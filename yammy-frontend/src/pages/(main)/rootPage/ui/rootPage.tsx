@@ -11,16 +11,18 @@ const RootPage = (): JSX.Element => {
   const location = useLocation()
   const { pathname } = location
   const isChatDetail = pathname.includes('/chats/')
+  const isDashboardPage = pathname === '/dashboard'
+  const isLikesPage = pathname.startsWith('/likes')
 
   return (
     <Suspense>
       <div
         className={cn(
           'relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overscroll-none',
-          isChatDetail ? 'p-0' : 'px-4 pt-10 pb-7',
+          isChatDetail ? 'p-0' : isDashboardPage ? 'px-4 pt-10 pb-7' : isLikesPage ? 'px-4' : 'px-4 pt-10',
         )}
       >
-        {!isChatDetail && <Header />}
+        {isDashboardPage && <Header />}
         <motion.main
           key={location.pathname}
           className="flex-1 min-h-0"
@@ -30,7 +32,21 @@ const RootPage = (): JSX.Element => {
         >
           <Outlet />
         </motion.main>
-        {!isChatDetail && <Navbar />}
+        {!isChatDetail && (
+          <div className="pointer-events-none fixed -bottom-2 left-1/2 z-30 h-24 w-full max-w-md -translate-x-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        )}
+        {!isChatDetail && isDashboardPage && (
+          <div className="relative z-40">
+            <Navbar className="relative z-40" />
+          </div>
+        )}
+        {!isChatDetail && !isDashboardPage && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-9 z-40 flex justify-center px-4">
+            <div className="pointer-events-auto relative w-full">
+              <Navbar className="relative z-40 my-0" />
+            </div>
+          </div>
+        )}
       </div>
     </Suspense>
   )

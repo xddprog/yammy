@@ -3,7 +3,7 @@ import { memo } from 'react'
 import { cn } from '@/shared'
 
 const CHIP_BASE =
-  'rounded-full px-4 py-2.5 text-[13px] font-light transition-colors touch-manipulation cursor-pointer select-none border border-transparent'
+  'shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] font-light transition-colors touch-manipulation cursor-pointer select-none border border-transparent'
 
 interface FilterChipGroupProps<T extends string> {
   options: readonly T[]
@@ -30,25 +30,31 @@ function FilterChipGroupInner<T extends string>({
   }
 
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label={ariaLabel}>
-      {options.map((option) => {
-        const selected = value.includes(option)
-        return (
-          <button
-            key={option}
-            type="button"
-            onClick={() => toggle(option)}
-            className={cn(
-              CHIP_BASE,
-              selected
-                ? 'bg-[#FF6BA4]/20 text-[#141414] border-[#FF6BA4]/40'
-                : 'bg-[#F2F2F2] text-[#141414] hover:bg-[#E5E5E5]',
-            )}
-          >
-            {option}
-          </button>
-        )
-      })}
+    <div
+      className="-mx-6 w-auto min-w-0 max-w-none overflow-x-auto overflow-y-hidden px-6 no-scrollbar"
+      role="group"
+      aria-label={ariaLabel}
+    >
+      <div className="inline-flex min-w-max gap-2 pr-1">
+        {options.map((option) => {
+          const selected = value.includes(option)
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => toggle(option)}
+              className={cn(
+                CHIP_BASE,
+                selected
+                  ? 'bg-[#FF6BA4]/20 text-[#141414] border-[#FF6BA4]/40'
+                  : 'bg-[#F2F2F2] text-[#141414] hover:bg-[#E5E5E5]',
+              )}
+            >
+              {option}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

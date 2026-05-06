@@ -16,6 +16,7 @@ const ChatsPage = (): JSX.Element => {
 
   return (
     <div className="flex h-full flex-col gap-5 overflow-hidden">
+      <h1 className="text-[24px] font-bold leading-none tracking-tight text-white">Ваши чаты</h1>
       <SearchBar onSearch={setSearchQuery} />
 
       <div className="flex-1 overflow-y-auto no-scrollbar">
