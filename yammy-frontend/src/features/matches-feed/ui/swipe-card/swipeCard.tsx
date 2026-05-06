@@ -148,7 +148,7 @@ const SwipeCardComponent = ({
 
         {!isDragging && (
           <motion.div
-            className="pointer-events-none absolute -left-[1px] -right-[1px] -bottom-[1px] z-0 h-[calc(25%+40px)]"
+            className="pointer-events-none absolute -inset-x-1 -bottom-1 z-0 h-[calc(25%+40px)] rounded-b-[48px]"
             style={{
               opacity: bottomBlurOpacity,
               backdropFilter: 'blur(32px)',

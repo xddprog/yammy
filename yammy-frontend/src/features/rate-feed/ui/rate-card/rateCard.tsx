@@ -100,7 +100,7 @@ const RateCardComponent = ({
 
         {!isDragging && (
           <motion.div
-            className="pointer-events-none absolute -left-[1px] -right-[1px] -bottom-[1px] z-0 h-[40%]"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[40%] rounded-b-[48px]"
             style={{
               opacity: bottomBlurOpacity,
               backdropFilter: 'blur(32px)',
