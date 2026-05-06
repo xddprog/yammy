@@ -1,21 +1,28 @@
-import { Heart, MessageSquare, SlidersHorizontal, User } from 'lucide-react'
+import {
+  Bell,
+  GalleryHorizontalEnd,
+  Heart,
+  MessageSquare,
+  SlidersHorizontal,
+  Star,
+} from 'lucide-react'
 import type { JSX } from 'react'
 import { useCallback } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 
 import { FiltersOverlayContentMemo } from '@/features/matches-filter'
-import { Button, Image, cn, useOverlay } from '@/shared'
+import { Button, cn, useOverlay } from '@/shared'
 
 const HEADER_BUTTON_CLASS =
-  'bg-secondary/35 hover:bg-secondary/55 active:scale-95 transition-all duration-200 focus-visible:ring-accent/60 text-foreground'
-const FILTER_BUTTON_CLASS =
-  'h-12 w-12 rounded-full bg-[#4a2a96]/55 text-white hover:bg-[#4a2a96]/65 active:scale-95 transition-all duration-200 focus-visible:ring-accent/60'
+  'bg-muted hover:bg-muted/80 active:scale-95 transition-all duration-200 focus-visible:ring-[#FF6BA4]/50'
 const ICON_SIZE = 20
 const STROKE_WIDTH = 1.6
 
 const Header = (): JSX.Element => {
   const { open } = useOverlay()
   const { pathname } = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const mode = searchParams.get('mode') || 'swipe'
 
   const handleFiltersClick = useCallback(() => {
     open({
@@ -26,36 +33,54 @@ const Header = (): JSX.Element => {
 
   const isLikesPage = pathname.includes('likes')
   const isChatsPage = pathname.includes('chats')
-  const isProfilePage = pathname.includes('profile')
-  const isDashboard = !isLikesPage && !isChatsPage && !isProfilePage
 
   return (
     <header
-      className="mb-3 flex h-14 shrink-0 items-center justify-between gap-3 text-sm text-muted-foreground"
+      className="mb-3 flex h-12 shrink-0 items-center justify-between gap-3 rounded-2xl text-sm text-muted-foreground"
       role="banner"
     >
-      {isDashboard ? (
+      {isLikesPage || isChatsPage ? (
         <>
-          <div className="flex items-center gap-1.5">
-            <Image src="/images/logo.png" alt="Yammy" className="h-8 w-8 object-contain" />
-            <span
-              className="text-[30px] font-medium leading-[0.95] text-white pt-0.5"
-              style={{ fontFamily: "'Cabinet Grotesk', 'Bounded', system-ui, sans-serif" }}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(HEADER_BUTTON_CLASS, 'rounded-full gap-2 text-foreground')}
             >
-              Yammy
-            </span>
+              {isLikesPage ? (
+                <Heart
+                  size={ICON_SIZE}
+                  strokeWidth={STROKE_WIDTH}
+                  className="text-[#FF6BA4]"
+                  aria-hidden
+                />
+              ) : (
+                <MessageSquare
+                  size={ICON_SIZE}
+                  strokeWidth={STROKE_WIDTH}
+                  className="text-[#FF6BA4]"
+                  aria-hidden
+                />
+              )}
+              {isLikesPage ? 'Лайки' : 'Метчи'}
+            </Button>
           </div>
 
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
-              className={FILTER_BUTTON_CLASS}
-              aria-label="Фильтры"
-              onClick={handleFiltersClick}
+              className={cn(HEADER_BUTTON_CLASS, 'rounded-full')}
+              aria-label="Уведомления"
             >
-              <SlidersHorizontal size={20} strokeWidth={STROKE_WIDTH} aria-hidden />
+              <Bell
+                size={ICON_SIZE}
+                strokeWidth={STROKE_WIDTH}
+                className="text-[#FF6BA4]"
+                aria-hidden
+              />
             </Button>
           </div>
         </>
@@ -66,33 +91,68 @@ const Header = (): JSX.Element => {
               type="button"
               variant="ghost"
               size="sm"
-              className={cn(HEADER_BUTTON_CLASS, 'rounded-full gap-2 text-foreground')}
+              className={cn(
+                HEADER_BUTTON_CLASS,
+                'rounded-full gap-2 text-foreground',
+                mode !== 'swipe' && 'bg-transparent text-muted-foreground',
+              )}
+              aria-label="Свайпы"
+              onClick={() => setSearchParams({ mode: 'swipe' })}
             >
-              {isLikesPage && (
-                <Heart
-                  size={ICON_SIZE}
-                  strokeWidth={STROKE_WIDTH}
-                  className="text-primary"
-                  aria-hidden
-                />
+              <GalleryHorizontalEnd
+                size={ICON_SIZE}
+                strokeWidth={STROKE_WIDTH}
+                className={cn(mode === 'swipe' && 'text-[#FF6BA4]')}
+                aria-hidden
+              />
+              Свайпы
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                HEADER_BUTTON_CLASS,
+                'rounded-full gap-2 text-foreground',
+                mode !== 'rate' && 'bg-transparent text-muted-foreground',
               )}
-              {isChatsPage && (
-                <MessageSquare
-                  size={ICON_SIZE}
-                  strokeWidth={STROKE_WIDTH}
-                  className="text-primary"
-                  aria-hidden
-                />
-              )}
-              {isProfilePage && (
-                <User
-                  size={ICON_SIZE}
-                  strokeWidth={STROKE_WIDTH}
-                  className="text-primary"
-                  aria-hidden
-                />
-              )}
-              {isLikesPage ? 'Лайки' : isChatsPage ? 'Метчи' : 'Профиль'}
+              aria-label="Оценка"
+              onClick={() => setSearchParams({ mode: 'rate' })}
+            >
+              <Star
+                size={ICON_SIZE}
+                strokeWidth={STROKE_WIDTH}
+                className={cn(mode === 'rate' && 'text-[#FF6BA4]')}
+                aria-hidden
+              />
+              Оценка
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className={cn(HEADER_BUTTON_CLASS, 'rounded-full')}
+              aria-label="Уведомления"
+            >
+              <Bell
+                size={ICON_SIZE}
+                strokeWidth={STROKE_WIDTH}
+                className="text-[#FF6BA4]"
+                aria-hidden
+              />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(HEADER_BUTTON_CLASS, 'rounded-full gap-2 text-foreground')}
+              aria-label="Фильтры"
+              onClick={handleFiltersClick}
+            >
+              <SlidersHorizontal size={ICON_SIZE} strokeWidth={STROKE_WIDTH} aria-hidden />
             </Button>
           </div>
         </>

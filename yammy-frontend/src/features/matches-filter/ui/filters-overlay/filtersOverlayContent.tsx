@@ -139,7 +139,7 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
               <h2 className="text-[32px] font-bold leading-tight tracking-tight text-black">
                 Фильтры
               </h2>
-              <ListFilter className="text-primary size-6" aria-hidden />
+              <ListFilter className="text-[#FF6BA4] size-6" aria-hidden />
             </div>
           </div>
 

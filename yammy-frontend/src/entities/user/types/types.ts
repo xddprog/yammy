@@ -57,7 +57,6 @@ export interface UserSearchResult {
   education_details: string
   photos: string[]
   filters: UserFilters
-  traits?: Record<string, Record<string, string[]>>
   subscription_tier: string
   boost_expires_at: string | null
   last_seen: string | null

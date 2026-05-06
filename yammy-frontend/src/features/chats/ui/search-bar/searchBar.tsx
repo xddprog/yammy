@@ -32,7 +32,7 @@ export const SearchBar = ({ onSearch, className }: SearchBarProps) => {
         value={value}
         onChange={handleChange}
         placeholder="Поиск мэтчей..."
-        className="h-12 w-full rounded-full bg-muted pl-11 pr-11 text-[15px] font-normal outline-none transition-all placeholder:text-muted-foreground/40 hover:bg-muted/80 focus:ring-2 focus:ring-primary/50"
+        className="h-12 w-full rounded-full bg-muted pl-11 pr-11 text-[15px] font-normal outline-none transition-all placeholder:text-muted-foreground/40 hover:bg-muted/80 focus:ring-2 focus:ring-[#FF6BA4]/50"
       />
       {value && (
         <button

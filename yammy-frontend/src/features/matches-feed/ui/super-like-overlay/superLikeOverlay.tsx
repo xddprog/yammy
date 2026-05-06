@@ -103,7 +103,7 @@ const SuperLikeOverlayContent = ({
         }
       >
         <div className="mb-5 flex flex-col items-start gap-3">
-          <Flame className="text-primary size-14" />
+          <Flame className="text-[#FF6BA4] size-14" />
           <div className="min-w-0">
             <h2 className="text-[32px] font-bold leading-tight tracking-tight text-black">
               Огонек
@@ -120,9 +120,9 @@ const SuperLikeOverlayContent = ({
           placeholder="Напишите сообщение..."
           rows={4}
           className={cn(
-            'w-full resize-none text-sm rounded-[24px] border-0 bg-muted/45 px-4 py-3 text-black',
+            'w-full resize-none text-sm rounded-[24px] border-0 bg-[#F2F2F2] px-4 py-3  text-black',
             'placeholder:text-neutral-500 outline-none transition-colors',
-            'focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-0',
+            'focus-visible:ring-2 focus-visible:ring-[#FF6BA4]/30 focus-visible:ring-offset-0',
           )}
           maxLength={MAX_MESSAGE_LENGTH}
           aria-label="Сообщение для суперлайка"

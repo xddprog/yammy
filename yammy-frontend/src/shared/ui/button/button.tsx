@@ -5,22 +5,22 @@ import { Slot } from 'radix-ui'
 import * as React from 'react'
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-normal transition-all cursor-pointer disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-light transition-all cursor-pointer disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
         default:
-          'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 focus-visible:ring-primary/50 disabled:bg-primary/60 disabled:text-primary-foreground/80',
+          'bg-[#FF6BA4] text-white hover:bg-[#FF6BA4]/90 active:bg-[#FF6BA4]/80 focus-visible:ring-[#FF6BA4]/50 disabled:bg-[#FF6BA4]/60 disabled:text-white/80',
         black:
           'bg-black text-white hover:bg-black/90 active:bg-black/80 focus-visible:ring-black/50 disabled:bg-black/60 disabled:text-white/70',
         white:
-          'bg-white text-card-foreground border border-input hover:bg-white/90 active:bg-white/80 focus-visible:ring-input disabled:bg-white/80 disabled:text-card-foreground/60',
+          'bg-white text-black border border-input hover:bg-gray-100 active:bg-gray-200 focus-visible:ring-input disabled:bg-gray-100 disabled:text-gray-500',
         'white-pink':
-          'bg-white dark:bg-transparent text-primary border border-primary hover:bg-primary/10 active:bg-primary/20 focus-visible:ring-primary/50 disabled:bg-white/80 disabled:text-muted-foreground disabled:border-input',
+          'bg-white dark:bg-transparent text-[#FF6BA4] border border-[#FF6BA4] hover:bg-[#FF6BA4]/10 active:bg-[#FF6BA4]/20 focus-visible:ring-[#FF6BA4]/50 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-300',
         destructive:
           'bg-destructive text-white hover:bg-destructive/90 active:bg-destructive/95 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         outline:
-          'border bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
+          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:bg-accent/80 dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/90',
         ghost:

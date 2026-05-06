@@ -14,7 +14,7 @@ const PremiumToggleComponent = ({
   <div
     className={cn(
       'flex w-full items-center justify-between gap-3 rounded-4xl border border-transparent px-4 py-3',
-      'bg-muted/45 hover:bg-muted/65 transition-colors',
+      'bg-[#F2F2F2] hover:bg-[#E5E5E5] transition-colors',
     )}
   >
     <span className="flex items-center gap-2 text-[13px] font-light text-black">
@@ -25,7 +25,7 @@ const PremiumToggleComponent = ({
       checked={checked}
       onCheckedChange={onCheckedChange}
       aria-label="Только Premium"
-      className="data-[state=checked]:bg-primary data-[state=unchecked]:!bg-neutral-300 [&_[data-slot=switch-thumb]]:!bg-white"
+      className="data-[state=checked]:bg-[#FF6BA4] data-[state=unchecked]:!bg-neutral-300 [&_[data-slot=switch-thumb]]:!bg-white [&_[data-slot=switch-thumb]]:shadow-sm"
     />
   </div>
 )

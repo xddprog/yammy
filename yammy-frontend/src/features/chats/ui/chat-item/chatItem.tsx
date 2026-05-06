@@ -35,7 +35,7 @@ const ChatItemComponent = ({ chat, onClick }: ChatItemProps) => {
             {lastMessage}
           </p>
           {unreadCount > 0 && (
-            <div className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold leading-none text-white">
+            <div className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#FF6BA4] px-1.5 text-[10px] font-bold leading-none text-white shadow-lg shadow-[#FF6BA4]/20">
               <span className="flex items-center justify-center pt-[1px]">{unreadCount}</span>
             </div>
           )}

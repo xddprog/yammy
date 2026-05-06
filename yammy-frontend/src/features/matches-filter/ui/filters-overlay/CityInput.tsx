@@ -17,8 +17,8 @@ const CityInputComponent = ({ value, onChange }: CityInputProps): React.JSX.Elem
       onChange={(e) => onChange(e.target.value)}
       placeholder={CITY_PLACEHOLDER}
       className={cn(
-        'rounded-full border border-muted bg-muted/45 font-light placeholder:text-[13px] placeholder:font-light px-4 py-5 text-[13px] text-[#141414]',
-        'placeholder:text-neutral-500 focus-visible:ring-0 focus-visible:border-primary/30',
+        'rounded-full border border-[#F2F2F2] bg-[#F2F2F2] font-light placeholder:text-[13px] placeholder:font-light px-4 py-5 text-[13px] text-[#141414] shadow-none',
+        'placeholder:text-neutral-500 focus-visible:ring-0 focus-visible:border-[#FF6BA4]/30',
       )}
       aria-label="Город"
     />

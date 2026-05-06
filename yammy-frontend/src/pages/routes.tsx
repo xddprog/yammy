@@ -11,7 +11,6 @@ const DashboardPage = lazy(() => import('@/pages/(main)/dashboardPage'))
 const ChatsPage = lazy(() => import('@/pages/(main)/chatsPage'))
 const LikesPage = lazy(() => import('@/pages/(main)/likesPage'))
 const ProfilePage = lazy(() => import('@/pages/(main)/profilePage'))
-const EditProfilePage = lazy(() => import('@/pages/(main)/profilePage/ui/editProfilePage'))
 const ChatDetailPage = lazy(() => import('@/pages/(main)/chatsPage/ui/chatDetailPage'))
 const LoginPage = lazy(() => import('@/pages/(auth)/loginPage'))
 const RegisterPage = lazy(() => import('@/pages/(auth)/registerPage'))
@@ -45,10 +44,6 @@ export const routes = createBrowserRouter([
       {
         path: ERouteNames.PROFILE_ROUTE,
         element: <ProfilePage />,
-      },
-      {
-        path: ERouteNames.PROFILE_ROUTE + '/edit',
-        element: <EditProfilePage />,
       },
     ],
   },

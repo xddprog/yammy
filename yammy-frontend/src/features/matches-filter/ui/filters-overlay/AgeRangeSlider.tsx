@@ -11,8 +11,8 @@ import {
 
 const PINK_SLIDER_CLASS = cn(
   '[&_[data-slot=slider-track]]:bg-[#E5E7EB] [&_[data-slot=slider-track]]:h-[2px]',
-  '[&_[data-slot=slider-range]]:bg-primary',
-  '[&_[data-slot=slider-thumb]]:size-6 [&_[data-slot=slider-thumb]]:border-primary [&_[data-slot=slider-thumb]]:bg-white [&_[data-slot=slider-thumb]]:focus-visible:ring-primary/50',
+  '[&_[data-slot=slider-range]]:bg-[#FF6BA4]',
+  '[&_[data-slot=slider-thumb]]:size-6 [&_[data-slot=slider-thumb]]:border-[#FF6BA4] [&_[data-slot=slider-thumb]]:bg-white [&_[data-slot=slider-thumb]]:focus-visible:ring-[#FF6BA4]/50',
 )
 
 interface AgeRangeSliderProps {

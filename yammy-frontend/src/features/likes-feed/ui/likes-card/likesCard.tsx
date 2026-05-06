@@ -35,7 +35,7 @@ const LikesCardComponent = ({
       role="button"
       tabIndex={0}
       className={cn(
-        'relative w-full aspect-[3/4] overflow-hidden rounded-[24px] bg-card group cursor-pointer border border-white/5 active:scale-[0.98] transition-all duration-200',
+        'relative w-full aspect-[3/4] overflow-hidden rounded-[24px] bg-card shadow-md group cursor-pointer border border-white/5 active:scale-[0.98] transition-all duration-200',
         className,
       )}
       onClick={onClick}
@@ -57,7 +57,7 @@ const LikesCardComponent = ({
 
       <div className="absolute inset-x-0 bottom-0 p-2 flex flex-col gap-1 z-10">
         <div className="flex flex-col min-w-0">
-          <span className="text-[17px] font-bold text-white truncate leading-tight">
+          <span className="text-[17px] font-bold text-white truncate drop-shadow-sm leading-tight">
             {name}, {age}
           </span>
         </div>
@@ -80,7 +80,7 @@ const LikesCardComponent = ({
             <Heart
               size={18}
               strokeWidth={2.5}
-              className="text-primary transition-colors duration-200 group-active:fill-primary"
+              className="text-[#FF6BA4] transition-colors duration-200 group-active:fill-[#FF6BA4]"
             />
           </Button>
         </div>

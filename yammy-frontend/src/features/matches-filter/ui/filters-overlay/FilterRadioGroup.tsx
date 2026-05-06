@@ -30,8 +30,8 @@ function FilterRadioGroupInner<T extends string>({
             className={cn(
               OPTION_BASE,
               selected
-                ? 'bg-primary/20 text-[#141414] border-primary/40'
-                : 'bg-muted/45 text-[#141414] hover:bg-muted/65',
+                ? 'bg-[#FF6BA4]/20 text-[#141414] border-[#FF6BA4]/40'
+                : 'bg-[#F2F2F2] text-[#141414] hover:bg-[#E5E5E5]',
             )}
           >
             {option}

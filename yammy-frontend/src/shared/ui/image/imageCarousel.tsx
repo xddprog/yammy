@@ -41,7 +41,7 @@ const CarouselIndicators = memo(function CarouselIndicators({
           key={index}
           className={cn(
             'h-1 min-w-0 rounded-full transition-all duration-200',
-            index === currentIndex ? 'bg-accent flex-[2]' : 'bg-secondary/80 flex-1',
+            index === currentIndex ? 'bg-white flex-[2]' : 'bg-white/40 flex-1',
           )}
           aria-hidden="true"
         />
@@ -166,8 +166,8 @@ const ImageCarouselComponent = ({
 
   const indicatorPositionClass =
     align === 'bottom'
-      ? 'absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2.5rem)] z-10'
-      : 'absolute top-6 left-1/2 -translate-x-1/2 w-[calc(100%-2.5rem)] z-10'
+      ? 'absolute bottom-6 left-1/2 -translate-x-1/2 w-[55%] z-10'
+      : 'absolute top-6 left-1/2 -translate-x-1/2 w-[55%] z-10'
 
   return (
     <div className={cn('absolute inset-0 overflow-hidden', className)}>
@@ -190,9 +190,9 @@ const ImageCarouselComponent = ({
       </div>
 
       {isTop && enabledImageSwiping && (
-        <div className="absolute inset-0 z-[1] flex pointer-events-auto touch-pan-y" aria-hidden>
+        <div className="absolute inset-0 z-[1] flex pointer-events-auto" aria-hidden>
           <div
-            className="flex-1 touch-pan-y"
+            className="flex-1"
             onPointerDown={zones.handleLeftPointerDown}
             onPointerMove={zones.handlePointerMove}
             onPointerUp={zones.handlePointerUp}
@@ -200,7 +200,7 @@ const ImageCarouselComponent = ({
             aria-label="Предыдущее фото"
           />
           <div
-            className="flex-1 touch-pan-y"
+            className="flex-1"
             onPointerDown={zones.handleCenterPointerDown}
             onPointerMove={zones.handlePointerMove}
             onPointerUp={zones.handlePointerUp}
@@ -208,7 +208,7 @@ const ImageCarouselComponent = ({
             aria-label="Центральная зона"
           />
           <div
-            className="flex-1 touch-pan-y"
+            className="flex-1"
             onPointerDown={zones.handleRightPointerDown}
             onPointerMove={zones.handlePointerMove}
             onPointerUp={zones.handlePointerUp}

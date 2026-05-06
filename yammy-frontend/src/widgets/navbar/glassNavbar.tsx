@@ -63,7 +63,7 @@ const NavContent = ({ icon: Icon, label, isActive }: NavContentProps): JSX.Eleme
       strokeWidth={STROKE_WIDTH}
       className={cn(
         'shrink-0 transition-colors duration-150',
-        isActive ? 'text-primary' : 'text-white',
+        isActive ? 'text-[#FF6BA4]' : 'text-white',
       )}
       aria-hidden="true"
     />
@@ -71,7 +71,7 @@ const NavContent = ({ icon: Icon, label, isActive }: NavContentProps): JSX.Eleme
       className={cn(
         'text-[10px] font-medium leading-tight',
         'transition-colors duration-150',
-        isActive ? 'text-primary' : 'text-white',
+        isActive ? 'text-[#FF6BA4]' : 'text-white',
       )}
     >
       {label}
@@ -88,6 +88,7 @@ const GlassNavbar = (): JSX.Element => (
       'rounded-full',
       'px-1 py-1',
       'ring-1 ring-inset ring-white/10',
+      'shadow-2xl shadow-black/50',
     )}
     role="navigation"
     aria-label="Основная навигация"
@@ -99,7 +100,7 @@ const GlassNavbar = (): JSX.Element => (
             key={to}
             to={to}
             className={({ isActive }) =>
-              cn(navItemBaseClasses, isActive && 'rounded-full bg-white/8 ring-[3px] ring-white/35')
+              cn(navItemBaseClasses, isActive && 'rounded-full bg-white/8')
             }
           >
             {({ isActive }) => <NavContent icon={icon} label={label} isActive={isActive} />}

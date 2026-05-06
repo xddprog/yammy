@@ -3,77 +3,55 @@ export interface MockChat {
   name: string
   lastMessage: string
   avatar: string
-  timestamp?: string
+  timestamp: string
   unreadCount: number
   online?: boolean
-  isTyping?: boolean
-  hasPhotoPreview?: boolean
-  isMutedUnreadDot?: boolean
 }
 
 export const MOCK_CHATS: MockChat[] = [
   {
     id: '1',
-    name: 'Lucy, 22',
-    lastMessage: 'Say hi!',
+    name: 'Анна',
+    lastMessage: 'Привет! Как дела?',
     avatar: '/images/photo_2025-12-23_22-41-09.jpg',
-    unreadCount: 3,
+    timestamp: '15:42',
+    unreadCount: 2,
     online: true,
   },
   {
     id: '2',
-    name: 'Margareth, 21',
-    lastMessage: 'Photo',
+    name: 'Мария',
+    lastMessage: 'Пойдем завтра в кино?',
     avatar: '/images/photo_2025-12-16_22-32-35.jpg',
+    timestamp: 'Вчера',
     unreadCount: 0,
-    hasPhotoPreview: true,
-    isMutedUnreadDot: true,
+    online: false,
   },
   {
     id: '3',
-    name: 'Emily, 27',
-    lastMessage: 'Hey, how are you?',
+    name: 'Елена',
+    lastMessage: 'Ха-ха, очень смешно!',
     avatar: '/images/photo_2025-04-10_00-42-15.jpg',
+    timestamp: 'Чт',
     unreadCount: 0,
-    isMutedUnreadDot: true,
+    online: true,
   },
   {
     id: '4',
-    name: 'Alissia, 20',
-    lastMessage: 'Is typing...',
+    name: 'Дарья',
+    lastMessage: 'Я уже на месте',
     avatar: '/images/i.webp',
-    unreadCount: 1,
-    isTyping: true,
+    timestamp: 'Пн',
+    unreadCount: 5,
+    online: false,
   },
   {
     id: '5',
-    name: 'Stephanie, 19',
-    lastMessage: "It's me with my friends",
+    name: 'София',
+    lastMessage: 'Скинь фотки плиз',
     avatar: '/images/photo_2025-12-23_22-41-09.jpg',
+    timestamp: '10.03',
     unreadCount: 0,
-    hasPhotoPreview: true,
+    online: false,
   },
-  {
-    id: '6',
-    name: 'Joanna, 24',
-    lastMessage: 'Have a great evening',
-    avatar: '/images/photo_2025-12-16_22-32-35.jpg',
-    unreadCount: 2,
-  },
-  {
-    id: '7',
-    name: 'Emma, 23',
-    lastMessage: 'See you tomorrow',
-    avatar: '/images/photo_2025-04-10_00-42-15.jpg',
-    unreadCount: 0,
-  },
-]
-
-export const MOCK_CHAT_STORIES = [
-  { id: 'create', avatar: null },
-  { id: 's1', avatar: '/images/photo_2025-12-23_22-41-09.jpg' },
-  { id: 's2', avatar: '/images/photo_2025-12-16_22-32-35.jpg' },
-  { id: 's3', avatar: '/images/photo_2025-04-10_00-42-15.jpg' },
-  { id: 's4', avatar: '/images/i.webp' },
-  { id: 's5', avatar: '/images/photo_2025-12-23_22-41-09.jpg' },
 ]

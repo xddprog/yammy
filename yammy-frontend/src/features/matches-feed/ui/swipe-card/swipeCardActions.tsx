@@ -37,7 +37,7 @@ const SwipeCardActionsComponent = ({
   return (
     <div
       ref={rootRef}
-      className="pointer-events-auto w-full flex items-center justify-between gap-[4%] px-10"
+      className="pointer-events-auto w-full flex items-center justify-center gap-[4%] px-4"
     >
       <Button
         type="button"
@@ -46,17 +46,17 @@ const SwipeCardActionsComponent = ({
         aria-label="Дизлайк"
         onClick={onDislike}
         className={cn(
-          'aspect-square h-auto w-[18%] min-w-[55px] max-w-[70px] rounded-full p-0 flex items-center justify-center bg-[#371F7E] hover:bg-[#371F7E]/90',
+          'aspect-square h-auto w-[22%] min-w-[80px] max-w-[95px] rounded-full p-0 flex items-center justify-center',
           isSuperLikeMode && 'blur-[2px]',
         )}
       >
-        <X className="h-[45%] w-[45%] min-h-[30px] min-w-[30px]" strokeWidth={1.2} />
+        <X className="h-[45%] w-[45%] min-h-[35px] min-w-[35px]" />
       </Button>
 
       <button
         type="button"
         className={cn(
-          'relative h-auto w-[20%] min-w-[90px] max-w-[110px] aspect-square rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+          'relative h-auto w-[28%] min-w-[104px] max-w-[124px] aspect-square rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[#FF6BA4]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
           isSuperLikeMode && 'blur-[2px]',
         )}
         aria-label="Открыть подробную информацию"
@@ -70,36 +70,35 @@ const SwipeCardActionsComponent = ({
             {
               '--progress-angle': `${angle}deg`,
               backgroundImage:
-                'conic-gradient(var(--accent) var(--progress-angle), transparent var(--progress-angle))',
+                'conic-gradient(#FF6BA4 var(--progress-angle), transparent var(--progress-angle))',
               WebkitMaskImage:
-                'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))',
+                'radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 8px))',
               maskImage:
-                'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px))',
+                'radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 5px))',
             } as React.CSSProperties
           }
           aria-hidden
         />
 
-        <div className="relative m-[8px] flex h-[calc(100%-16px)] w-[calc(100%-16px)] items-center justify-center rounded-full bg-accent">
-          <span className="text-[20px] font-semibold text-accent-foreground">{clamped}</span>
+        <div className="relative m-[9px] flex h-[calc(100%-18px)] w-[calc(100%-18px)] items-center justify-center rounded-full bg-[#FF6BA4]">
+          <span className="text-xl font-semibold text-white">{clamped}</span>
         </div>
       </button>
 
-      <div className="ml-[7px] relative aspect-square h-auto w-[18%] min-w-[55px] max-w-[70px]">
+      <div className="relative aspect-square h-auto w-[22%] min-w-[80px] max-w-[95px]">
         <Button
           type="button"
-          variant="default"
+          variant="black"
           size="icon-xl"
           aria-label="Лайк"
           onPointerDown={onLikePointerDown}
           onPointerUp={onLikePointerUp}
           onPointerLeave={onLikePointerLeave}
-          className="h-full w-full rounded-full p-0 flex items-center justify-center bg-primary hover:bg-primary/90"
+          className="group h-full w-full rounded-full p-0 flex items-center justify-center"
         >
           <Heart
-            className="h-[40%] w-[40%] min-h-[30px] min-w-[30px] text-white"
-            fill="white"
-            strokeWidth={1.2}
+            className="h-[45%] w-[45%] min-h-[35px] min-w-[35px] text-white transition-colors duration-150 group-active:text-[#FF6BA4] group-active:fill-[#FF6BA4]"
+            fill="transparent"
           />
         </Button>
 
@@ -121,8 +120,8 @@ const SwipeCardActionsComponent = ({
                 className="h-full w-full rounded-full p-0 flex items-center justify-center"
               >
                 <Flame
-                  className="h-[40%] w-[40%] min-h-[30px] min-w-[30px]"
-                  strokeWidth={1.2}
+                  className="h-[45%] w-[45%] min-h-[35px] min-w-[35px]"
+                  strokeWidth={1.6}
                   fill="white"
                 />
               </Button>

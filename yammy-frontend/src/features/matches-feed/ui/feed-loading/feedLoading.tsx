@@ -16,7 +16,7 @@ export const FeedLoading = (): React.JSX.Element => {
   const gradientId = useId().replace(/:/g, '-')
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] bg-background text-accent">
+    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-[48px] bg-background text-[#FF6BA4]/80">
       <svg
         className="size-10 shrink-0"
         viewBox="0 0 24 24"
@@ -28,9 +28,9 @@ export const FeedLoading = (): React.JSX.Element => {
       >
         <defs>
           <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="var(--accent)" />
-            <stop offset="50%" stopColor="var(--secondary)" />
-            <stop offset="100%" stopColor="var(--accent)" />
+            <stop offset="0%" stopColor="#FF6BA4" />
+            <stop offset="50%" stopColor="#FFD1E3" />
+            <stop offset="100%" stopColor="#FF6BA4" />
             <animateTransform
               attributeName="gradientTransform"
               type="translate"

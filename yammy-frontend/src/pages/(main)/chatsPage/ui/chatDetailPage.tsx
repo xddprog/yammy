@@ -132,7 +132,7 @@ const ChatDetailPage = () => {
           />
           <div
             style={menuStyle}
-            className="absolute w-[180px] rounded-[22px] bg-muted/90 p-1 animate-in zoom-in-95 duration-200"
+            className="absolute w-[180px] rounded-[22px] bg-muted/90 backdrop-blur-2xl p-1 shadow-2xl animate-in zoom-in-95 duration-200"
           >
             <div className="flex flex-col">
               <button

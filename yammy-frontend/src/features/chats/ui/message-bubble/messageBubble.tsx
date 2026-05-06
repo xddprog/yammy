@@ -36,9 +36,9 @@ export const MessageBubble = ({
     >
       <div
         className={cn(
-          'max-w-[80%] overflow-hidden rounded-2xl flex flex-col transition-all active:scale-[0.98] select-none touch-none',
+          'max-w-[80%] overflow-hidden rounded-2xl flex flex-col shadow-sm transition-all active:scale-[0.98] select-none touch-none',
           isMe
-            ? 'bg-primary text-white rounded-br-none'
+            ? 'bg-[#FF6BA4] text-white rounded-br-none'
             : 'bg-muted text-foreground rounded-bl-none',
         )}
       >
@@ -47,13 +47,13 @@ export const MessageBubble = ({
           <div
             className={cn(
               'ml-3 mr-2 mt-2 flex flex-col border-l-2 py-0.5 px-3 mb-1',
-              isMe ? 'border-white/80' : 'border-primary',
+              isMe ? 'border-white/80' : 'border-[#FF6BA4]',
             )}
           >
             <span
               className={cn(
                 'text-[11px] font-bold uppercase tracking-wider',
-                isMe ? 'text-white' : 'text-primary',
+                isMe ? 'text-white' : 'text-[#FF6BA4]',
               )}
             >
               {replyToName}

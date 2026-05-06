@@ -1,5 +1,5 @@
 import { motion, type MotionValue, useTransform } from 'framer-motion'
-import { Heart, MapPin, X } from 'lucide-react'
+import { Heart, X } from 'lucide-react'
 import { memo, useState } from 'react'
 
 import { useSuperLikeInteractions } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
@@ -26,6 +26,7 @@ export interface SwipeCardProps {
   className?: string
   stackIndex?: number
   stackProgress?: MotionValue<number>
+  /** Открытие детальной карточки профиля из стека свайпов. */
   onOpenDetails?: () => void
 }
 
@@ -59,10 +60,13 @@ const SwipeCardComponent = ({
     onLike: swipeRight,
     onSuperLike,
   })
-  const [_, setIsDragging] = useState(false)
+
+  const [isDragging, setIsDragging] = useState(false)
 
   const likeOpacity = useTransform(x, [0, 80], [0, 1])
   const dislikeOpacity = useTransform(x, [-80, 0], [1, 0])
+
+  const bottomBlurOpacity = useTransform(x, [-50, -15, 0, 15, 50], [0, 1, 1, 1, 0])
 
   const overlayOpacity = useTransform(
     progress,
@@ -73,7 +77,7 @@ const SwipeCardComponent = ({
   return (
     <motion.div
       className={cn(
-        'absolute inset-0 touch-none select-none bg-transparent [backface-visibility:hidden] [transform:translateZ(0)]',
+        'absolute inset-0 touch-none select-none overflow-hidden rounded-[48px] bg-card shadow-lg',
         className,
       )}
       style={{
@@ -89,16 +93,25 @@ const SwipeCardComponent = ({
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.6}
       onDragStart={() => setIsDragging(true)}
-      onDragEnd={(event, info) => {
-        handleDragEnd(event, info)
+      onDragEnd={(e, info) => {
+        handleDragEnd(e, info)
         setTimeout(() => setIsDragging(false), 450)
       }}
       initial={false}
     >
-      <div className="relative h-full w-full overflow-hidden rounded-[2rem] [backface-visibility:hidden] [transform:translateZ(0)]">
+      <div className="relative h-full w-full">
         <ImageCarousel
           enabledImageSwiping={!superLike.isSuperLikeMode}
-          images={photos.length < 0 ? photos : ['/images/test.jpg', '/images/test1.jpg', '/images/test2.jpg']}
+          images={
+            photos
+              ? [
+                  '/images/photo_2025-12-23_22-41-09.jpg',
+                  '/images/photo_2025-12-16_22-32-35.jpg',
+                  '/images/photo_2025-04-10_00-42-15.jpg',
+                  '/images/i.webp',
+                ]
+              : []
+          }
           imageAlt={name ?? ''}
           blur={superLike.isSuperLikeMode}
           isTop={isTop}
@@ -106,10 +119,10 @@ const SwipeCardComponent = ({
 
         {isTop && (
           <motion.div
-            className="pointer-events-none absolute inset-0 rounded-[2rem]"
+            className="pointer-events-none absolute inset-0 rounded-[48px]"
             style={{
               opacity: overlayOpacity,
-              backgroundColor: '#140a30b0',
+              backgroundColor: '#14141440',
               backdropFilter: 'blur(4px)',
             }}
           />
@@ -123,7 +136,7 @@ const SwipeCardComponent = ({
             >
               <X
                 size={128}
-                className="text-white"
+                className="text-white drop-shadow-[0_0_24px_rgba(0,0,0,0.7)]"
                 strokeWidth={1.5}
               />
             </motion.div>
@@ -134,28 +147,44 @@ const SwipeCardComponent = ({
             >
               <Heart
                 size={128}
-                className="text-accent"
+                className="text-white drop-shadow-[0_0_24px_rgba(0,0,0,0.7)]"
                 strokeWidth={1.5}
-                fill="currentColor"
+                fill="white"
               />
             </motion.div>
           </>
         )}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-3 sm:bottom-4 flex flex-col justify-end z-10 w-full">
+        {!isDragging && (
+          <motion.div
+            className="pointer-events-none absolute -left-[1px] -right-[1px] -bottom-[1px] z-0 h-[calc(25%+40px)]"
+            style={{
+              opacity: bottomBlurOpacity,
+              backdropFilter: 'blur(32px)',
+              WebkitBackdropFilter: 'blur(32px)',
+              maskImage: 'linear-gradient(to top, black 0%, black 30%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to top, black 0%, black 30%, transparent 100%)',
+            }}
+          />
+        )}
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 sm:bottom-8 flex flex-col justify-end z-10 w-full">
           {(name != null || age != null || city != null) && (
             <div
-              className={cn('flex flex-col gap-1 text-white px-5 pb-4', superLike.isSuperLikeMode && 'blur-[2px]')}
-            >
-              {(name != null || age != null) && (
-                <span className="text-[28px] font-medium leading-[120%] tracking-[0]">
-                  {[name, age != null ? `${age}` : null].filter(Boolean).join(', ')}
-                </span>
+              className={cn(
+                'flex flex-col gap-2 text-white px-7 pb-4',
+                superLike.isSuperLikeMode && 'blur-[2px]',
               )}
+            >
               {city != null && (
-                <span className="flex items-center gap-1 text-[15px] font-thin leading-[120%] tracking-[0] text-white/85">
-                  <MapPin size={17} strokeWidth={1.2} aria-hidden />
-                  {city}
+                <span className="text-base font-light leading-[120%] tracking-[0]">{city}</span>
+              )}
+              {(name != null || age != null) && (
+                <span
+                  className="text-[32px] leading-[120%] tracking-[0]"
+                  style={{ fontWeight: 566 }}
+                >
+                  {[name, age != null ? `${age}` : null].filter(Boolean).join(', ')}
                 </span>
               )}
             </div>
