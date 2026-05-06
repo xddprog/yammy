@@ -88,7 +88,6 @@ const GlassNavbar = (): JSX.Element => (
       'rounded-full',
       'px-1 py-1',
       'ring-1 ring-inset ring-white/10',
-      'shadow-2xl shadow-black/50',
     )}
     role="navigation"
     aria-label="Основная навигация"

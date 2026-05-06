@@ -2,24 +2,31 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Heart, Flame, X, Flag } from 'lucide-react'
+import { Flag, Flame, Heart, X } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { z } from 'zod'
 
 import type { UseSuperLikeInteractionsResult } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
 import { SheetCard } from '@/features/matches-feed/ui/sheet-card'
-import { Form, FormControl, FormField, FormItem } from '@/shared/ui/form/form'
 import { Button, RadioGroup, RadioGroupItem } from '@/shared'
-
-import { z } from 'zod'
+import { Form, FormControl, FormField, FormItem } from '@/shared/ui/form/form'
 
 import { REPORT_REASON_LABELS, reportFormSchema } from '../../lib/reportFormSchema'
+
+type UserFilters = Record<string, Record<string, string[]>>
 
 interface MatchesCardContentProps {
   name: string
   age: number
   city: string
   bio: string
+  relationshipGoal?: string
+  jobSphere?: string
+  educationDetails?: string
+  educationLevel?: string
+  job?: string
+  userFilters?: UserFilters
   actionIndicator: React.ReactNode
   onDislike: () => void
   onSuperLikeClick: () => void
@@ -38,6 +45,12 @@ export const MatchesCardContent = ({
   age,
   city,
   bio,
+  relationshipGoal,
+  jobSphere,
+  educationDetails,
+  educationLevel,
+  job,
+  userFilters,
   actionIndicator,
   onDislike,
   onSuperLikeClick,
@@ -68,6 +81,35 @@ export const MatchesCardContent = ({
     setIsReportMode(true)
   }, [])
 
+  const relationshipGoalLabelMap: Record<string, string> = {
+    serious: 'Серьезные отношения',
+    friendship: 'Дружбу',
+    dating: 'Знакомства',
+    relationship: 'Отношения',
+  }
+
+  const hasDisplayValue = (value: string | null | undefined): boolean => {
+    if (value == null) return false
+    const normalized = value.trim().toLowerCase()
+    if (!normalized) return false
+    return normalized !== 'не указано' && normalized !== 'null' && normalized !== 'undefined'
+  }
+
+  const mainInfoRows = [
+    {
+      label: 'ищет',
+      value: relationshipGoalLabelMap[relationshipGoal ?? ''] ?? relationshipGoal ?? '',
+    },
+    { label: 'город', value: city },
+    { label: 'образование', value: educationDetails ?? educationLevel ?? '' },
+    { label: 'работа', value: job ?? '' },
+    { label: 'сфера работы', value: jobSphere ?? '' },
+  ].filter((row) => hasDisplayValue(row.value))
+
+  const groupedFilters = Object.entries(userFilters ?? {}).filter(([, subgroups]) =>
+    Object.values(subgroups).some((values) => values.length > 0),
+  )
+
   return (
     <motion.div className="mx-auto h-full w-full">
       <SheetCard
@@ -79,7 +121,7 @@ export const MatchesCardContent = ({
             {!isReportMode ? (
               <>
                 <Button type="button" variant="black" size="icon-lg" onClick={onDislike}>
-                  <X className="size-7" />
+                  <X className="size-7" strokeWidth={1.4} />
                 </Button>
                 <div className="relative space-x-2">
                   <Button
@@ -89,20 +131,21 @@ export const MatchesCardContent = ({
                     onPointerDown={superLikeHandlers.handleLikePointerDown}
                     onPointerUp={superLikeHandlers.handleLikePointerUp}
                     onPointerLeave={superLikeHandlers.handleLikePointerLeave}
-                    className="group"
+                    className="group active:scale-95 transition-transform duration-200"
                   >
                     <Heart
                       className="size-7 text-white transition-colors group-active:text-[#FF6BA4] group-active:fill-[#FF6BA4]"
                       fill="transparent"
+                      strokeWidth={1.4}
                     />
                   </Button>
                   <Button
                     type="button"
                     size="icon-lg"
                     onClick={onSuperLikeClick}
-                    className="bg-[#FF6BA4] hover:bg-[#FF6BA4]/90"
+                    className="bg-[#FF6BA4] hover:bg-[#FF6BA4]/90 active:scale-95 transition-transform duration-200"
                   >
-                    <Flame className="size-7" strokeWidth={1.6} fill="white" />
+                    <Flame className="size-7" strokeWidth={1.4} fill="white" />
                   </Button>
                 </div>
               </>
@@ -125,7 +168,7 @@ export const MatchesCardContent = ({
                   onClick={handleCloseReport}
                   aria-label="Закрыть режим жалобы"
                 >
-                  <X className="size-7" />
+                  <X className="size-7" strokeWidth={1.4} />
                 </Button>
                 <div className="w-full">
                   <Button
@@ -160,21 +203,52 @@ export const MatchesCardContent = ({
                 <button
                   type="button"
                   onClick={handleFlagClick}
-                  className="p-1 -m-1 rounded-full hover:bg-neutral-100 transition-colors cursor-pointer touch-manipulation"
+                  className="p-1 -m-1 rounded-full transition-colors cursor-pointer touch-manipulation active:scale-95"
                   aria-label="Пожаловаться"
                 >
-                  <Flag className="size-6 text-neutral-700" />
+                  <Flag className="size-6 text-neutral-700" strokeWidth={1.5} />
                 </button>
               </div>
-              <div className="space-y-3 text-sm leading-[1.4]">
-                {bio && (
-                  <p className="text-neutral-900">{bio}</p>
-                )}
-                <div className="mt-4 grid grid-cols-[auto,1fr] gap-x-6 gap-y-2 text-sm">
-                  <span className="text-neutral-400">возраст</span>
-                  <span className="text-neutral-900">{age}</span>
-                  <span className="text-neutral-400">город</span>
-                  <span className="text-neutral-900">{city}</span>
+              <div className="space-y-3 text-[16px] leading-[1.4]">
+                {bio && <p className="text-neutral-900">{bio}</p>}
+
+                <div className="mt-4 space-y-2 text-[16px] leading-[1.25]">
+                  <div className="flex items-center justify-between gap-6">
+                    <span className="font-[160] text-neutral-400">возраст</span>
+                    <div className="max-w-[62%] overflow-x-auto whitespace-nowrap text-right text-neutral-900 no-scrollbar">
+                      {age}
+                    </div>
+                  </div>
+
+                  {mainInfoRows.map((row) => (
+                    <div key={row.label} className="flex items-center justify-between gap-6">
+                      <span className="font-[160] text-neutral-400">{row.label}</span>
+                      <div className="max-w-[62%] overflow-x-auto whitespace-nowrap text-right text-neutral-900 no-scrollbar">
+                        {row.value}
+                      </div>
+                    </div>
+                  ))}
+
+                  {groupedFilters.map(([groupName, subgroups]) => (
+                    <div key={groupName} className="mt-4 space-y-2 border-t border-[#14141426] pt-4">
+                      <p className="mb-2 text-[16px] text-neutral-400">
+                        {groupName}
+                      </p>
+                      {Object.entries(subgroups).map(([subcategoryName, values]) => {
+                        if (values.length === 0) return null
+                        return (
+                          <div key={subcategoryName} className="flex items-center justify-between gap-6">
+                            <span className="font-[160] text-[16px] text-neutral-400">
+                              {subcategoryName.toLowerCase()}
+                            </span>
+                            <div className="max-w-[62%] overflow-x-auto whitespace-nowrap text-right text-neutral-900 no-scrollbar">
+                              {values.join(', ')}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
                 </div>
               </div>
             </motion.div>

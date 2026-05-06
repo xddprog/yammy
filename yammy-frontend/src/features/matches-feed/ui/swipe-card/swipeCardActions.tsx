@@ -47,16 +47,18 @@ const SwipeCardActionsComponent = ({
         onClick={onDislike}
         className={cn(
           'aspect-square h-auto w-[22%] min-w-[80px] max-w-[95px] rounded-full p-0 flex items-center justify-center',
+          'transition-transform duration-200 active:scale-95',
           isSuperLikeMode && 'blur-[2px]',
         )}
       >
-        <X className="h-[45%] w-[45%] min-h-[35px] min-w-[35px]" />
+        <X className="h-[45%] w-[45%] min-h-[35px] min-w-[35px]" strokeWidth={1.4} />
       </Button>
 
       <button
         type="button"
         className={cn(
           'relative h-auto w-[28%] min-w-[104px] max-w-[124px] aspect-square rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[#FF6BA4]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+          'transition-transform duration-200 active:scale-95',
           isSuperLikeMode && 'blur-[2px]',
         )}
         aria-label="Открыть подробную информацию"
@@ -80,8 +82,8 @@ const SwipeCardActionsComponent = ({
           aria-hidden
         />
 
-        <div className="relative m-[9px] flex h-[calc(100%-18px)] w-[calc(100%-18px)] items-center justify-center rounded-full bg-[#FF6BA4]">
-          <span className="text-xl font-semibold text-white">{clamped}</span>
+        <div className="relative m-[12px] flex h-[calc(100%-24px)] w-[calc(100%-24px)] items-center justify-center rounded-full bg-[#FF6BA4]">
+          <span className="text-[24px] font-semibold text-white">{clamped}</span>
         </div>
       </button>
 
@@ -99,6 +101,7 @@ const SwipeCardActionsComponent = ({
           <Heart
             className="h-[45%] w-[45%] min-h-[35px] min-w-[35px] text-white transition-colors duration-150 group-active:text-[#FF6BA4] group-active:fill-[#FF6BA4]"
             fill="transparent"
+            strokeWidth={1.4}
           />
         </Button>
 
@@ -117,11 +120,11 @@ const SwipeCardActionsComponent = ({
                 size="icon-xl"
                 aria-label="Суперлайк"
                 onClick={onSuperLikeClick}
-                className="h-full w-full rounded-full p-0 flex items-center justify-center"
+                className="h-full w-full rounded-full p-0 flex items-center justify-center transition-transform duration-200 active:scale-95"
               >
                 <Flame
                   className="h-[45%] w-[45%] min-h-[35px] min-w-[35px]"
-                  strokeWidth={1.6}
+                  strokeWidth={1.4}
                   fill="white"
                 />
               </Button>

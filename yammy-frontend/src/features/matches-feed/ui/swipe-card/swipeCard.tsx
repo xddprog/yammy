@@ -10,6 +10,12 @@ import { cn } from '@/shared'
 import { ImageCarousel } from '../../../../shared/ui/image/imageCarousel'
 import { SwipeCardActions } from './swipeCardActions'
 
+const MOCK_FEED_PHOTOS = [
+  '/images/photo_2025-12-23_22-41-09.jpg',
+  '/images/photo_2025-12-16_22-32-35.jpg',
+  '/images/photo_2025-04-10_00-42-15.jpg',
+]
+
 export type SwipeDirection = 'left' | 'right'
 
 export interface SwipeCardProps {
@@ -45,6 +51,9 @@ const SwipeCardComponent = ({
   stackProgress,
   onOpenDetails,
 }: SwipeCardProps): React.JSX.Element => {
+  const feedPhotos = photos.filter(Boolean)
+  const carouselImages = feedPhotos.length < 0 ? feedPhotos : MOCK_FEED_PHOTOS
+
   const { x, rotate, y, scale, progress } = useSwipeCardMotion({
     stackIndex,
     stackProgress,
@@ -77,7 +86,7 @@ const SwipeCardComponent = ({
   return (
     <motion.div
       className={cn(
-        'absolute inset-0 touch-none select-none overflow-hidden rounded-[48px] bg-card shadow-lg',
+        'absolute inset-0 touch-none select-none overflow-hidden rounded-[48px] bg-card',
         className,
       )}
       style={{
@@ -102,16 +111,7 @@ const SwipeCardComponent = ({
       <div className="relative h-full w-full">
         <ImageCarousel
           enabledImageSwiping={!superLike.isSuperLikeMode}
-          images={
-            photos
-              ? [
-                  '/images/photo_2025-12-23_22-41-09.jpg',
-                  '/images/photo_2025-12-16_22-32-35.jpg',
-                  '/images/photo_2025-04-10_00-42-15.jpg',
-                  '/images/i.webp',
-                ]
-              : []
-          }
+          images={carouselImages}
           imageAlt={name ?? ''}
           blur={superLike.isSuperLikeMode}
           isTop={isTop}
@@ -134,23 +134,14 @@ const SwipeCardComponent = ({
               className="pointer-events-none absolute left-1/2 top-1/2 flex h-[128px] w-[128px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
               style={{ opacity: dislikeOpacity }}
             >
-              <X
-                size={128}
-                className="text-white drop-shadow-[0_0_24px_rgba(0,0,0,0.7)]"
-                strokeWidth={1.5}
-              />
+              <X size={128} className="text-white" strokeWidth={1.3} />
             </motion.div>
 
             <motion.div
               className="pointer-events-none absolute left-1/2 top-1/2 flex h-[128px] w-[128px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
               style={{ opacity: likeOpacity }}
             >
-              <Heart
-                size={128}
-                className="text-white drop-shadow-[0_0_24px_rgba(0,0,0,0.7)]"
-                strokeWidth={1.5}
-                fill="white"
-              />
+              <Heart size={128} className="text-white" strokeWidth={1.3} fill="white" />
             </motion.div>
           </>
         )}

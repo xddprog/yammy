@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
 import { memo, useCallback } from 'react'
 
+import type { UserSearchResult } from '@/entities/user/types/types'
 import { useContentAreaHeight } from '@/features/matches-feed/hooks/useContentAreaHeight'
 import { useMatchesOverlayMotion } from '@/features/matches-feed/hooks/useMatchesOverlayMotion'
 import { useSuperLikeInteractions } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
-import { ImageCarousel, useOverlay } from '@/shared'
+import { useOverlay } from '@/shared'
 
-import type { UserSearchResult } from '@/entities/user/types/types'
 import {
   MATCHES_OVERLAY_EASE_ENTER,
   MATCHES_OVERLAY_ENTER_DURATION,
@@ -18,6 +18,13 @@ import {
 import { DragIndicator } from '../sheet-card'
 import { SuperLikeOverlayContentMemo } from '../super-like-overlay/superLikeOverlay'
 import { MatchesCardContent } from './matchesCard'
+import { ProfilePeekCarousel } from './profilePeekCarousel'
+
+const MOCK_DETAIL_PHOTOS = [
+  '/images/photo_2025-12-23_22-41-09.jpg',
+  '/images/photo_2025-12-16_22-32-35.jpg',
+  '/images/photo_2025-04-10_00-42-15.jpg',
+]
 
 export interface MatchesOverlayProps {
   item: UserSearchResult
@@ -35,7 +42,18 @@ const OverlayContent = ({
   onLike,
   onSuperLike,
 }: MatchesOverlayProps): React.JSX.Element => {
-  const { name, age, city, photos, match_percentage, bio } = item
+  const {
+    name,
+    age,
+    city,
+    match_percentage,
+    bio,
+    relationship_goal,
+    education_details,
+    job_sphere,
+    job,
+    filters,
+  } = item
 
   const handleLike = useCallback(() => {
     onLike?.()
@@ -56,7 +74,11 @@ const OverlayContent = ({
     onSuperLike: handleSuperLikeClick,
   })
 
-  const { ref: contentAreaRef, heightPx: contentAreaHeightPx, widthPx: contentAreaWidthPx } = useContentAreaHeight()
+  const {
+    ref: contentAreaRef,
+    heightPx: contentAreaHeightPx,
+    widthPx: contentAreaWidthPx,
+  } = useContentAreaHeight()
   const motionProps = useMatchesOverlayMotion(contentAreaHeightPx, contentAreaWidthPx)
   const {
     dragY,
@@ -75,6 +97,7 @@ const OverlayContent = ({
     handleDragEnd,
     handleIndicatorClick,
   } = motionProps
+  const detailPhotos = MOCK_DETAIL_PHOTOS
 
   return (
     <motion.div
@@ -100,8 +123,7 @@ const OverlayContent = ({
         className="relative w-full h-full min-h-0 pointer-events-auto flex justify-center"
       >
         <motion.div
-          className="absolute z-20 overflow-hidden origin-top
-                     bg-black/40 backdrop-blur-xl border border-white/10"
+          className="absolute z-20 overflow-visible origin-top"
           style={{
             height: containerHeight,
             width: containerWidth,
@@ -112,12 +134,9 @@ const OverlayContent = ({
         >
           <motion.div className="absolute inset-0" style={{ opacity: carouselOpacity }}>
             <div className={isExpanded ? 'pointer-events-none h-full' : 'h-full'}>
-              <ImageCarousel
-                images={photos}
+              <ProfilePeekCarousel
+                images={detailPhotos}
                 imageAlt={name}
-                isTop
-                showIndicators
-                align="bottom"
                 enabledImageSwiping={!isExpanded}
               />
             </div>
@@ -127,9 +146,9 @@ const OverlayContent = ({
             className="absolute inset-0 flex items-center justify-center gap-2"
             style={{ opacity: pillContentOpacity, scale: pillContentScale }}
           >
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pink-500/80 p-1">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FF6BA4] p-1">
               <img
-                src="/images/logo.png"
+                src="/images/logo.svg"
                 alt="Yammy"
                 className="h-full w-full object-contain object-center"
               />
@@ -168,6 +187,11 @@ const OverlayContent = ({
             age={age}
             city={city}
             bio={bio}
+            relationshipGoal={relationship_goal}
+            educationDetails={education_details}
+            jobSphere={job_sphere}
+            job={job}
+            userFilters={filters}
             actionIndicator={
               <DragIndicator
                 onPointerDown={(e) => dragControls.start(e)}

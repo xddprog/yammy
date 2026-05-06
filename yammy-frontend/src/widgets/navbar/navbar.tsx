@@ -1,12 +1,11 @@
 import type { LucideIcon } from 'lucide-react'
-import { GalleryHorizontal, Heart, MessageCircleHeart, UserRound } from 'lucide-react'
+import { GalleryHorizontal, Heart, MessageCircle, UserRound } from 'lucide-react'
 import type { JSX } from 'react'
 import { NavLink } from 'react-router-dom'
 
 import { cn, ERouteNames } from '@/shared'
 
 const ICON_SIZE = 26
-const STROKE_WIDTH = 1.6
 
 interface NavItem {
   to: string
@@ -17,7 +16,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     to: ERouteNames.CHATS_ROUTE,
-    icon: MessageCircleHeart,
+    icon: MessageCircle,
     label: 'Метчи',
   },
   {
@@ -38,49 +37,46 @@ const navItems: NavItem[] = [
 ]
 
 const navItemBaseClasses = cn(
-  'group flex flex-1 flex-col items-center justify-center',
-  'gap-1.5 py-3 px-4 min-w-0',
+  'group relative flex flex-1 items-center justify-center',
+  'min-w-0 p-0',
   'cursor-pointer select-none touch-manipulation',
-  'transition-all duration-200 ease-out',
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6BA4]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-  'active:scale-95',
+  'transition-transform duration-200 ease-out active:scale-[0.96]',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6BA4]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
 )
 
 interface NavContentProps {
   icon: LucideIcon
-  label: string
   isActive: boolean
 }
 
 const NavContent = ({ icon: Icon, isActive }: NavContentProps): JSX.Element => (
-  <>
+  <span
+    className={cn(
+      'flex shrink-0 items-center justify-center rounded-full bg-transparent',
+      'transition-all duration-300 ease-out group-active:scale-[0.97]',
+      isActive ? 'h-[77px] w-[77px] bg-black text-[#FF6BA4] scale-100' : 'h-14 w-14 text-black/70 group-hover:text-black',
+    )}
+  >
     <Icon
       size={ICON_SIZE}
-      strokeWidth={STROKE_WIDTH}
-      className={cn(
-        'shrink-0 transition-all duration-200',
-        isActive
-          ? 'text-[#FF6BA4]'
-          : 'text-white group-hover:text-foreground group-active:text-[#FF6BA4]/80',
-      )}
+      className="shrink-0 transition-colors duration-200"
       aria-hidden="true"
     />
-  </>
+  </span>
 )
 
 const Navbar = (): JSX.Element => (
   <nav
-    className="flex shrink-0 items-stretch justify-around mt-3"
+    className={cn(
+      'mx-auto mb-2 mt-5 flex h-[84px] w-[82%] shrink-0 items-center justify-around overflow-hidden rounded-full border border-black/10 bg-white px-2',
+      'transition-all duration-300',
+    )}
     role="navigation"
     aria-label="Основная навигация"
   >
     {navItems.map(({ to, icon, label }) => (
-      <NavLink
-        key={to}
-        to={to}
-        className={({ isActive }) => cn(navItemBaseClasses, isActive && 'pointer-events-none')}
-      >
-        {({ isActive }) => <NavContent icon={icon} label={label} isActive={isActive} />}
+      <NavLink key={to} to={to} className={navItemBaseClasses} aria-label={label}>
+        {({ isActive }) => <NavContent icon={icon} isActive={isActive} />}
       </NavLink>
     ))}
   </nav>
