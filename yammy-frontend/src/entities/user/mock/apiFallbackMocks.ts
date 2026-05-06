@@ -1,6 +1,6 @@
 import type { FiltersMetadataResponse, UserSearchResult } from '../types/types'
 
-const RAW_USERS_SEARCH_FALLBACK = [
+const RAW_USERS_SEARCH_FALLBACK: Array<Omit<UserSearchResult, 'username'>> = [
   {
     name: 'Ульяна',
     age: 26,
@@ -211,7 +211,7 @@ const RAW_USERS_SEARCH_FALLBACK = [
     adequacy_score: 5.4,
     match_percentage: 56,
   },
-] as const
+]
 
 export const USERS_SEARCH_FALLBACK_MOCK: UserSearchResult[] = RAW_USERS_SEARCH_FALLBACK.map(
   (user) => ({
