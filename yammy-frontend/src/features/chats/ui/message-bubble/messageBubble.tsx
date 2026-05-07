@@ -17,7 +17,7 @@ interface MessageBubbleProps {
   onSwipeReply?: () => void
 }
 
-const triggerReplyHaptic = () => {
+const triggerHaptic = () => {
   const telegramWebApp = (window as Window & { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp as
     | {
         HapticFeedback?: {
@@ -76,10 +76,16 @@ export const MessageBubble = ({
     })
   }
 
+  const openActionsMenu = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return
+    const rect = target.getBoundingClientRect()
+    triggerHaptic()
+    onOpenMenu?.(id, rect)
+  }
+
   const handleContextMenu = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
-    const rect = e.currentTarget.getBoundingClientRect()
-    onOpenMenu?.(id, rect)
+    openActionsMenu(e.currentTarget)
   }
 
   const clearLongPress = () => {
@@ -93,10 +99,10 @@ export const MessageBubble = ({
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     const touch = e.touches[0]
     if (!touch) return
+    const targetElement = e.currentTarget
     touchStartRef.current = { x: touch.clientX, y: touch.clientY }
     longPressTimerRef.current = window.setTimeout(() => {
-      const rect = e.currentTarget.getBoundingClientRect()
-      onOpenMenu?.(id, rect)
+      openActionsMenu(targetElement)
       clearLongPress()
     }, 500)
   }
@@ -139,7 +145,7 @@ export const MessageBubble = ({
       damping: 34,
     })
     if (shouldReply) {
-      triggerReplyHaptic()
+      triggerHaptic()
       onSwipeReply?.()
     }
   }
