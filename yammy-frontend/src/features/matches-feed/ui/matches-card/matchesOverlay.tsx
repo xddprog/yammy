@@ -31,6 +31,7 @@ export interface MatchesOverlayProps {
   onClose: () => void
   onDislike?: () => void
   onLike?: () => void
+  fromChat?: boolean
   /** Вызывается при клике на суперлайк; в аргументе — функция закрытия этого оверлея (для последующего закрытия после отправки огонька). */
   onSuperLike?: (closeParent: () => void) => void
 }
@@ -40,6 +41,7 @@ const OverlayContent = ({
   onClose,
   onDislike,
   onLike,
+  fromChat,
   onSuperLike,
 }: MatchesOverlayProps): React.JSX.Element => {
   const {
@@ -197,6 +199,7 @@ const OverlayContent = ({
             jobSphere={job_sphere}
             job={job}
             userFilters={filters}
+            fromChat={fromChat}
             actionIndicator={
               <DragIndicator
                 onPointerDown={(e) => dragControls.start(e)}
@@ -219,6 +222,7 @@ type OpenProfileDetailsOptions = {
   item: UserSearchResult
   onDislike?: () => void
   onLike?: () => void
+  fromChat?: boolean
   onSuperLike?: (closeParent: () => void) => void
 }
 
@@ -239,6 +243,7 @@ export const useMatchesOverlay = () => {
             item={options.item}
             onDislike={options.onDislike}
             onLike={options.onLike}
+            fromChat={options.fromChat}
             onSuperLike={options.onSuperLike}
             onClose={closeOverlay}
           />

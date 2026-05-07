@@ -108,7 +108,7 @@ const ChatsPage = (): JSX.Element => {
       <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none no-scrollbar">
         <div className="flex flex-col gap-4 pb-6">
           <ChatsStoriesRow chats={MOCK_CHATS} onStoryClick={(id) => navigate(`/chats/${id}`)} />
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-1.5">
             {filteredChats.length > 0 ? (
               filteredChats.map((chat) => (
                 <ChatItem key={chat.id} chat={chat} onClick={() => navigate(`/chats/${chat.id}`)} />

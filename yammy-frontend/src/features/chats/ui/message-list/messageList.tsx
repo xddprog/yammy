@@ -7,9 +7,10 @@ import { MessageBubble } from '../message-bubble/messageBubble'
 interface MessageListProps {
   messages: MockMessage[]
   onOpenMenu: (id: string, rect: DOMRect) => void
+  onReplyMessage: (id: string) => void
 }
 
-export const MessageList = ({ messages, onOpenMenu }: MessageListProps) => {
+export const MessageList = ({ messages, onOpenMenu, onReplyMessage }: MessageListProps) => {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -21,19 +22,21 @@ export const MessageList = ({ messages, onOpenMenu }: MessageListProps) => {
   return (
     <div
       ref={scrollRef}
-      className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-3 px-4 py-2"
+      className="flex-1 overflow-x-hidden overflow-y-auto no-scrollbar flex flex-col gap-3 px-4 py-2"
     >
       {messages.map((msg) => (
         <MessageBubble
           key={msg.id}
           id={msg.id}
           text={msg.text}
-          image={msg.image}
+          images={msg.images}
           senderId={msg.senderId}
           timestamp={msg.timestamp}
+          replyToId={msg.replyToId}
           replyToText={msg.replyToText}
           replyToName={msg.replyToName}
           onOpenMenu={onOpenMenu}
+          onSwipeReply={() => onReplyMessage(msg.id)}
         />
       ))}
     </div>

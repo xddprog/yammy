@@ -1,7 +1,7 @@
 export interface MockMessage {
   id: string
   text?: string
-  image?: string
+  images?: string[]
   senderId: string // 'me' or 'other'
   timestamp: string
   replyToId?: string

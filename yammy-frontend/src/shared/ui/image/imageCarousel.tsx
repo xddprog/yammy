@@ -23,6 +23,7 @@ export interface ImageCarouselProps {
   showIndicators?: boolean
   /** Расположение индикаторов: сверху (по умолчанию) или снизу. */
   align?: 'top' | 'bottom'
+  initialIndex?: number
 }
 
 const CarouselIndicators = memo(function CarouselIndicators({
@@ -111,10 +112,11 @@ const ImageCarouselComponent = ({
   showIndicators = true,
   enabledImageSwiping = true,
   align = 'top',
+  initialIndex = 0,
 }: ImageCarouselProps): React.JSX.Element => {
   const { currentIndex, goNext, goPrevious, goToIndex, totalImages } = useImageCarousel({
     images,
-    initialIndex: 0,
+    initialIndex,
   })
 
   const strip = useCarouselStrip({

@@ -1,12 +1,12 @@
-import { Plus, SendHorizontal, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Forward, Plus, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
-import { Button, cn } from '@/shared'
+import { Button, cn, Image, useOverlay } from '@/shared'
 
 interface MessageInputProps {
   onSend: (
     text?: string,
-    image?: string,
+    images?: string[],
     replyTo?: { id: string; text: string; name: string },
   ) => void
   replyTo?: { id: string; text: string; name: string } | null
@@ -15,26 +15,71 @@ interface MessageInputProps {
 
 export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputProps) => {
   const [value, setValue] = useState('')
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { open } = useOverlay()
+
+  const autosizeTextarea = () => {
+    const el = textareaRef.current
+    if (!el) return
+    const maxHeight = 15 * 1.375 * 5
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`
+    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
+  }
+
+  useEffect(() => {
+    autosizeTextarea()
+  }, [value])
 
   const handleSend = () => {
-    if (value.trim() || imagePreview) {
-      onSend(value.trim() || undefined, imagePreview || undefined, replyTo || undefined)
+    const trimmed = value.trim()
+    const hasText = trimmed.length > 0
+    const hasImages = imagePreviews.length > 0
+
+    if (hasText || hasImages) {
+      if (hasText) {
+        onSend(trimmed, undefined, replyTo || undefined)
+      }
+      if (hasImages) {
+        onSend(undefined, imagePreviews, hasText ? undefined : (replyTo ?? undefined))
+      }
       setValue('')
-      setImagePreview(null)
+      setImagePreviews([])
       onCancelReply?.()
+      requestAnimationFrame(autosizeTextarea)
     }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setImagePreview(url)
+    const files = Array.from(e.target.files ?? [])
+    if (files.length > 0) {
+      const remainingSlots = Math.max(0, 2 - imagePreviews.length)
+      const selected = files.slice(0, remainingSlots).map((file) => URL.createObjectURL(file))
+      if (selected.length > 0) {
+        setImagePreviews((prev) => [...prev, ...selected])
+      }
     }
     // Reset input so the same file can be picked again
     e.target.value = ''
+  }
+
+  const openImagesPreview = (startIndex: number) => {
+    if (imagePreviews.length === 0) return
+    open({
+      backdropClassName: 'bg-black/85 backdrop-blur-0',
+      panelClassName: '!h-full !w-full !max-w-none flex items-center justify-center p-4 pointer-events-none',
+      content: () => (
+        <div className="pointer-events-auto overflow-hidden rounded-[24px] bg-black">
+          <Image
+            src={imagePreviews[startIndex]}
+            alt="Selected image full"
+            className="block h-auto max-h-[88vh] w-auto max-w-[92vw] object-contain"
+          />
+        </div>
+      ),
+    })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -50,10 +95,10 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
       {replyTo && (
         <div className="flex items-center gap-3 ml-1 px-3 py-1.5 border-l-2 border-[#FF6BA4]">
           <div className="flex-1 flex flex-col min-w-0">
-            <span className="text-[11px] font-bold text-[#FF6BA4] uppercase tracking-wider">
+            <span className="text-[11px] font-[200] text-[#FF6BA4] uppercase tracking-wider">
               {replyTo.name}
             </span>
-            <p className="text-[13px] font-light text-muted-foreground truncate">{replyTo.text}</p>
+            <p className="text-[13px] font-[100] text-white-foreground truncate">{replyTo.text}</p>
           </div>
           <button
             onClick={onCancelReply}
@@ -64,15 +109,30 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
         </div>
       )}
 
-      {imagePreview && (
-        <div className="relative ml-2 w-24 h-24 rounded-xl overflow-hidden shadow-md group">
-          <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-          <button
-            onClick={() => setImagePreview(null)}
-            className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:bg-black"
-          >
-            <X size={14} strokeWidth={3} />
-          </button>
+      {imagePreviews.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar touch-pan-x" style={{ touchAction: 'pan-x' }}>
+          {imagePreviews.map((preview, index) => (
+            <div
+              key={preview}
+              className="relative aspect-square h-24 w-24 shrink-0 overflow-hidden rounded-xl shadow-md group"
+            >
+              <button
+                type="button"
+                onClick={() => openImagesPreview(index)}
+                className="h-full w-full"
+                aria-label="Открыть превью фото"
+              >
+                <img src={preview} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
+              </button>
+              <button
+                onClick={() => setImagePreviews((prev) => prev.filter((_, i) => i !== index))}
+                className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:bg-black"
+                aria-label="Удалить фото"
+              >
+                <X size={14} strokeWidth={3} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -80,6 +140,7 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
         <input
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           ref={fileInputRef}
           onChange={handleFileChange}
@@ -88,37 +149,39 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
           type="button"
           size="icon"
           variant="ghost"
+          disabled={imagePreviews.length >= 2}
           onClick={() => fileInputRef.current?.click()}
-          className="h-12 w-12 shrink-0 rounded-full bg-muted text-muted-foreground hover:bg-muted/80 active:scale-90"
+          className="h-12 w-12 shrink-0 rounded-full bg-card text-foreground hover:bg-card/90 active:scale-90 disabled:opacity-40"
         >
-          <Plus size={24} strokeWidth={2} />
+          <Plus className="size-[22px]" strokeWidth={2} />
         </Button>
 
-        <div className="flex min-h-[48px] flex-1 items-center rounded-full bg-muted px-4 transition-all focus-within:ring-2 focus-within:ring-[#FF6BA4]/50">
+        <div className="flex min-h-[48px] flex-1 items-center rounded-[24px] bg-card px-4 py-2 transition-all focus-within:ring-2 focus-within:ring-[#FF6BA4]/50">
           <textarea
+            ref={textareaRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Сообщение..."
-            className="max-h-32 w-full resize-none border-none bg-transparent py-3 text-[15px] font-extralight leading-snug outline-none no-scrollbar placeholder:font-extralight placeholder:text-muted-foreground/40"
+            className="w-full resize-none border-none bg-transparent py-0 text-[15px] font-[100] leading-snug outline-none no-scrollbar placeholder:font-[100] placeholder:text-muted-foreground"
             rows={1}
-            style={{ height: 'auto' }}
+            style={{ height: 'auto', maxHeight: 'calc(1.375em * 5)' }}
           />
         </div>
         <Button
           type="button"
           size="icon"
           variant="ghost"
-          disabled={!value.trim() && !imagePreview}
+          disabled={!value.trim() && imagePreviews.length === 0}
           onClick={handleSend}
           className={cn(
-            'h-12 w-12 shrink-0 rounded-full transition-all active:scale-95',
-            value.trim() || imagePreview
+            'h-12 w-12 shrink-0 rounded-full !p-0 transition-all active:scale-95',
+            value.trim() || imagePreviews.length > 0
               ? 'bg-[#FF6BA4] text-white shadow-lg shadow-[#FF6BA4]/20 hover:bg-[#FF6BA4]/90'
-              : 'bg-muted text-muted-foreground opacity-100! hover:bg-muted',
+              : 'bg-card text-foreground opacity-100! hover:bg-card/90',
           )}
         >
-          <SendHorizontal size={20} strokeWidth={2} />
+          <Forward className="size-[22px]" strokeWidth={2} />
         </Button>
       </div>
     </div>
