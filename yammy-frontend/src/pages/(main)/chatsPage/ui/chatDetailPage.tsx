@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCheck, Edit2, Reply, Trash2 } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
@@ -210,53 +211,65 @@ const ChatDetailPage = () => {
       </div>
 
       {/* Context Menu Overlay */}
-      {menuMessage && menuRect && (
-        <div className="absolute inset-0 z-[60] flex items-start bg-black/20 animate-in fade-in transition-all">
-          <div
-            className="absolute inset-0 cursor-default"
-            onClick={() => {
-              setMenuMessage(null)
-              setMenuRect(null)
-            }}
-          />
-          <div
-            style={menuStyle}
-            className="absolute w-[184px] rounded-[24px] bg-card p-1.5 shadow-2xl backdrop-blur-2xl animate-in zoom-in-95 duration-200"
+      <AnimatePresence>
+        {menuMessage && menuRect && (
+          <motion.div
+            className="absolute inset-0 z-[60] flex items-start"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
           >
-            <div className="flex flex-col">
-              <button
-                onClick={handleReplyAction}
-                className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
-              >
-                <Reply size={16} strokeWidth={1.2} className="text-foreground" />
-                <span className="text-[13px] font-[200] text-foreground">Ответить</span>
-              </button>
+            <div
+              className="absolute inset-0 cursor-default bg-black/20"
+              onClick={() => {
+                setMenuMessage(null)
+                setMenuRect(null)
+              }}
+            />
+            <motion.div
+              style={menuStyle}
+              className="absolute w-[184px] rounded-[24px] bg-card p-1.5 shadow-2xl backdrop-blur-2xl"
+              initial={{ opacity: 0, scale: 0.96, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 6 }}
+              transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
+            >
+              <div className="flex flex-col">
+                <button
+                  onClick={handleReplyAction}
+                  className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
+                >
+                  <Reply size={16} strokeWidth={1.2} className="text-foreground" />
+                  <span className="text-[13px] font-[200] text-foreground">Ответить</span>
+                </button>
 
-              <button
-                onClick={handleEditAction}
-                className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
-              >
-                <Edit2 size={16} strokeWidth={1.2} className="text-foreground" />
-                <span className="text-[13px] font-[200] text-foreground">Изменить</span>
-              </button>
+                <button
+                  onClick={handleEditAction}
+                  className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
+                >
+                  <Edit2 size={16} strokeWidth={1.2} className="text-foreground" />
+                  <span className="text-[13px] font-[200] text-foreground">Изменить</span>
+                </button>
 
-              <button
-                onClick={handleDeleteAction}
-                className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-red-500/10 active:scale-95"
-              >
-                <Trash2 size={16} strokeWidth={1.2} className="text-foreground" />
-                <span className="text-[13px] font-[200] text-foreground">Удалить</span>
-              </button>
+                <button
+                  onClick={handleDeleteAction}
+                  className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-red-500/10 active:scale-95"
+                >
+                  <Trash2 size={16} strokeWidth={1.2} className="text-foreground" />
+                  <span className="text-[13px] font-[200] text-foreground">Удалить</span>
+                </button>
 
-              <div className="mx-3 mt-1 h-px bg-card-foreground/15" />
-              <div className="flex items-center gap-1.5 px-3 pt-2 pb-1 text-[12px] font-[200] text-foreground">
-                <CheckCheck className="size-3.5" strokeWidth={2} />
-                <span>{readAtLabel}</span>
+                <div className="mx-3 mt-1 h-px bg-card-foreground/15" />
+                <div className="flex items-center gap-1.5 px-3 pt-2 pb-1 text-[12px] font-[200] text-foreground">
+                  <CheckCheck className="size-3.5" strokeWidth={2} />
+                  <span>{readAtLabel}</span>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
