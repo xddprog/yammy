@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, type PanInfo } from 'framer-motion'
 import { memo, useCallback } from 'react'
 
 import type { UserSearchResult } from '@/entities/user/types/types'
@@ -101,6 +101,16 @@ const OverlayContent = ({
     handleIndicatorClick,
   } = motionProps
   const detailPhotos = MOCK_DETAIL_PHOTOS
+  const handleOverlayDragEnd = useCallback(
+    (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      if (info.offset.y > 120 || info.velocity.y > 900) {
+        onClose()
+        return
+      }
+      handleDragEnd(event, info)
+    },
+    [handleDragEnd, onClose],
+  )
 
   return (
     <motion.div
@@ -133,6 +143,7 @@ const OverlayContent = ({
             borderRadius: containerRadius,
             left: '50%',
             x: '-50%',
+            y: dragY,
           }}
         >
           <motion.div className="absolute inset-0" style={{ opacity: carouselOpacity }}>
@@ -183,11 +194,11 @@ const OverlayContent = ({
             paddingRight: MATCHES_OVERLAY_PADDING_HORIZONTAL_PX,
           }}
           drag="y"
-          dragConstraints={{ top: dragLimit, bottom: 0 }}
+          dragConstraints={{ top: dragLimit, bottom: 260 }}
           dragControls={dragControls}
           dragElastic={0.1}
           dragListener={false}
-          onDragEnd={handleDragEnd}
+          onDragEnd={handleOverlayDragEnd}
         >
           <MatchesCardContent
             name={name}

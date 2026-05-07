@@ -1,5 +1,6 @@
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
 import { Reply } from 'lucide-react'
+import { useRef } from 'react'
 
 import { cn, Image, useOverlay } from '@/shared'
 
@@ -14,6 +15,25 @@ interface MessageBubbleProps {
   replyToName?: string
   onOpenMenu?: (id: string, rect: DOMRect) => void
   onSwipeReply?: () => void
+}
+
+const triggerReplyHaptic = () => {
+  const telegramWebApp = (window as Window & { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp as
+    | {
+        HapticFeedback?: {
+          impactOccurred?: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void
+        }
+      }
+    | undefined
+
+  if (telegramWebApp?.HapticFeedback?.impactOccurred) {
+    telegramWebApp.HapticFeedback.impactOccurred('light')
+    return
+  }
+
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    navigator.vibrate(18)
+  }
 }
 
 export const MessageBubble = ({
@@ -33,6 +53,8 @@ export const MessageBubble = ({
   const hasPhotoMessage = messageImages.length > 0 && !text
   const { open } = useOverlay()
   const swipeX = useMotionValue(0)
+  const longPressTimerRef = useRef<number | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   const replyOpacity = useTransform(swipeX, [-20, -72], [0, 1])
   const replyScale = useTransform(swipeX, [-20, -72], [0.78, 1])
   const replyShiftX = useTransform(swipeX, [-20, -72], [10, 0])
@@ -58,6 +80,34 @@ export const MessageBubble = ({
     e.preventDefault()
     const rect = e.currentTarget.getBoundingClientRect()
     onOpenMenu?.(id, rect)
+  }
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current != null) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    touchStartRef.current = null
+  }
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0]
+    if (!touch) return
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY }
+    longPressTimerRef.current = window.setTimeout(() => {
+      const rect = e.currentTarget.getBoundingClientRect()
+      onOpenMenu?.(id, rect)
+      clearLongPress()
+    }, 500)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!touchStartRef.current) return
+    const touch = e.touches[0]
+    if (!touch) return
+    const dx = Math.abs(touch.clientX - touchStartRef.current.x)
+    const dy = Math.abs(touch.clientY - touchStartRef.current.y)
+    if (dx > 10 || dy > 10) clearLongPress()
   }
 
   const handleReplyReferenceClick = () => {
@@ -88,7 +138,10 @@ export const MessageBubble = ({
       stiffness: 420,
       damping: 34,
     })
-    if (shouldReply) onSwipeReply?.()
+    if (shouldReply) {
+      triggerReplyHaptic()
+      onSwipeReply?.()
+    }
   }
 
   return (
@@ -96,6 +149,10 @@ export const MessageBubble = ({
       id={`chat-message-${id}`}
       className={cn('relative flex w-full flex-col', isMe ? 'items-end' : 'items-start')}
       onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={clearLongPress}
+      onTouchCancel={clearLongPress}
     >
       <motion.div
         className="relative z-10 inline-flex max-w-[80%] flex-col"

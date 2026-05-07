@@ -136,7 +136,40 @@ export const MatchesCardContent = ({
         footer={
           <div className="flex items-bottom justify-between px-7 pb-5 pt-3 bg-white z-20">
             {isBlockMode ? (
-              <div className="h-11 w-full" aria-hidden />
+              isBlockSubmitted ? (
+                <Button
+                  type="button"
+                  variant="black"
+                  size="lg"
+                  className="w-full rounded-full"
+                  onClick={onDislike}
+                >
+                  Закрыть
+                </Button>
+              ) : (
+                <div className="w-full flex gap-2 items-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-lg"
+                    onClick={handleCloseBlock}
+                    aria-label="Отменить блокировку"
+                  >
+                    <X className="size-7" strokeWidth={1.4} />
+                  </Button>
+                  <div className="w-full">
+                    <Button
+                      type="button"
+                      variant="black"
+                      size="lg"
+                      className="rounded-full w-full"
+                      onClick={handleSubmitBlock}
+                    >
+                      Подтвердить
+                    </Button>
+                  </div>
+                </div>
+              )
             ) : !isReportMode ? (
               fromChat ? (
                 <Button
@@ -240,42 +273,6 @@ export const MatchesCardContent = ({
                   Вы уверены, что хотите заблокировать пользователя? При блокировке удаляются чат и мэтч. Это действие нельзя будет отменить.
                 </p>
               )}
-              <div className="mt-auto pb-2">
-                {isBlockSubmitted ? (
-                  <Button
-                    type="button"
-                    variant="black"
-                    size="lg"
-                    className="w-full rounded-full"
-                    onClick={onDislike}
-                  >
-                    Закрыть
-                  </Button>
-                ) : (
-                  <div className="w-full flex gap-2 items-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-lg"
-                      onClick={handleCloseBlock}
-                      aria-label="Отменить блокировку"
-                    >
-                      <X className="size-7" strokeWidth={1.4} />
-                    </Button>
-                    <div className="w-full">
-                      <Button
-                        type="button"
-                        variant="black"
-                        size="lg"
-                        className="rounded-full w-full"
-                        onClick={handleSubmitBlock}
-                      >
-                        Подтвердить
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </motion.div>
           ) : !isReportMode ? (
             <motion.div
@@ -289,16 +286,14 @@ export const MatchesCardContent = ({
             >
               <div className="mb-3 flex items-start justify-between gap-3">
                 <h2 className="text-[32px] font-semibold leading-[1.1] tracking-[0]">{name}</h2>
-                {!fromChat ? (
-                  <button
-                    type="button"
-                    onClick={handleFlagClick}
-                    className="p-1 -m-1 rounded-full transition-colors cursor-pointer touch-manipulation active:scale-95"
-                    aria-label="Пожаловаться"
-                  >
-                    <Flag className="size-6 text-neutral-700" strokeWidth={1.5} />
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={handleFlagClick}
+                  className="p-1 -m-1 rounded-full transition-colors cursor-pointer touch-manipulation active:scale-95"
+                  aria-label="Пожаловаться"
+                >
+                  <Flag className="size-6 text-neutral-700" strokeWidth={1.5} />
+                </button>
               </div>
               <div className="space-y-3 text-[16px] leading-[1.4]">
                 {bio && <p className="text-neutral-900">{bio}</p>}
