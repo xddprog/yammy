@@ -44,98 +44,100 @@ export const ProfileEditForm = ({
     <section className="flex flex-col gap-3">
       <ProfilePhotosEditor photos={photos} setPhotos={setPhotos} />
 
-      <ProfileAutocompleteRow
-        label="Возраст"
-        value={String(userAge)}
-        onChange={(value) => {
-          const age = Number(value)
-          if (!Number.isFinite(age) || age < 18 || age > 100) return
-          setDraft((prev) => ({ ...prev, ageRange: [age, age] }))
-        }}
-        options={Array.from({ length: 83 }, (_, index) => String(index + 18))}
-        placeholder="Не указано"
-        ariaLabel="Возраст"
-      />
-
-      <ProfileAutocompleteRow
-        label="Пол"
-        value={draft.gender ?? ''}
-        onChange={(value) =>
-          setDraft((prev) => ({
-            ...prev,
-            gender: value ? (value as 'Мужской' | 'Женский') : null,
-          }))
-        }
-        options={['Мужской', 'Женский']}
-        placeholder="Не указано"
-        ariaLabel="Пол"
-      />
-
-      <ProfileAutocompleteRow
-        label="Цель отношений"
-        value={relationshipGoalLabel}
-        onChange={(label) => {
-          const selected = RELATIONSHIP_GOAL_OPTIONS.find((option) => option.label === label)
-          setDraft((prev) => ({
-            ...prev,
-            relationshipGoals: selected ? [selected.value] : [],
-          }))
-        }}
-        options={RELATIONSHIP_GOAL_OPTIONS.map((option) => option.label)}
-        placeholder="Не указано"
-        ariaLabel="Цель отношений"
-      />
-
-      <ProfileAutocompleteRow
-        label="Город"
-        value={draft.city}
-        onChange={(value) => setDraft((prev) => ({ ...prev, city: value }))}
-        options={CITY_MOCK_OPTIONS}
-        placeholder="Не указано"
-        ariaLabel="Город"
-      />
-
-      <ProfileAutocompleteRow
-        label="Сфера работы"
-        value={workFieldLabel}
-        onChange={(value) => {
-          const selected = WORK_SPHERE_MOCK_OPTIONS.find((option) => option.label === value)
-          setDraft((prev) => ({
-            ...prev,
-            workFields: selected ? [selected.value] : value ? [value] : [],
-          }))
-        }}
-        options={WORK_SPHERE_MOCK_OPTIONS.map((option) => option.label)}
-        placeholder="Не указано"
-        ariaLabel="Сфера работы"
-      />
-
-      <ProfileAutocompleteRow
-        label="Образование"
-        value={educationLevelLabel}
-        onChange={(value) => {
-          const selected = EDUCATION_LEVEL_OPTIONS.find((option) => option.label === value)
-          setDraft((prev) => ({
-            ...prev,
-            educationLevel: selected?.value ?? (value ? prev.educationLevel : null),
-            educationInstitution: selected?.value === 'higher' ? prev.educationInstitution : '',
-          }))
-        }}
-        options={EDUCATION_LEVEL_OPTIONS.map((option) => option.label)}
-        placeholder="Не указано"
-        ariaLabel="Образование"
-      />
-
-      {isHigherEducation && (
+      <div className="mb-4 flex flex-col gap-1.5">
         <ProfileAutocompleteRow
-          label="ВУЗ"
-          value={draft.educationInstitution}
-          onChange={(value) => setDraft((prev) => ({ ...prev, educationInstitution: value }))}
-          options={EDUCATION_INSTITUTION_MOCK_OPTIONS}
+          label="Возраст"
+          value={String(userAge)}
+          onChange={(value) => {
+            const age = Number(value)
+            if (!Number.isFinite(age) || age < 18 || age > 100) return
+            setDraft((prev) => ({ ...prev, ageRange: [age, age] }))
+          }}
+          options={Array.from({ length: 83 }, (_, index) => String(index + 18))}
           placeholder="Не указано"
-          ariaLabel="Учебное заведение"
+          ariaLabel="Возраст"
         />
-      )}
+
+        <ProfileAutocompleteRow
+          label="Пол"
+          value={draft.gender ?? ''}
+          onChange={(value) =>
+            setDraft((prev) => ({
+              ...prev,
+              gender: value ? (value as 'Мужской' | 'Женский') : null,
+            }))
+          }
+          options={['Мужской', 'Женский']}
+          placeholder="Не указано"
+          ariaLabel="Пол"
+        />
+
+        <ProfileAutocompleteRow
+          label="Цель отношений"
+          value={relationshipGoalLabel}
+          onChange={(label) => {
+            const selected = RELATIONSHIP_GOAL_OPTIONS.find((option) => option.label === label)
+            setDraft((prev) => ({
+              ...prev,
+              relationshipGoals: selected ? [selected.value] : [],
+            }))
+          }}
+          options={RELATIONSHIP_GOAL_OPTIONS.map((option) => option.label)}
+          placeholder="Не указано"
+          ariaLabel="Цель отношений"
+        />
+
+        <ProfileAutocompleteRow
+          label="Город"
+          value={draft.city}
+          onChange={(value) => setDraft((prev) => ({ ...prev, city: value }))}
+          options={CITY_MOCK_OPTIONS}
+          placeholder="Не указано"
+          ariaLabel="Город"
+        />
+
+        <ProfileAutocompleteRow
+          label="Сфера работы"
+          value={workFieldLabel}
+          onChange={(value) => {
+            const selected = WORK_SPHERE_MOCK_OPTIONS.find((option) => option.label === value)
+            setDraft((prev) => ({
+              ...prev,
+              workFields: selected ? [selected.value] : value ? [value] : [],
+            }))
+          }}
+          options={WORK_SPHERE_MOCK_OPTIONS.map((option) => option.label)}
+          placeholder="Не указано"
+          ariaLabel="Сфера работы"
+        />
+
+        <ProfileAutocompleteRow
+          label="Образование"
+          value={educationLevelLabel}
+          onChange={(value) => {
+            const selected = EDUCATION_LEVEL_OPTIONS.find((option) => option.label === value)
+            setDraft((prev) => ({
+              ...prev,
+              educationLevel: selected?.value ?? (value ? prev.educationLevel : null),
+              educationInstitution: selected?.value === 'higher' ? prev.educationInstitution : '',
+            }))
+          }}
+          options={EDUCATION_LEVEL_OPTIONS.map((option) => option.label)}
+          placeholder="Не указано"
+          ariaLabel="Образование"
+        />
+
+        {isHigherEducation && (
+          <ProfileAutocompleteRow
+            label="ВУЗ"
+            value={draft.educationInstitution}
+            onChange={(value) => setDraft((prev) => ({ ...prev, educationInstitution: value }))}
+            options={EDUCATION_INSTITUTION_MOCK_OPTIONS}
+            placeholder="Не указано"
+            ariaLabel="Учебное заведение"
+          />
+        )}
+      </div>
 
       {filtersMetadata?.map((category) => (
         <div key={category.slug} className="rounded-[28px] px-4 py-3.5">

@@ -308,6 +308,15 @@ export const ProfilePhotosEditor = ({
             clearHoldTimer()
             const el = event.currentTarget
             const pointerId = event.pointerId
+            if (event.pointerType === 'touch') {
+              event.preventDefault()
+              try {
+                el.setPointerCapture(pointerId)
+                pendingPointerCaptureRef.current = { el, pointerId }
+              } catch {
+                pendingPointerCaptureRef.current = null
+              }
+            }
             holdTimerRef.current = window.setTimeout(() => {
               if (!pointerDownActiveRef.current || pointerHoldPhotoIdRef.current !== photoId) return
               didTriggerHoldHapticRef.current = true
@@ -322,11 +331,13 @@ export const ProfilePhotosEditor = ({
               dragSourceElRef.current = el
               setDraggingId(photoId)
               setSwapPreviewWithIndex(null)
-              try {
-                el.setPointerCapture(pointerId)
-                pendingPointerCaptureRef.current = { el, pointerId }
-              } catch {
-                pendingPointerCaptureRef.current = null
+              if (!pendingPointerCaptureRef.current) {
+                try {
+                  el.setPointerCapture(pointerId)
+                  pendingPointerCaptureRef.current = { el, pointerId }
+                } catch {
+                  pendingPointerCaptureRef.current = null
+                }
               }
             }, HOLD_MS)
           },
@@ -353,19 +364,49 @@ export const ProfilePhotosEditor = ({
               return
             }
             if (holdTimerRef.current != null && pointerStartRef.current) {
+              event.preventDefault()
               const dx = event.clientX - pointerStartRef.current.x
               const dy = event.clientY - pointerStartRef.current.y
               if (dx * dx + dy * dy > MOVE_CANCEL_HOLD_PX * MOVE_CANCEL_HOLD_PX) {
                 clearHoldTimer()
+                const p = pendingPointerCaptureRef.current
+                if (p && !pointerReorderActiveRef.current) {
+                  try {
+                    if (
+                      typeof p.el.hasPointerCapture === 'function' &&
+                      p.el.hasPointerCapture(p.pointerId)
+                    ) {
+                      p.el.releasePointerCapture(p.pointerId)
+                    }
+                  } catch {
+                    // ignore
+                  }
+                  pendingPointerCaptureRef.current = null
+                }
               }
             }
           },
           onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => {
+            const didReorder = pointerReorderActiveRef.current
             pointerDownActiveRef.current = false
             pointerHoldPhotoIdRef.current = null
             pointerStartRef.current = null
             clearHoldTimer()
-            if (pointerReorderActiveRef.current) {
+            if (!didReorder && pendingPointerCaptureRef.current) {
+              const { el: capEl, pointerId: capPid } = pendingPointerCaptureRef.current
+              try {
+                if (
+                  typeof capEl.hasPointerCapture === 'function' &&
+                  capEl.hasPointerCapture(capPid)
+                ) {
+                  capEl.releasePointerCapture(capPid)
+                }
+              } catch {
+                // ignore
+              }
+              pendingPointerCaptureRef.current = null
+            }
+            if (didReorder) {
               event.preventDefault()
               const from = dragSourceIndexRef.current
               let hid = pickSlotIndexUnderPointStable(
@@ -386,11 +427,26 @@ export const ProfilePhotosEditor = ({
             }
           },
           onPointerCancel: (event: React.PointerEvent<HTMLDivElement>) => {
+            const didReorder = pointerReorderActiveRef.current
             pointerDownActiveRef.current = false
             pointerHoldPhotoIdRef.current = null
             pointerStartRef.current = null
             clearHoldTimer()
-            if (pointerReorderActiveRef.current) {
+            if (!didReorder && pendingPointerCaptureRef.current) {
+              const { el: capEl, pointerId: capPid } = pendingPointerCaptureRef.current
+              try {
+                if (
+                  typeof capEl.hasPointerCapture === 'function' &&
+                  capEl.hasPointerCapture(capPid)
+                ) {
+                  capEl.releasePointerCapture(capPid)
+                }
+              } catch {
+                // ignore
+              }
+              pendingPointerCaptureRef.current = null
+            }
+            if (didReorder) {
               event.preventDefault()
               clearDragVisual()
             }
@@ -476,7 +532,7 @@ export const ProfilePhotosEditor = ({
     draggingId != null ? (photos.find((p) => p.id === draggingId) ?? null) : null
 
   return (
-    <section>
+    <section className="mb-4">
       <input
         ref={extrasInputRef}
         type="file"
@@ -504,7 +560,7 @@ export const ProfilePhotosEditor = ({
       <div
         className={cn(
           'grid aspect-square w-full min-h-0 grid-cols-3 grid-rows-3 gap-2 overflow-visible',
-          draggingId != null && reorderMode === 'pointer' && 'touch-none',
+          reorderMode === 'pointer' && pointerFollow != null && 'touch-none',
         )}
       >
         {/* Главное фото: 2×2 */}
@@ -546,7 +602,10 @@ export const ProfilePhotosEditor = ({
               key={photo?.id ?? `slot-${n}`}
               ref={setSlotRef(slotIndex)}
               data-slot-index={slotIndex}
-              className="relative z-0 h-full min-h-0 min-w-0 overflow-visible"
+              className={cn(
+                'relative z-0 h-full min-h-0 min-w-0 overflow-visible',
+                photo && reorderMode === 'pointer' && 'touch-none',
+              )}
               {...(photo ? getFilledSlotDropZoneHandlers(photo.id) : getEmptySlotDragHandlers())}
             >
               {photo ? (
@@ -558,6 +617,7 @@ export const ProfilePhotosEditor = ({
                     draggable={reorderMode === 'html5'}
                     className={cn(
                       'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
+                      reorderMode === 'pointer' && 'touch-none',
                       reorderMode === 'pointer' &&
                         pointerFollow != null &&
                         draggingId === photo.id &&
@@ -607,7 +667,10 @@ export const ProfilePhotosEditor = ({
               key={photo?.id ?? `slot-${n}`}
               ref={setSlotRef(slotIndex)}
               data-slot-index={slotIndex}
-              className="relative z-0 h-full min-h-0 min-w-0 overflow-visible"
+              className={cn(
+                'relative z-0 h-full min-h-0 min-w-0 overflow-visible',
+                photo && reorderMode === 'pointer' && 'touch-none',
+              )}
               {...(photo ? getFilledSlotDropZoneHandlers(photo.id) : getEmptySlotDragHandlers())}
             >
               {photo ? (
@@ -619,6 +682,7 @@ export const ProfilePhotosEditor = ({
                     draggable={reorderMode === 'html5'}
                     className={cn(
                       'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
+                      reorderMode === 'pointer' && 'touch-none',
                       reorderMode === 'pointer' &&
                         pointerFollow != null &&
                         draggingId === photo.id &&
@@ -735,9 +799,7 @@ export const ProfilePhotosEditor = ({
       ) : null}
 
       <p className="mt-3 text-center text-[12px] font-light text-muted-foreground">
-        {reorderMode === 'pointer'
-          ? 'Удерживайте фото, затем перетащите, чтобы поменять порядок'
-          : 'Перетащите, чтобы изменить порядок'}
+      Перетащите, чтобы изменить порядок
       </p>
     </section>
   )
