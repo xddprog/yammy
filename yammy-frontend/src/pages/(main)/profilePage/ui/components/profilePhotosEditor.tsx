@@ -333,11 +333,22 @@ export const ProfilePhotosEditor = ({
               pointerReorderActiveRef.current = true
               draggedPhotoIdRef.current = photoId
               const nm = photosRef.current.filter((p) => !p.isMain)
-              dragSourceIndexRef.current = nm.findIndex((p) => p.id === photoId)
+              const fromIdx = nm.findIndex((p) => p.id === photoId)
+              dragSourceIndexRef.current = fromIdx >= 0 ? fromIdx : null
               slotRectsSnapshotRef.current = [0, 1, 2, 3, 4].map(
                 (idx) => slotCellRefs.current[idx]?.getBoundingClientRect() ?? new DOMRect(),
               )
               dragSourceElRef.current = el
+              const snap = slotRectsSnapshotRef.current
+              const from = dragSourceIndexRef.current
+              const sr = from != null && from >= 0 ? snap[from] : null
+              const w = sr?.width ?? 96
+              const h = sr?.height ?? 96
+              pointerFloatMetricsRef.current = { w, h }
+              const elR = el.getBoundingClientRect()
+              const cx = sr ? sr.left + sr.width / 2 : elR.left + elR.width / 2
+              const cy = sr ? sr.top + sr.height / 2 : elR.top + elR.height / 2
+              setPointerFollow({ x: cx, y: cy, w, h })
               setDraggingId(photoId)
               setSwapPreviewWithIndex(null)
               if (!pendingPointerCaptureRef.current) {
