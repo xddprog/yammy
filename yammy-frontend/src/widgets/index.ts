@@ -1,3 +1,3 @@
 export { Header } from './header'
 export { Navbar } from './navbar'
-export { stickyTopHeaderClassNames } from './page-chrome/pageChrome'
+export { stickyTopHeaderClassNames, topHeaderScrimClassNames } from './page-chrome/pageChrome'

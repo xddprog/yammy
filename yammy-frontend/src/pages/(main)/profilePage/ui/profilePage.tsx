@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { useFiltersState } from '@/features/matches-filter/model/useFiltersState'
+import { stickyTopHeaderClassNames } from '@/widgets'
 import { AVATAR_URL, PROFILE_PHOTOS } from './components/profile.constants'
 import { ProfileEditForm } from './components/profileEditForm'
 import { ProfileHeader } from './components/profileHeader'
@@ -40,40 +41,50 @@ const ProfilePage = (): JSX.Element => {
   const nonMainPhotos = photos.filter((photo) => !photo.isMain)
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto no-scrollbar pb-28 pt-[95px] text-foreground">
-      <div className="mx-auto flex min-h-full w-full max-w-md flex-col px-4 pb-6 pt-3">
-        <h1 className="text-[22px] font-bold uppercase leading-none tracking-tight text-white">Профиль</h1>
-        <ProfileHeader
-          screen={screen}
-          title={`Michael, ${Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)}`}
-          avatarUrl={mainPhoto?.url ?? AVATAR_URL}
-          onBack={() => setScreen('view')}
-          onSave={saveProfileSettings}
-          onOpenEdit={() => setScreen('edit')}
-          nonMainPhotos={nonMainPhotos}
-          onUploadMainPhoto={(url) => {
-            setPhotos((prev) => {
-              const demotedMain = prev.map((photo) =>
-                photo.isMain ? { ...photo, isMain: false } : photo,
-              )
-              return [{ id: `photo-main-${Date.now()}`, url, isMain: true }, ...demotedMain]
-            })
-          }}
-          onSetMainPhoto={(id) => {
-            setPhotos((prev) =>
-              prev.map((photo) => ({
-                ...photo,
-                isMain: photo.id === id,
-              })),
-            )
-          }}
-        />
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden overflow-x-hidden bg-background px-4 text-foreground">
+      <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none pb-28 no-scrollbar">
+        <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-6">
+          <header
+            className={stickyTopHeaderClassNames({ variant: 'background' })}
+            aria-hidden
+          />
+          <div>
+            <h1 className="mb-2 text-[22px] font-bold uppercase leading-none tracking-tight text-white">
+              Профиль
+            </h1>
+            <ProfileHeader
+              screen={screen}
+              title={`Michael, ${Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)}`}
+              avatarUrl={mainPhoto?.url ?? AVATAR_URL}
+              onBack={() => setScreen('view')}
+              onSave={saveProfileSettings}
+              onOpenEdit={() => setScreen('edit')}
+              nonMainPhotos={nonMainPhotos}
+              onUploadMainPhoto={(url) => {
+                setPhotos((prev) => {
+                  const demotedMain = prev.map((photo) =>
+                    photo.isMain ? { ...photo, isMain: false } : photo,
+                  )
+                  return [{ id: `photo-main-${Date.now()}`, url, isMain: true }, ...demotedMain]
+                })
+              }}
+              onSetMainPhoto={(id) => {
+                setPhotos((prev) =>
+                  prev.map((photo) => ({
+                    ...photo,
+                    isMain: photo.id === id,
+                  })),
+                )
+              }}
+            />
 
-        {screen === 'view' ? (
-          <ProfileView />
-        ) : (
-          <ProfileEditForm draft={draft} setDraft={setDraft} photos={photos} setPhotos={setPhotos} />
-        )}
+            {screen === 'view' ? (
+              <ProfileView />
+            ) : (
+              <ProfileEditForm draft={draft} setDraft={setDraft} photos={photos} setPhotos={setPhotos} />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

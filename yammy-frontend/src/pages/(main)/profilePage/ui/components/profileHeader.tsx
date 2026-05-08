@@ -34,8 +34,8 @@ export const ProfileHeader = ({
 
   return (
     <>
-      <header className="sticky top-0 z-30 -mx-1 mt-5 flex items-center justify-between bg-transparent px-1 py-1">
-        {screen === 'edit' ? (
+      {screen === 'edit' && (
+        <header className="relative z-10 -mx-1 mb-1 mt-2 flex min-h-11 items-center justify-between px-1 py-1">
           <button
             type="button"
             onClick={onBack}
@@ -44,10 +44,6 @@ export const ProfileHeader = ({
           >
             <ChevronLeft className="size-5" />
           </button>
-        ) : (
-          <span />
-        )}
-        {screen === 'edit' && (
           <button
             type="button"
             onClick={onSave}
@@ -56,10 +52,10 @@ export const ProfileHeader = ({
           >
             <Check className="size-5" strokeWidth={2.2} />
           </button>
-        )}
-      </header>
+        </header>
+      )}
 
-      <section className="flex flex-col items-center gap-2 pt-1">
+      <section className="flex flex-col items-center gap-2 pt-0">
         <div className="relative">
           <Image
             src={avatarUrl}
