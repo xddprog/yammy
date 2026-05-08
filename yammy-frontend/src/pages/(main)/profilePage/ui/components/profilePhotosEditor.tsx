@@ -25,26 +25,6 @@ const INDEX_BADGE_CLASS =
 const CORNER_BTN_CLASS =
   'pointer-events-auto absolute right-0 top-0 z-20 flex size-7 translate-x-[34%] -translate-y-[30%] items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/55'
 
-/** Проекция курсора на отрезок центр(источник)→центр(цель); t≈0.5 — середина пути. */
-function crossingTAlongSegment(
-  sourceRect: DOMRect,
-  targetRect: DOMRect,
-  clientX: number,
-  clientY: number,
-): number | null {
-  const sx = sourceRect.left + sourceRect.width / 2
-  const sy = sourceRect.top + sourceRect.height / 2
-  const tx = targetRect.left + targetRect.width / 2
-  const ty = targetRect.top + targetRect.height / 2
-  const dx = tx - sx
-  const dy = ty - sy
-  const len2 = dx * dx + dy * dy
-  if (len2 < 4) return null
-  const vx = clientX - sx
-  const vy = clientY - sy
-  return (vx * dx + vy * dy) / len2
-}
-
 /** Hit-test по внешним ячейкам сетки (они не двигаются transform’ом — без ложных переключений). */
 function pickSlotIndexUnderPointStable(
   clientX: number,
@@ -65,9 +45,9 @@ function pickSlotIndexUnderPointStable(
   return best?.i ?? null
 }
 
-/** Превью смещения цели: позже по пути к центру (не при первом входе в rect ячейки). */
-const SWAP_PREVIEW_CROSS_IN = 0.82
-const SWAP_PREVIEW_CROSS_OUT = 0.46
+/** Превью обмена: палец ближе к центру цели, чем к центру источника — не вдоль прямой между фото. */
+const SWAP_CLOSER_MARGIN_ENTER_PX = 14
+const SWAP_CLOSER_MARGIN_EXIT_PX = 6
 
 function usePhotoReorderMode(): 'html5' | 'pointer' {
   const [mode, setMode] = useState<'html5' | 'pointer'>('html5')
@@ -119,6 +99,18 @@ export const ProfilePhotosEditor = ({
   const [isMainPhotoMenuOpen, setIsMainPhotoMenuOpen] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [swapPreviewWithIndex, setSwapPreviewWithIndex] = useState<number | null>(null)
+  const swapPreviewSyncRef = useRef<number | null>(null)
+  useEffect(() => {
+    swapPreviewSyncRef.current = swapPreviewWithIndex
+  }, [swapPreviewWithIndex])
+  /** Свободное следование за пальцем (Telegram / touch). */
+  const [pointerFollow, setPointerFollow] = useState<{
+    x: number
+    y: number
+    w: number
+    h: number
+  } | null>(null)
+  const pointerFloatMetricsRef = useRef<{ w: number; h: number } | null>(null)
 
   const mainPhoto = photos.find((p) => p.isMain) ?? photos[0]
   const nonMain = photos.filter((p) => !p.isMain)
@@ -210,6 +202,8 @@ export const ProfilePhotosEditor = ({
     draggedPhotoIdRef.current = null
     dragSourceIndexRef.current = null
     slotRectsSnapshotRef.current = null
+    pointerFloatMetricsRef.current = null
+    setPointerFollow(null)
     setDraggingId(null)
     setSwapPreviewWithIndex(null)
   }
@@ -238,20 +232,24 @@ export const ProfilePhotosEditor = ({
       return
     }
 
-    const t = crossingTAlongSegment(snap[from], snap[hovered], clientX, clientY)
-    if (t == null) {
-      setSwapPreviewWithIndex((p) => (p === null ? p : null))
-      return
-    }
+    const rcF = snap[from]
+    const rcH = snap[hovered]
+    const sx = rcF.left + rcF.width / 2
+    const sy = rcF.top + rcF.height / 2
+    const tx = rcH.left + rcH.width / 2
+    const ty = rcH.top + rcH.height / 2
+    const distSource = Math.hypot(clientX - sx, clientY - sy)
+    const distTarget = Math.hypot(clientX - tx, clientY - ty)
+    const margin = distSource - distTarget
 
     setSwapPreviewWithIndex((prev) => {
       if (prev == null) {
-        return t >= SWAP_PREVIEW_CROSS_IN ? hovered : null
+        return margin > SWAP_CLOSER_MARGIN_ENTER_PX ? hovered : null
       }
       if (prev === hovered) {
-        return t < SWAP_PREVIEW_CROSS_OUT ? null : hovered
+        return margin < SWAP_CLOSER_MARGIN_EXIT_PX ? null : hovered
       }
-      return t >= SWAP_PREVIEW_CROSS_IN ? hovered : null
+      return margin > SWAP_CLOSER_MARGIN_ENTER_PX ? hovered : null
     })
   }, [])
 
@@ -335,6 +333,22 @@ export const ProfilePhotosEditor = ({
           onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
             if (pointerReorderActiveRef.current) {
               event.preventDefault()
+              if (pointerFloatMetricsRef.current == null) {
+                const fromIdx = dragSourceIndexRef.current
+                const sr =
+                  fromIdx != null ? slotRectsSnapshotRef.current?.[fromIdx] : null
+                pointerFloatMetricsRef.current = {
+                  w: sr?.width ?? 96,
+                  h: sr?.height ?? 96,
+                }
+              }
+              const m = pointerFloatMetricsRef.current
+              setPointerFollow({
+                x: event.clientX,
+                y: event.clientY,
+                w: m.w,
+                h: m.h,
+              })
               updateSwapPreviewAt(event.clientX, event.clientY)
               return
             }
@@ -354,11 +368,15 @@ export const ProfilePhotosEditor = ({
             if (pointerReorderActiveRef.current) {
               event.preventDefault()
               const from = dragSourceIndexRef.current
-              const hid = pickSlotIndexUnderPointStable(
+              let hid = pickSlotIndexUnderPointStable(
                 event.clientX,
                 event.clientY,
                 slotCellRefs.current,
               )
+              const previewJ = swapPreviewSyncRef.current
+              if ((hid == null || hid === from) && previewJ != null && previewJ !== from) {
+                hid = previewJ
+              }
               const nm = photosRef.current.filter((p) => !p.isMain)
               if (from != null && hid != null && hid !== from) {
                 const targetPhoto = nm[hid]
@@ -454,6 +472,9 @@ export const ProfilePhotosEditor = ({
   const previewTransition =
     'transition-[transform,opacity] duration-[1200ms] ease-[cubic-bezier(0.17,0.99,0.28,1)] will-change-transform'
 
+  const pointerFloatPhoto =
+    draggingId != null ? (photos.find((p) => p.id === draggingId) ?? null) : null
+
   return (
     <section>
       <input
@@ -537,6 +558,10 @@ export const ProfilePhotosEditor = ({
                     draggable={reorderMode === 'html5'}
                     className={cn(
                       'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
+                      reorderMode === 'pointer' &&
+                        pointerFollow != null &&
+                        draggingId === photo.id &&
+                        'opacity-0',
                     )}
                     {...getPhotoDragSourceHandlers(photo.id)}
                   >
@@ -594,6 +619,10 @@ export const ProfilePhotosEditor = ({
                     draggable={reorderMode === 'html5'}
                     className={cn(
                       'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
+                      reorderMode === 'pointer' &&
+                        pointerFollow != null &&
+                        draggingId === photo.id &&
+                        'opacity-0',
                     )}
                     {...getPhotoDragSourceHandlers(photo.id)}
                   >
@@ -684,6 +713,26 @@ export const ProfilePhotosEditor = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {pointerFollow != null && reorderMode === 'pointer' && pointerFloatPhoto ? (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed z-[85] overflow-hidden rounded-2xl border border-white/15 shadow-2xl"
+          style={{
+            left: pointerFollow.x,
+            top: pointerFollow.y,
+            width: pointerFollow.w,
+            height: pointerFollow.h,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <Image
+            src={pointerFloatPhoto.url}
+            alt=""
+            className="size-full object-cover"
+          />
+        </div>
+      ) : null}
 
       <p className="mt-3 text-center text-[12px] font-light text-muted-foreground">
         {reorderMode === 'pointer'
