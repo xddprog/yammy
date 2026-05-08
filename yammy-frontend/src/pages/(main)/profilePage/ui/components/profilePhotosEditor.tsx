@@ -179,17 +179,20 @@ export const ProfilePhotosEditor = ({
   }
 
   const clearDragVisual = () => {
-    if (pendingPointerCaptureRef.current) {
-      const { el, pointerId } = pendingPointerCaptureRef.current
+    const cap = pendingPointerCaptureRef.current
+    pendingPointerCaptureRef.current = null
+
+    const releaseCaptureLater = () => {
+      if (!cap) return
       try {
-        if (typeof el.hasPointerCapture === 'function' && el.hasPointerCapture(pointerId)) {
-          el.releasePointerCapture(pointerId)
+        if (typeof cap.el.hasPointerCapture === 'function' && cap.el.hasPointerCapture(cap.pointerId)) {
+          cap.el.releasePointerCapture(cap.pointerId)
         }
       } catch {
-        // releasePointerCapture may throw if pointer already gone
+        // ignore
       }
-      pendingPointerCaptureRef.current = null
     }
+
     pointerReorderActiveRef.current = false
     pointerHoldPhotoIdRef.current = null
     pointerStartRef.current = null
@@ -206,6 +209,12 @@ export const ProfilePhotosEditor = ({
     setPointerFollow(null)
     setDraggingId(null)
     setSwapPreviewWithIndex(null)
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        releaseCaptureLater()
+      })
+    })
   }
 
   const updateSwapPreviewAt = useCallback((clientX: number, clientY: number) => {
@@ -610,7 +619,10 @@ export const ProfilePhotosEditor = ({
             >
               {photo ? (
                 <div
-                  className={cn(previewTransition, 'h-full min-h-0')}
+                  className={cn(
+                    draggingId != null ? previewTransition : 'transition-none',
+                    'h-full min-h-0',
+                  )}
                   style={slotPreviewStyle(slotIndex)}
                 >
                   <div
@@ -675,7 +687,10 @@ export const ProfilePhotosEditor = ({
             >
               {photo ? (
                 <div
-                  className={cn(previewTransition, 'h-full min-h-0')}
+                  className={cn(
+                    draggingId != null ? previewTransition : 'transition-none',
+                    'h-full min-h-0',
+                  )}
                   style={slotPreviewStyle(slotIndex)}
                 >
                   <div
