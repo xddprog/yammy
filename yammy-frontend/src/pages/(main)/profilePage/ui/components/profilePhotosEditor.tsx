@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { ImagePlus, SquarePen, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -318,18 +319,23 @@ export const ProfilePhotosEditor = ({
             const el = event.currentTarget
             const pointerId = event.pointerId
             if (event.pointerType === 'touch') {
-              event.preventDefault()
-              try {
-                el.setPointerCapture(pointerId)
-                pendingPointerCaptureRef.current = { el, pointerId }
-              } catch {
-                pendingPointerCaptureRef.current = null
-              }
+              const target = el
+              const pid = pointerId
+              const heldId = photoId
+              queueMicrotask(() => {
+                if (!pointerDownActiveRef.current || pointerHoldPhotoIdRef.current !== heldId) return
+                try {
+                  target.setPointerCapture(pid)
+                  pendingPointerCaptureRef.current = { el: target, pointerId: pid }
+                } catch {
+                  pendingPointerCaptureRef.current = null
+                }
+              })
             }
             holdTimerRef.current = window.setTimeout(() => {
               if (!pointerDownActiveRef.current || pointerHoldPhotoIdRef.current !== photoId) return
               didTriggerHoldHapticRef.current = true
-              triggerHaptic()
+              triggerHaptic({ style: 'medium'})
               pointerReorderActiveRef.current = true
               draggedPhotoIdRef.current = photoId
               const nm = photosRef.current.filter((p) => !p.isMain)
@@ -346,11 +352,14 @@ export const ProfilePhotosEditor = ({
               const h = sr?.height ?? 96
               pointerFloatMetricsRef.current = { w, h }
               const elR = el.getBoundingClientRect()
-              const cx = sr ? sr.left + sr.width / 2 : elR.left + elR.width / 2
-              const cy = sr ? sr.top + sr.height / 2 : elR.top + elR.height / 2
-              setPointerFollow({ x: cx, y: cy, w, h })
-              setDraggingId(photoId)
-              setSwapPreviewWithIndex(null)
+              const st = pointerStartRef.current
+              const cx = st?.x ?? (sr ? sr.left + sr.width / 2 : elR.left + elR.width / 2)
+              const cy = st?.y ?? (sr ? sr.top + sr.height / 2 : elR.top + elR.height / 2)
+              flushSync(() => {
+                setPointerFollow({ x: cx, y: cy, w, h })
+                setDraggingId(photoId)
+                setSwapPreviewWithIndex(null)
+              })
               if (!pendingPointerCaptureRef.current) {
                 try {
                   el.setPointerCapture(pointerId)
@@ -641,10 +650,7 @@ export const ProfilePhotosEditor = ({
                     className={cn(
                       'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
                       reorderMode === 'pointer' && 'touch-none',
-                      reorderMode === 'pointer' &&
-                        pointerFollow != null &&
-                        draggingId === photo.id &&
-                        'opacity-0',
+                      reorderMode === 'pointer' && draggingId === photo.id && 'opacity-0',
                     )}
                     {...getPhotoDragSourceHandlers(photo.id)}
                   >
@@ -709,10 +715,7 @@ export const ProfilePhotosEditor = ({
                     className={cn(
                       'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
                       reorderMode === 'pointer' && 'touch-none',
-                      reorderMode === 'pointer' &&
-                        pointerFollow != null &&
-                        draggingId === photo.id &&
-                        'opacity-0',
+                      reorderMode === 'pointer' && draggingId === photo.id && 'opacity-0',
                     )}
                     {...getPhotoDragSourceHandlers(photo.id)}
                   >
