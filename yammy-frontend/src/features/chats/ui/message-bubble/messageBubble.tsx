@@ -3,6 +3,7 @@ import { Reply } from 'lucide-react'
 import { useRef } from 'react'
 
 import { cn, Image, useOverlay } from '@/shared'
+import { triggerHaptic } from '@/shared/lib/haptics'
 
 interface MessageBubbleProps {
   id: string
@@ -15,25 +16,6 @@ interface MessageBubbleProps {
   replyToName?: string
   onOpenMenu?: (id: string, rect: DOMRect) => void
   onSwipeReply?: () => void
-}
-
-const triggerHaptic = () => {
-  const telegramWebApp = (window as Window & { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp as
-    | {
-        HapticFeedback?: {
-          impactOccurred?: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void
-        }
-      }
-    | undefined
-
-  if (telegramWebApp?.HapticFeedback?.impactOccurred) {
-    telegramWebApp.HapticFeedback.impactOccurred('light')
-    return
-  }
-
-  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-    navigator.vibrate(18)
-  }
 }
 
 export const MessageBubble = ({

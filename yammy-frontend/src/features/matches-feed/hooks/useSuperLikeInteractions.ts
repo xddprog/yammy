@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { triggerHaptic } from '@/shared/lib/haptics'
+
 export interface UseSuperLikeInteractionsOptions {
   onLike?: () => void
   onSuperLike?: () => void
@@ -47,10 +49,7 @@ export function useSuperLikeInteractions({
       longPressTimerRef.current = window.setTimeout(() => {
         didLongPressRef.current = true
         setIsSuperLikeMode(true)
-
-        if (navigator.vibrate) {
-          navigator.vibrate(40)
-        }
+        triggerHaptic({ style: 'medium', vibrateMs: 40 })
       }, longPressMs)
     },
     [longPressMs],

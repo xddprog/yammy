@@ -9,7 +9,7 @@ const LikesPage = (): JSX.Element => {
   const { openProfileDetails } = useMatchesOverlay()
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto no-scrollbar pb-4 pt-[7px]">
+    <div className="h-full min-h-0 overflow-y-auto no-scrollbar px-4 pb-4 pt-[102px]">
       <h1 className="mb-4 text-[22px] font-bold uppercase leading-none tracking-tight text-white">Лайки</h1>
       <div className="grid grid-cols-2 gap-[15px]">
         {MOCK_LIKES.map((item) => ( 

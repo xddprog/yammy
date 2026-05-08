@@ -3,17 +3,26 @@ import { useEffect, useState } from 'react'
 
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { useFiltersState } from '@/features/matches-filter/model/useFiltersState'
-import { AVATAR_URL } from './components/profile.constants'
+import { AVATAR_URL, PROFILE_PHOTOS } from './components/profile.constants'
 import { ProfileEditForm } from './components/profileEditForm'
 import { ProfileHeader } from './components/profileHeader'
 import { ProfileView } from './components/profileView'
 
 type ProfileScreen = 'view' | 'edit'
+export interface ProfilePhotoItem {
+  id: string
+  url: string
+  isMain: boolean
+}
 
 const ProfilePage = (): JSX.Element => {
   const filters = useFiltersState()
   const [screen, setScreen] = useState<ProfileScreen>('view')
   const [draft, setDraft] = useState<FiltersState>(filters.state)
+  const [photos, setPhotos] = useState<ProfilePhotoItem[]>([
+    { id: 'photo-main', url: AVATAR_URL, isMain: true },
+    ...PROFILE_PHOTOS.map((url, index) => ({ id: `photo-${index}`, url, isMain: false })),
+  ])
 
   useEffect(() => {
     if (screen === 'view') {
@@ -27,23 +36,43 @@ const ProfilePage = (): JSX.Element => {
     setScreen('view')
   }
 
+  const mainPhoto = photos.find((photo) => photo.isMain) ?? photos[0]
+  const nonMainPhotos = photos.filter((photo) => !photo.isMain)
+
   return (
-    <div className="h-full min-h-0 overflow-y-auto no-scrollbar pb-28 text-foreground">
-      <div className="mx-auto flex min-h-full w-full max-w-md flex-col px-0 pb-6 pt-3">
+    <div className="h-full min-h-0 overflow-y-auto no-scrollbar pb-28 pt-[95px] text-foreground">
+      <div className="mx-auto flex min-h-full w-full max-w-md flex-col px-4 pb-6 pt-3">
         <h1 className="text-[22px] font-bold uppercase leading-none tracking-tight text-white">Профиль</h1>
         <ProfileHeader
           screen={screen}
           title={`Michael, ${Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)}`}
-          avatarUrl={AVATAR_URL}
+          avatarUrl={mainPhoto?.url ?? AVATAR_URL}
           onBack={() => setScreen('view')}
           onSave={saveProfileSettings}
           onOpenEdit={() => setScreen('edit')}
+          nonMainPhotos={nonMainPhotos}
+          onUploadMainPhoto={(url) => {
+            setPhotos((prev) => {
+              const demotedMain = prev.map((photo) =>
+                photo.isMain ? { ...photo, isMain: false } : photo,
+              )
+              return [{ id: `photo-main-${Date.now()}`, url, isMain: true }, ...demotedMain]
+            })
+          }}
+          onSetMainPhoto={(id) => {
+            setPhotos((prev) =>
+              prev.map((photo) => ({
+                ...photo,
+                isMain: photo.id === id,
+              })),
+            )
+          }}
         />
 
         {screen === 'view' ? (
           <ProfileView />
         ) : (
-          <ProfileEditForm draft={draft} setDraft={setDraft} />
+          <ProfileEditForm draft={draft} setDraft={setDraft} photos={photos} setPhotos={setPhotos} />
         )}
       </div>
     </div>
