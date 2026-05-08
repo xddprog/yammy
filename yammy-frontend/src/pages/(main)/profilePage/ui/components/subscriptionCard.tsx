@@ -4,7 +4,7 @@ import type { JSX } from 'react'
 import { Button } from '@/shared'
 
 export const SubscriptionCard = (): JSX.Element => (
-  <section className="overflow-hidden rounded-[30px] bg-white p-5 text-black mt-5">
+  <section className="overflow-hidden rounded-[30px] bg-white p-5 text-black">
     <div className="mb-4 flex items-end justify-between gap-3">
       <p className="text-[28px] font-bold leading-none">Match+</p>
       <Crown className="size-10 shrink-0 text-[#FF6BA4]" />

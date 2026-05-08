@@ -38,7 +38,7 @@ const ProfilePage = (): JSX.Element => {
   }
 
   const mainPhoto = photos.find((photo) => photo.isMain) ?? photos[0]
-  const nonMainPhotos = photos.filter((photo) => !photo.isMain)
+  const profileTitle = `Michael, ${Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)}`
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden overflow-x-hidden bg-background px-4 text-foreground">
@@ -49,39 +49,22 @@ const ProfilePage = (): JSX.Element => {
             aria-hidden
           />
           <div>
-            <h1 className="mb-2 text-[22px] font-bold uppercase leading-none tracking-tight text-white">
-              Профиль
-            </h1>
-            <ProfileHeader
-              screen={screen}
-              title={`Michael, ${Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)}`}
-              avatarUrl={mainPhoto?.url ?? AVATAR_URL}
-              onBack={() => setScreen('view')}
-              onSave={saveProfileSettings}
-              onOpenEdit={() => setScreen('edit')}
-              nonMainPhotos={nonMainPhotos}
-              onUploadMainPhoto={(url) => {
-                setPhotos((prev) => {
-                  const demotedMain = prev.map((photo) =>
-                    photo.isMain ? { ...photo, isMain: false } : photo,
-                  )
-                  return [{ id: `photo-main-${Date.now()}`, url, isMain: true }, ...demotedMain]
-                })
-              }}
-              onSetMainPhoto={(id) => {
-                setPhotos((prev) =>
-                  prev.map((photo) => ({
-                    ...photo,
-                    isMain: photo.id === id,
-                  })),
-                )
-              }}
-            />
-
-            {screen === 'view' ? (
-              <ProfileView />
+            {screen === 'edit' ? (
+              <>
+                <ProfileHeader onBack={() => setScreen('view')} onSave={saveProfileSettings} />
+                <ProfileEditForm draft={draft} setDraft={setDraft} photos={photos} setPhotos={setPhotos} />
+              </>
             ) : (
-              <ProfileEditForm draft={draft} setDraft={setDraft} photos={photos} setPhotos={setPhotos} />
+              <>
+                <h1 className="mb-2 text-[22px] font-bold uppercase leading-none tracking-tight text-white">
+                  Профиль
+                </h1>
+                <ProfileView
+                  avatarUrl={mainPhoto?.url ?? AVATAR_URL}
+                  profileTitle={profileTitle}
+                  onOpenEdit={() => setScreen('edit')}
+                />
+              </>
             )}
           </div>
         </div>

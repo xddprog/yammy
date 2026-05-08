@@ -1,22 +1,19 @@
 import type React from 'react'
-import { useRef } from 'react'
-import { X } from 'lucide-react'
 
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import type { FiltersState } from '@/features/matches-filter/model/types'
-import { Image, cn } from '@/shared'
-import { triggerHaptic } from '@/shared/lib/haptics'
+import { cn } from '@/shared'
 
 import {
   CITY_MOCK_OPTIONS,
   EDUCATION_INSTITUTION_MOCK_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
-  MAX_PROFILE_PHOTOS,
   RELATIONSHIP_GOAL_OPTIONS,
   WORK_SPHERE_MOCK_OPTIONS,
 } from './profile.constants'
 import type { ProfilePhotoItem } from '../profilePage'
 import { ProfileAutocompleteRow } from './profileAutocompleteRow'
+import { ProfilePhotosEditor } from './profilePhotosEditor'
 
 interface ProfileEditFormProps {
   draft: FiltersState
@@ -31,13 +28,6 @@ export const ProfileEditForm = ({
   photos,
   setPhotos,
 }: ProfileEditFormProps): React.JSX.Element => {
-  const draggedPhotoIdRef = useRef<string | null>(null)
-  const photosInputRef = useRef<HTMLInputElement>(null)
-  const holdTimerRef = useRef<number | null>(null)
-  const didTriggerHoldHapticRef = useRef(false)
-  const transparentDragImageRef = useRef<HTMLImageElement | null>(null)
-  const nonMainPhotos = photos.filter((photo) => !photo.isMain)
-  const emptySlots = Math.max(0, MAX_PROFILE_PHOTOS - nonMainPhotos.length)
   const educationLevelLabel =
     EDUCATION_LEVEL_OPTIONS.find(
       (option) => option.value === draft.educationLevel || option.label === draft.educationLevel,
@@ -50,130 +40,9 @@ export const ProfileEditForm = ({
   const userAge = Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)
   const { data: filtersMetadata } = useFiltersMetadata()
 
-  const removePhoto = (id: string) => {
-    setPhotos((prev) => prev.filter((photo) => photo.id !== id))
-  }
-
-  const clearHoldTimer = () => {
-    if (holdTimerRef.current != null) {
-      window.clearTimeout(holdTimerRef.current)
-      holdTimerRef.current = null
-    }
-  }
-
   return (
     <section className="flex flex-col gap-3">
-      <input
-        ref={photosInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={(event) => {
-          const selected = Array.from(event.target.files ?? [])
-          if (!selected.length) return
-          setPhotos((prev) => {
-            const currentNonMain = prev.filter((photo) => !photo.isMain)
-            const available = Math.max(0, MAX_PROFILE_PHOTOS - currentNonMain.length)
-            const nextFiles = selected.slice(0, available)
-            const nextPhotos = nextFiles.map((file, index) => ({
-              id: `photo-upload-${Date.now()}-${index}`,
-              url: URL.createObjectURL(file),
-              isMain: false,
-            }))
-            return [...prev, ...nextPhotos]
-          })
-          event.currentTarget.value = ''
-        }}
-      />
-
-      <div className="rounded-[28px] bg-card p-3">
-        <div className="-mx-1 px-1">
-          <div className="flex min-w-0 gap-2 overflow-x-auto overflow-y-visible px-1 pb-3 -mb-3 no-scrollbar">
-          {nonMainPhotos.map((photo, index) => (
-            <div
-              key={photo.id}
-              draggable
-              onPointerDown={() => {
-                didTriggerHoldHapticRef.current = false
-                clearHoldTimer()
-                holdTimerRef.current = window.setTimeout(() => {
-                  didTriggerHoldHapticRef.current = true
-                  triggerHaptic()
-                }, 180)
-              }}
-              onPointerUp={clearHoldTimer}
-              onPointerLeave={clearHoldTimer}
-              onPointerCancel={clearHoldTimer}
-              onDragStart={(event) => {
-                clearHoldTimer()
-                if (!didTriggerHoldHapticRef.current) {
-                  triggerHaptic()
-                }
-                if (!transparentDragImageRef.current) {
-                  const image = new window.Image()
-                  image.src =
-                    'data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%221%22 height=%221%22/%3E'
-                  transparentDragImageRef.current = image
-                }
-                const dragImage = transparentDragImageRef.current
-                if (dragImage) {
-                  event.dataTransfer.setDragImage(dragImage, 0, 0)
-                }
-                draggedPhotoIdRef.current = photo.id
-              }}
-              onDragOver={(event) => {
-                event.preventDefault()
-              }}
-              onDrop={(event) => {
-                event.preventDefault()
-                const draggedId = draggedPhotoIdRef.current
-                if (!draggedId || draggedId === photo.id) return
-                setPhotos((prev) => {
-                  const main = prev.find((item) => item.isMain)
-                  const nonMain = prev.filter((item) => !item.isMain)
-                  const from = nonMain.findIndex((item) => item.id === draggedId)
-                  const to = nonMain.findIndex((item) => item.id === photo.id)
-                  if (from < 0 || to < 0) return prev
-                  const reordered = [...nonMain]
-                  const [moved] = reordered.splice(from, 1)
-                  reordered.splice(to, 0, moved)
-                  return main ? [main, ...reordered] : reordered
-                })
-                draggedPhotoIdRef.current = null
-              }}
-              className="relative h-[130px] w-[90px] shrink-0 overflow-visible"
-            >
-              <div className="h-full w-full overflow-hidden rounded-[18px] bg-transparent">
-                <Image
-                  src={photo.url}
-                  alt={`Доп фото ${index + 1}`}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => removePhoto(photo.id)}
-                className="absolute -bottom-2 -right-2 flex size-8 items-center justify-center rounded-full bg-[#FF4F88] text-white shadow-lg"
-                aria-label="Удалить фото"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-          ))}
-          {Array.from({ length: emptySlots }).map((_, index) => (
-            <button
-              key={`empty-slot-${index}`}
-              type="button"
-              onClick={() => photosInputRef.current?.click()}
-              className="flex h-[130px] w-[90px] shrink-0 items-center justify-center rounded-[18px] bg-[#0D0D0D] text-muted-foreground"
-            >
-              <span className="text-[34px] leading-none">+</span>
-            </button>
-          ))}
-          </div>
-        </div>
-      </div>
+      <ProfilePhotosEditor photos={photos} setPhotos={setPhotos} />
 
       <ProfileAutocompleteRow
         label="Возраст"
