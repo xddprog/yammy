@@ -42,7 +42,7 @@ const ChatsPage = (): JSX.Element => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.22, ease: headerEase }}
-                className="text-[28px] font-bold leading-none tracking-tight text-foreground"
+                className="text-[22px] font-bold uppercase leading-none tracking-tight text-foreground"
               >
                 Чаты
               </motion.h1>

@@ -21,7 +21,7 @@ export const ProfileHeader = ({
   onOpenEdit,
 }: ProfileHeaderProps): JSX.Element => (
   <>
-    <header className="flex items-center justify-between">
+    <header className="flex items-center mt-5 justify-between">
       {screen === 'edit' ? (
         <button
           type="button"
@@ -47,12 +47,18 @@ export const ProfileHeader = ({
       )}
     </header>
 
-    <section className="flex flex-col items-center gap-3 pt-1">
-      <Image src={avatarUrl} alt="Profile avatar" className="size-[118px] rounded-[30px] object-cover" />
-      <h1 className="text-center text-[28px] font-bold leading-none tracking-tight">{title}</h1>
+    <section className="flex flex-col items-center gap-2 pt-1">
+      <Image src={avatarUrl} alt="Profile avatar" className="h-[150px] w-[110px] rounded-[22px] object-cover" />
+      <h1 className="text-center text-[22px] mt-3 font-[300] leading-none tracking-tight">{title}</h1>
       {screen === 'view' ? (
-        <Button type="button" onClick={onOpenEdit} variant="default" size="lg" className="h-11 min-w-[220px] text-base font-[200]">
-          Edit profile info
+        <Button
+          type="button"
+          onClick={onOpenEdit}
+          variant="default"
+          size="sm"
+          className="h-10 min-w-[200px] text-[13px] font-[200]"
+        >
+          Редактировать
         </Button>
       ) : null}
     </section>

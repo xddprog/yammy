@@ -7,10 +7,10 @@ export const ProfileView = (): JSX.Element => (
   <>
     <SubscriptionCard />
 
-    <section className="flex flex-col gap-3">
-      <SettingsRow label="Notifications" value="All" />
-      <SettingsRow label="Payment methods" value="Card •••• 1057" />
-      <SettingsRow label="Referral link" value="yammy.app/invite/michael" />
+    <section className="flex flex-col gap-1.5 mt-5">
+      <SettingsRow label="Уведомления" value="On" />
+      <SettingsRow label="Способ оплаты" value="•••• 1057" />
+      <SettingsRow label="Рефералы" value="7" />
     </section>
   </>
 )

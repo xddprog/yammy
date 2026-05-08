@@ -29,7 +29,8 @@ const ProfilePage = (): JSX.Element => {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto no-scrollbar pb-28 text-foreground">
-      <div className="mx-auto flex min-h-full w-full max-w-md flex-col gap-4 px-0 pb-6 pt-3">
+      <div className="mx-auto flex min-h-full w-full max-w-md flex-col px-0 pb-6 pt-3">
+        <h1 className="text-[22px] font-bold uppercase leading-none tracking-tight text-white">Профиль</h1>
         <ProfileHeader
           screen={screen}
           title={`Michael, ${Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)}`}
