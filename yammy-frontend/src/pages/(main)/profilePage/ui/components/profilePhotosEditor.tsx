@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ImagePlus, SquarePen, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -25,18 +25,100 @@ const INDEX_BADGE_CLASS =
 const CORNER_BTN_CLASS =
   'pointer-events-auto absolute right-0 top-0 z-20 flex size-7 translate-x-[34%] -translate-y-[30%] items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/55'
 
+/** Проекция курсора на отрезок центр(источник)→центр(цель); t≈0.5 — середина пути. */
+function crossingTAlongSegment(
+  sourceRect: DOMRect,
+  targetRect: DOMRect,
+  clientX: number,
+  clientY: number,
+): number | null {
+  const sx = sourceRect.left + sourceRect.width / 2
+  const sy = sourceRect.top + sourceRect.height / 2
+  const tx = targetRect.left + targetRect.width / 2
+  const ty = targetRect.top + targetRect.height / 2
+  const dx = tx - sx
+  const dy = ty - sy
+  const len2 = dx * dx + dy * dy
+  if (len2 < 4) return null
+  const vx = clientX - sx
+  const vy = clientY - sy
+  return (vx * dx + vy * dy) / len2
+}
+
+/** Hit-test по внешним ячейкам сетки (они не двигаются transform’ом — без ложных переключений). */
+function pickSlotIndexUnderPointStable(
+  clientX: number,
+  clientY: number,
+  cells: Array<HTMLDivElement | null | undefined>,
+): number | null {
+  let best: { i: number; d2: number } | null = null
+  for (let i = 0; i < cells.length; i++) {
+    const el = cells[i]
+    if (!el) continue
+    const r = el.getBoundingClientRect()
+    if (clientX < r.left || clientX > r.right || clientY < r.top || clientY > r.bottom) continue
+    const cx = r.left + r.width / 2
+    const cy = r.top + r.height / 2
+    const d2 = (clientX - cx) ** 2 + (clientY - cy) ** 2
+    if (!best || d2 < best.d2) best = { i, d2 }
+  }
+  return best?.i ?? null
+}
+
+/** Превью смещения цели: позже по пути к центру (не при первом входе в rect ячейки). */
+const SWAP_PREVIEW_CROSS_IN = 0.82
+const SWAP_PREVIEW_CROSS_OUT = 0.46
+
+function usePhotoReorderMode(): 'html5' | 'pointer' {
+  const [mode, setMode] = useState<'html5' | 'pointer'>('html5')
+  useEffect(() => {
+    const w = window as Window & { Telegram?: { WebApp?: unknown } }
+    if (w.Telegram?.WebApp != null) {
+      setMode('pointer')
+      return
+    }
+    const mq = window.matchMedia('(hover: none) and (pointer: coarse)')
+    const apply = () => setMode(mq.matches ? 'pointer' : 'html5')
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+  return mode
+}
+
 export const ProfilePhotosEditor = ({
   photos,
   setPhotos,
 }: ProfilePhotosEditorProps): React.JSX.Element => {
+  const reorderMode = usePhotoReorderMode()
+  const photosRef = useRef(photos)
+  photosRef.current = photos
+
   const draggedPhotoIdRef = useRef<string | null>(null)
   const extrasInputRef = useRef<HTMLInputElement>(null)
   const mainInputRef = useRef<HTMLInputElement>(null)
   const holdTimerRef = useRef<number | null>(null)
   const didTriggerHoldHapticRef = useRef(false)
+  const dragSourceIndexRef = useRef<number | null>(null)
+  const slotRectsSnapshotRef = useRef<DOMRect[] | null>(null)
+  const slotCellRefs = useRef<Array<HTMLDivElement | null>>([])
+  /** Скрываем исходную ячейку после того, как браузер снял drag-preview — иначе «две копии». */
+  const dragSourceElRef = useRef<HTMLDivElement | null>(null)
+  const pointerDownActiveRef = useRef(false)
+  const pointerReorderActiveRef = useRef(false)
+  const pointerHoldPhotoIdRef = useRef<string | null>(null)
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null)
+  const pendingPointerCaptureRef = useRef<{
+    pointerId: number
+    el: HTMLDivElement
+  } | null>(null)
+
+  const HOLD_MS = 180
+  const MOVE_CANCEL_HOLD_PX = 14
+
   const [isMainPhotoMenuOpen, setIsMainPhotoMenuOpen] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [swapPreviewWithIndex, setSwapPreviewWithIndex] = useState<number | null>(null)
 
   const mainPhoto = photos.find((p) => p.isMain) ?? photos[0]
   const nonMain = photos.filter((p) => !p.isMain)
@@ -44,6 +126,25 @@ export const ProfilePhotosEditor = ({
     { length: MAX_PROFILE_PHOTOS },
     (_, i) => nonMain[i] ?? null,
   )
+
+  const setSlotRef = useCallback((index: number) => (el: HTMLDivElement | null) => {
+    slotCellRefs.current[index] = el
+  }, [])
+
+  const slotPreviewStyle = (slotIndex: number): React.CSSProperties | undefined => {
+    if (draggingId == null) return undefined
+    const i = dragSourceIndexRef.current
+    const j = swapPreviewWithIndex
+    const snap = slotRectsSnapshotRef.current
+    if (i == null || j == null || i === j || !snap?.[i] || !snap?.[j]) return undefined
+    const rI = snap[i]
+    const rJ = snap[j]
+    const dLeft = rJ.left - rI.left
+    const dTop = rJ.top - rI.top
+    if (slotIndex === i) return { transform: `translate(${dLeft}px, ${dTop}px)` }
+    if (slotIndex === j) return { transform: `translate(${-dLeft}px, ${-dTop}px)` }
+    return undefined
+  }
 
   const removePhoto = (id: string) => {
     setPhotos((prev) => prev.filter((p) => p.id !== id))
@@ -85,78 +186,273 @@ export const ProfilePhotosEditor = ({
     setPhotos((prev) => prev.map((p) => ({ ...p, isMain: p.id === id })))
   }
 
-  const getPhotoDragHandlers = useCallback(
-    (photoId: string) => ({
-      onPointerDown: () => {
-        didTriggerHoldHapticRef.current = false
-        clearHoldTimer()
-        holdTimerRef.current = window.setTimeout(() => {
-          didTriggerHoldHapticRef.current = true
-          triggerHaptic()
-        }, 180)
-      },
-      onPointerUp: clearHoldTimer,
-      onPointerLeave: clearHoldTimer,
-      onPointerCancel: clearHoldTimer,
-      onDragStart: (event: React.DragEvent<HTMLDivElement>) => {
-        clearHoldTimer()
-        if (!didTriggerHoldHapticRef.current) triggerHaptic()
-        event.dataTransfer.effectAllowed = 'move'
-        event.dataTransfer.setData('text/plain', photoId)
-        const img = event.currentTarget.querySelector('img')
-        if (img instanceof HTMLImageElement) {
-          const w = img.offsetWidth || img.clientWidth
-          const h = img.offsetHeight || img.clientHeight
-          if (w > 0 && h > 0) {
-            event.dataTransfer.setDragImage(img, Math.round(w / 2), Math.round(h / 2))
-          }
+  const clearDragVisual = () => {
+    if (pendingPointerCaptureRef.current) {
+      const { el, pointerId } = pendingPointerCaptureRef.current
+      try {
+        if (typeof el.hasPointerCapture === 'function' && el.hasPointerCapture(pointerId)) {
+          el.releasePointerCapture(pointerId)
         }
-        draggedPhotoIdRef.current = photoId
-        setDraggingId(photoId)
-      },
+      } catch {
+        // releasePointerCapture may throw if pointer already gone
+      }
+      pendingPointerCaptureRef.current = null
+    }
+    pointerReorderActiveRef.current = false
+    pointerHoldPhotoIdRef.current = null
+    pointerStartRef.current = null
+    pointerDownActiveRef.current = false
+
+    if (dragSourceElRef.current) {
+      dragSourceElRef.current.style.opacity = ''
+      dragSourceElRef.current = null
+    }
+    draggedPhotoIdRef.current = null
+    dragSourceIndexRef.current = null
+    slotRectsSnapshotRef.current = null
+    setDraggingId(null)
+    setSwapPreviewWithIndex(null)
+  }
+
+  const updateSwapPreviewAt = useCallback((clientX: number, clientY: number) => {
+    const dragged = draggedPhotoIdRef.current
+    const from = dragSourceIndexRef.current
+    if (!dragged || from == null) return
+
+    const hovered = pickSlotIndexUnderPointStable(clientX, clientY, slotCellRefs.current)
+    if (hovered == null || hovered === from) {
+      setSwapPreviewWithIndex((p) => (p === null ? p : null))
+      return
+    }
+
+    const nonMainNow = photosRef.current.filter((p) => !p.isMain)
+    const photoAtHovered = nonMainNow[hovered]
+    if (!photoAtHovered) {
+      setSwapPreviewWithIndex((p) => (p === null ? p : null))
+      return
+    }
+
+    const snap = slotRectsSnapshotRef.current
+    if (!snap?.[from] || !snap?.[hovered]) {
+      setSwapPreviewWithIndex((p) => (p === null ? p : null))
+      return
+    }
+
+    const t = crossingTAlongSegment(snap[from], snap[hovered], clientX, clientY)
+    if (t == null) {
+      setSwapPreviewWithIndex((p) => (p === null ? p : null))
+      return
+    }
+
+    setSwapPreviewWithIndex((prev) => {
+      if (prev == null) {
+        return t >= SWAP_PREVIEW_CROSS_IN ? hovered : null
+      }
+      if (prev === hovered) {
+        return t < SWAP_PREVIEW_CROSS_OUT ? null : hovered
+      }
+      return t >= SWAP_PREVIEW_CROSS_IN ? hovered : null
+    })
+  }, [])
+
+  const applySwap = useCallback(
+    (from: number, targetPhotoId: string) => {
+      setPhotos((prev) => {
+        const main = prev.find((item) => item.isMain)
+        const list = [...prev.filter((item) => !item.isMain)]
+        const to = list.findIndex((p) => p.id === targetPhotoId)
+        if (to < 0 || from === to || from >= list.length) return prev
+        ;[list[from], list[to]] = [list[to], list[from]]
+        return main ? [main, ...list] : list
+      })
+    },
+    [setPhotos],
+  )
+
+  /** Внешняя ячейка слота без transform — стабильная зона dragOver/drop (иначе transform даёт мигание dragLeave). */
+  const getFilledSlotDropZoneHandlers = useCallback(
+    (photoId: string) => ({
       onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
         event.preventDefault()
         event.dataTransfer.dropEffect = 'move'
-        const dragged = draggedPhotoIdRef.current
-        if (dragged && dragged !== photoId) setDragOverId(photoId)
-      },
-      onDragLeave: (event: React.DragEvent<HTMLDivElement>) => {
-        const next = event.relatedTarget as Node | null
-        if (!event.currentTarget.contains(next)) {
-          setDragOverId((prev) => (prev === photoId ? null : prev))
-        }
+        updateSwapPreviewAt(event.clientX, event.clientY)
       },
       onDrop: (event: React.DragEvent) => {
         event.preventDefault()
         const draggedId = draggedPhotoIdRef.current
-        if (!draggedId || draggedId === photoId) return
-        setPhotos((prev) => {
-          const main = prev.find((item) => item.isMain)
-          const list = prev.filter((item) => !item.isMain)
-          const from = list.findIndex((item) => item.id === draggedId)
-          const to = list.findIndex((item) => item.id === photoId)
-          if (from < 0 || to < 0) return prev
-          const next = [...list]
-          const [moved] = next.splice(from, 1)
-          next.splice(to, 0, moved)
-          return main ? [main, ...next] : next
-        })
-        draggedPhotoIdRef.current = null
-        setDraggingId(null)
-        setDragOverId(null)
-      },
-      onDragEnd: () => {
-        draggedPhotoIdRef.current = null
-        setDraggingId(null)
-        setDragOverId(null)
+        const from = dragSourceIndexRef.current
+        if (!draggedId || from == null) {
+          clearDragVisual()
+          return
+        }
+        const to = nonMain.findIndex((p) => p.id === photoId)
+        if (to < 0 || from === to) {
+          clearDragVisual()
+          return
+        }
+        applySwap(from, photoId)
+        clearDragVisual()
       },
     }),
-    [setPhotos],
+    [applySwap, nonMain, updateSwapPreviewAt],
+  )
+
+  const getPhotoDragSourceHandlers = useCallback(
+    (photoId: string) => {
+      if (reorderMode === 'pointer') {
+        return {
+          onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return
+            pointerDownActiveRef.current = true
+            pointerStartRef.current = { x: event.clientX, y: event.clientY }
+            pointerHoldPhotoIdRef.current = photoId
+            didTriggerHoldHapticRef.current = false
+            clearHoldTimer()
+            const el = event.currentTarget
+            const pointerId = event.pointerId
+            holdTimerRef.current = window.setTimeout(() => {
+              if (!pointerDownActiveRef.current || pointerHoldPhotoIdRef.current !== photoId) return
+              didTriggerHoldHapticRef.current = true
+              triggerHaptic()
+              pointerReorderActiveRef.current = true
+              draggedPhotoIdRef.current = photoId
+              const nm = photosRef.current.filter((p) => !p.isMain)
+              dragSourceIndexRef.current = nm.findIndex((p) => p.id === photoId)
+              slotRectsSnapshotRef.current = [0, 1, 2, 3, 4].map(
+                (idx) => slotCellRefs.current[idx]?.getBoundingClientRect() ?? new DOMRect(),
+              )
+              dragSourceElRef.current = el
+              setDraggingId(photoId)
+              setSwapPreviewWithIndex(null)
+              try {
+                el.setPointerCapture(pointerId)
+                pendingPointerCaptureRef.current = { el, pointerId }
+              } catch {
+                pendingPointerCaptureRef.current = null
+              }
+            }, HOLD_MS)
+          },
+          onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
+            if (pointerReorderActiveRef.current) {
+              event.preventDefault()
+              updateSwapPreviewAt(event.clientX, event.clientY)
+              return
+            }
+            if (holdTimerRef.current != null && pointerStartRef.current) {
+              const dx = event.clientX - pointerStartRef.current.x
+              const dy = event.clientY - pointerStartRef.current.y
+              if (dx * dx + dy * dy > MOVE_CANCEL_HOLD_PX * MOVE_CANCEL_HOLD_PX) {
+                clearHoldTimer()
+              }
+            }
+          },
+          onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => {
+            pointerDownActiveRef.current = false
+            pointerHoldPhotoIdRef.current = null
+            pointerStartRef.current = null
+            clearHoldTimer()
+            if (pointerReorderActiveRef.current) {
+              event.preventDefault()
+              const from = dragSourceIndexRef.current
+              const hid = pickSlotIndexUnderPointStable(
+                event.clientX,
+                event.clientY,
+                slotCellRefs.current,
+              )
+              const nm = photosRef.current.filter((p) => !p.isMain)
+              if (from != null && hid != null && hid !== from) {
+                const targetPhoto = nm[hid]
+                if (targetPhoto) applySwap(from, targetPhoto.id)
+              }
+              clearDragVisual()
+            }
+          },
+          onPointerCancel: (event: React.PointerEvent<HTMLDivElement>) => {
+            pointerDownActiveRef.current = false
+            pointerHoldPhotoIdRef.current = null
+            pointerStartRef.current = null
+            clearHoldTimer()
+            if (pointerReorderActiveRef.current) {
+              event.preventDefault()
+              clearDragVisual()
+            }
+          },
+        }
+      }
+
+      return {
+        onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
+          pointerStartRef.current = { x: event.clientX, y: event.clientY }
+          didTriggerHoldHapticRef.current = false
+          clearHoldTimer()
+          holdTimerRef.current = window.setTimeout(() => {
+            didTriggerHoldHapticRef.current = true
+            triggerHaptic()
+          }, HOLD_MS)
+        },
+        onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
+          if (holdTimerRef.current != null && pointerStartRef.current) {
+            const dx = event.clientX - pointerStartRef.current.x
+            const dy = event.clientY - pointerStartRef.current.y
+            if (dx * dx + dy * dy > MOVE_CANCEL_HOLD_PX * MOVE_CANCEL_HOLD_PX) {
+              clearHoldTimer()
+            }
+          }
+        },
+        onPointerUp: () => {
+          pointerStartRef.current = null
+          clearHoldTimer()
+        },
+        onPointerLeave: () => {
+          pointerStartRef.current = null
+          clearHoldTimer()
+        },
+        onPointerCancel: () => {
+          pointerStartRef.current = null
+          clearHoldTimer()
+        },
+        onDragStart: (event: React.DragEvent<HTMLDivElement>) => {
+          clearHoldTimer()
+          if (!didTriggerHoldHapticRef.current) triggerHaptic()
+          event.dataTransfer.effectAllowed = 'move'
+          event.dataTransfer.setData('text/plain', photoId)
+          draggedPhotoIdRef.current = photoId
+          const srcIdx = nonMain.findIndex((p) => p.id === photoId)
+          dragSourceIndexRef.current = srcIdx >= 0 ? srcIdx : null
+          slotRectsSnapshotRef.current = [0, 1, 2, 3, 4].map(
+            (idx) => slotCellRefs.current[idx]?.getBoundingClientRect() ?? new DOMRect(),
+          )
+          const sourceEl = event.currentTarget
+          dragSourceElRef.current = sourceEl
+          setDraggingId(photoId)
+          setSwapPreviewWithIndex(null)
+        },
+        onDragEnd: () => {
+          clearDragVisual()
+        },
+      }
+    },
+    [applySwap, nonMain, reorderMode, updateSwapPreviewAt],
+  )
+
+  const getEmptySlotDragHandlers = useCallback(
+    () => ({
+      onDragOver: (event: React.DragEvent<HTMLDivElement>) => {
+        if (draggedPhotoIdRef.current == null) return
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+        setSwapPreviewWithIndex(null)
+      },
+    }),
+    [],
   )
 
   const stopDragFromButton = (event: React.SyntheticEvent) => {
     event.stopPropagation()
   }
+
+  const previewTransition =
+    'transition-[transform,opacity] duration-[1200ms] ease-[cubic-bezier(0.17,0.99,0.28,1)] will-change-transform'
 
   return (
     <section>
@@ -184,7 +480,12 @@ export const ProfilePhotosEditor = ({
 
       <h2 className={`mb-3 ${SECTION_TITLE_CLASS}`}>Мои фото</h2>
 
-      <div className="grid aspect-square w-full min-h-0 grid-cols-3 grid-rows-3 gap-2 overflow-visible">
+      <div
+        className={cn(
+          'grid aspect-square w-full min-h-0 grid-cols-3 grid-rows-3 gap-2 overflow-visible',
+          draggingId != null && reorderMode === 'pointer' && 'touch-none',
+        )}
+      >
         {/* Главное фото: 2×2 */}
         <div className="relative z-0 col-span-2 row-span-2 h-full min-h-0 overflow-visible">
           <div className="relative h-full min-h-0 overflow-visible rounded-2xl">
@@ -217,40 +518,47 @@ export const ProfilePhotosEditor = ({
         </div>
 
         {slots.slice(0, 2).map((photo, i) => {
+          const slotIndex = i
           const n = i + 1
           return (
-            <div key={photo?.id ?? `slot-${n}`} className="relative z-0 h-full min-h-0 min-w-0 overflow-visible">
+            <div
+              key={photo?.id ?? `slot-${n}`}
+              ref={setSlotRef(slotIndex)}
+              data-slot-index={slotIndex}
+              className="relative z-0 h-full min-h-0 min-w-0 overflow-visible"
+              {...(photo ? getFilledSlotDropZoneHandlers(photo.id) : getEmptySlotDragHandlers())}
+            >
               {photo ? (
                 <div
-                  draggable
-                  className={cn(
-                    'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl transition-[transform,opacity,box-shadow] duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)] active:cursor-grabbing',
-                    draggingId === photo.id && 'scale-[0.96] opacity-[0.55]',
-                    dragOverId === photo.id &&
-                      draggingId &&
-                      draggingId !== photo.id &&
-                      'z-10 scale-[1.02] shadow-lg ring-2 ring-[#FF6BA4]/50',
-                  )}
-                  {...getPhotoDragHandlers(photo.id)}
+                  className={cn(previewTransition, 'h-full min-h-0')}
+                  style={slotPreviewStyle(slotIndex)}
                 >
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-transparent">
-                    <Image
-                      src={photo.url}
-                      alt={`Фото ${n}`}
-                      className="size-full object-cover"
-                    />
-                  </div>
-                  <span className={INDEX_BADGE_CLASS}>{n}</span>
-                  <button
-                    type="button"
-                    className={CORNER_BTN_CLASS}
-                    aria-label="Удалить фото"
-                    onPointerDown={stopDragFromButton}
-                    onMouseDown={stopDragFromButton}
-                    onClick={() => removePhoto(photo.id)}
+                  <div
+                    draggable={reorderMode === 'html5'}
+                    className={cn(
+                      'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
+                    )}
+                    {...getPhotoDragSourceHandlers(photo.id)}
                   >
-                    <X className="size-4" strokeWidth={2} />
-                  </button>
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-transparent">
+                      <Image
+                        src={photo.url}
+                        alt={`Фото ${n}`}
+                        className="size-full object-cover"
+                      />
+                    </div>
+                    <span className={INDEX_BADGE_CLASS}>{n}</span>
+                    <button
+                      type="button"
+                      className={CORNER_BTN_CLASS}
+                      aria-label="Удалить фото"
+                      onPointerDown={stopDragFromButton}
+                      onMouseDown={stopDragFromButton}
+                      onClick={() => removePhoto(photo.id)}
+                    >
+                      <X className="size-4" strokeWidth={2} />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -267,40 +575,47 @@ export const ProfilePhotosEditor = ({
         })}
 
         {slots.slice(2, 5).map((photo, i) => {
+          const slotIndex = i + 2
           const n = i + 3
           return (
-            <div key={photo?.id ?? `slot-${n}`} className="relative z-0 h-full min-h-0 min-w-0 overflow-visible">
+            <div
+              key={photo?.id ?? `slot-${n}`}
+              ref={setSlotRef(slotIndex)}
+              data-slot-index={slotIndex}
+              className="relative z-0 h-full min-h-0 min-w-0 overflow-visible"
+              {...(photo ? getFilledSlotDropZoneHandlers(photo.id) : getEmptySlotDragHandlers())}
+            >
               {photo ? (
                 <div
-                  draggable
-                  className={cn(
-                    'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl transition-[transform,opacity,box-shadow] duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)] active:cursor-grabbing',
-                    draggingId === photo.id && 'scale-[0.96] opacity-[0.55]',
-                    dragOverId === photo.id &&
-                      draggingId &&
-                      draggingId !== photo.id &&
-                      'z-10 scale-[1.02] shadow-lg ring-2 ring-[#FF6BA4]/50',
-                  )}
-                  {...getPhotoDragHandlers(photo.id)}
+                  className={cn(previewTransition, 'h-full min-h-0')}
+                  style={slotPreviewStyle(slotIndex)}
                 >
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-transparent">
-                    <Image
-                      src={photo.url}
-                      alt={`Фото ${n}`}
-                      className="size-full object-cover"
-                    />
-                  </div>
-                  <span className={INDEX_BADGE_CLASS}>{n}</span>
-                  <button
-                    type="button"
-                    className={CORNER_BTN_CLASS}
-                    aria-label="Удалить фото"
-                    onPointerDown={stopDragFromButton}
-                    onMouseDown={stopDragFromButton}
-                    onClick={() => removePhoto(photo.id)}
+                  <div
+                    draggable={reorderMode === 'html5'}
+                    className={cn(
+                      'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
+                    )}
+                    {...getPhotoDragSourceHandlers(photo.id)}
                   >
-                    <X className="size-4" strokeWidth={2} />
-                  </button>
+                    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-transparent">
+                      <Image
+                        src={photo.url}
+                        alt={`Фото ${n}`}
+                        className="size-full object-cover"
+                      />
+                    </div>
+                    <span className={INDEX_BADGE_CLASS}>{n}</span>
+                    <button
+                      type="button"
+                      className={CORNER_BTN_CLASS}
+                      aria-label="Удалить фото"
+                      onPointerDown={stopDragFromButton}
+                      onMouseDown={stopDragFromButton}
+                      onClick={() => removePhoto(photo.id)}
+                    >
+                      <X className="size-4" strokeWidth={2} />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -371,7 +686,9 @@ export const ProfilePhotosEditor = ({
       </AnimatePresence>
 
       <p className="mt-3 text-center text-[12px] font-light text-muted-foreground">
-        Перетащите, чтобы изменить порядок
+        {reorderMode === 'pointer'
+          ? 'Удерживайте фото, затем перетащите, чтобы поменять порядок'
+          : 'Перетащите, чтобы изменить порядок'}
       </p>
     </section>
   )
