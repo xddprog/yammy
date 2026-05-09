@@ -34,21 +34,14 @@ body {
   background-color: var(--yammy-pink);
 }
 
-/** Полоса по контуру SVG: `pathLength="1"` + dash, бесконечный обход в одну сторону. */
-@keyframes yammy-splash-outline-run {
-  to {
-    stroke-dashoffset: -1;
-  }
-}
-
-/** Плавное «дыхание» размера лого на сплэше. */
-@keyframes yammy-splash-logo-pulse-scale {
+/** Контур сплэша: отрисовка вдоль path (`pathLength` + `stroke-dashoffset`). */
+@keyframes yammy-splash-logo-path-draw {
   0%,
   100% {
-    transform: scale(0.92);
+    stroke-dashoffset: -1;
   }
   50% {
-    transform: scale(1.08);
+    stroke-dashoffset: 0;
   }
 }
 
@@ -65,19 +58,16 @@ body {
   display: block;
   width: 120px;
   height: 120px;
-  transform-origin: 50% 50%;
-  will-change: transform;
-  animation: yammy-splash-logo-pulse-scale 2.05s ease-in-out infinite;
 }
 
 .yammy-app-splash-logo-outline {
   /* Чуть теплее/розовее белого заливки — в тон бренду, полоса читается на контуре */
   stroke: #949494;
   stroke: color-mix(in srgb, var(--yammy-pink) 42%, #ffffff 58%);
-  stroke-dasharray: 0.14 0.86;
-  stroke-dashoffset: 0;
+  stroke-dasharray: 1;
+  stroke-dashoffset: -1;
   will-change: stroke-dashoffset;
-  animation: yammy-splash-outline-run 1.65s linear infinite;
+  animation: yammy-splash-logo-path-draw 3s ease-in-out infinite;
 }
 
 /** Скелетон: пульс + полоска (общий класс для `Skeleton`). */

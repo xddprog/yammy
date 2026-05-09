@@ -1,9 +1,7 @@
 import { motion } from 'framer-motion'
 import type { JSX } from 'react'
 
-/** Тот же контур, что в `public/images/load-page-logo.svg` — обводка бежит по форме, а не по квадрату img. */
-const LOAD_LOGO_PATH_D =
-  'M325.591 588.312C153.315 742.962 227.799 883.108 325.591 970.099C423.384 1057.09 698.571 1208.42 961.249 1070C1310.21 886.111 1313.5 663.931 1313.5 433.711C1313.5 200.317 1124.57 -82.5992 983 12.9203C841.426 108.44 947.603 361.503 816.264 377.423C684.925 393.343 1035.73 57.8872 811.718 12.9203C656.897 -18.157 558.137 3.25465 419.974 101.617C281.812 199.979 264.184 408.644 376.761 442.758C489.338 476.872 637.846 253.197 736.095 202.254C808.872 164.517 861.18 142.035 736.095 221.066C611.01 300.097 376.761 522.976 743.486 541.17C1109.6 559.334 1055.63 233.575 1049.38 181.266C1043.12 128.958 1001.62 19.2245 1055.63 57.8871C1109.65 96.5498 1146.03 445.651 916.901 547.425C733.594 628.844 497.868 433.661 325.591 588.312Z'
+import { LOAD_PAGE_LOGO_PATH_D } from './loadPageLogoPath'
 
 export function AppSplashScreen(): JSX.Element {
   return (
@@ -22,10 +20,9 @@ export function AppSplashScreen(): JSX.Element {
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden
         >
-          <path d={LOAD_LOGO_PATH_D} fill="white" />
           <path
             className="yammy-app-splash-logo-outline"
-            d={LOAD_LOGO_PATH_D}
+            d={LOAD_PAGE_LOGO_PATH_D}
             fill="none"
             pathLength={1}
             strokeLinecap="round"
