@@ -31,19 +31,24 @@ const LikesCardComponent = ({ item, onClick, className }: LikesCardProps): React
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
 
-        <div className="absolute bottom-2 right-2 z-10 flex h-9 items-center gap-1.5 rounded-full bg-white px-3">
-          <Heart size={16} strokeWidth={1.8} className="text-[#FF6BA4]" />
-          <span className="text-[13px] font-medium leading-none text-[#FF6BA4]">
+        <div className="absolute bottom-2 right-2 z-10 inline-flex h-9 items-center gap-1 rounded-full bg-black px-3 leading-none">
+          <Heart
+            size={16}
+            strokeWidth={1.8}
+            aria-hidden
+            className="block shrink-0 text-[#FF6BA4] -translate-y-px"
+          />
+          <span className="text-[13px] font-[200] leading-none text-[#FF6BA4] tabular-nums">
             {Math.round(matchPercentage)}%
           </span>
         </div>
       </div>
 
-      <div className="mt-2 flex min-w-0 flex-col">
-        <span className="truncate text-[17px] font-bold leading-tight text-white">
+      <div className="mt-2 flex min-w-0 flex-col ">
+        <span className="truncate text-[16px] font-bold leading-tight text-white">
           {name}, {age}
         </span>
-        <span className="truncate text-[13px] font-light leading-tight text-white/80">{city}</span>
+        <span className="truncate text-[13px] font-[160] leading-tight text-white/80">{city}</span>
       </div>
     </div>
   )

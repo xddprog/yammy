@@ -25,6 +25,7 @@ export const ProfileView = ({
     <section className="mt-5 flex flex-col gap-1.5">
       <SettingsRow label="Уведомления" value="On" />
       <SettingsRow label="Способ оплаты" value="•••• 1057" />
+      <SettingsRow label="Язык" value="Русский" />
       <SettingsRow label="Рефералы" value="7" />
     </section>
   </>

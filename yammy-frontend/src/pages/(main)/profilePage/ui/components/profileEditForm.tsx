@@ -141,7 +141,7 @@ export const ProfileEditForm = ({
 
       {filtersMetadata?.map((category) => (
         <div key={category.slug} className="rounded-[28px] px-4 py-3.5">
-          <p className="mb-3 text-sm font-normal text-muted-foreground">{category.name}</p>
+          <p className="mb-3 text-sm font-normal text-white">{category.name}</p>
           <div className="space-y-3">
             {category.subcategories.map((subcategory) => {
               const selectedSlugs = draft.filters?.[category.slug]?.[subcategory.slug] ?? []

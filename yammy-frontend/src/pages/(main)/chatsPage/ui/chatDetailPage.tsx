@@ -185,7 +185,7 @@ const ChatDetailPage = () => {
   }
 
   return (
-    <div ref={containerRef} className="relative flex h-full flex-col bg-background overflow-hidden">
+    <div ref={containerRef} className="relative flex h-full flex-col bg-background overflow-hidden pt-[95px]">
       <ChatHeader
         name={chatInfo.name}
         age={chatInfo.age}
