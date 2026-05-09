@@ -38,7 +38,8 @@ USER_SEARCH_RESPONSE = {
         "adequacy_score": 9.8,
         "last_seen": "2023-11-20T15:30:00Z",
         "boost_expires_at": "2023-11-20T18:30:00Z",
-        "match_percentage": 69
+        "match_percentage": 69,
+        "language": "ru",
     }
 }
 
@@ -87,6 +88,13 @@ USER_PROFILE_RESPONSE = {
             }
         },
         "subscription_tier": "vip",
+        "subscription_expires_at": "2024-12-01T00:00:00Z",
+        "superlikes_balance": 2,
+        "boosts_balance": 1,
+        "notifications_enabled": True,
+        "language": "ru",
+        "adequacy_score": 9.8,
+        "referrals_count": 3,
         "last_seen": "2023-11-20T15:30:00Z",
         "boost_expires_at": "2023-11-20T18:30:00Z"
     }

@@ -8,6 +8,92 @@ body {
   height: 100%;
   overflow: hidden;
 }
+
+@keyframes yammy-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.48;
+    filter: brightness(0.95);
+  }
+  50% {
+    opacity: 0.68;
+    filter: brightness(1.02);
+  }
+}
+
+@keyframes yammy-skeleton-sheen {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.yammy-app-splash-screen {
+  background-color: var(--yammy-pink);
+}
+
+/** Полоса по контуру SVG: `pathLength="1"` + dash, бесконечный обход в одну сторону. */
+@keyframes yammy-splash-outline-run {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+.yammy-app-splash-logo {
+  display: flex;
+  width: 150px;
+  height: 150px;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.yammy-app-splash-logo-svg {
+  display: block;
+  width: 150px;
+  height: 150px;
+}
+
+.yammy-app-splash-logo-outline {
+  /* Чуть теплее/розовее белого заливки — в тон бренду, полоса читается на контуре */
+  stroke: #949494;
+  stroke: color-mix(in srgb, var(--yammy-pink) 42%, #ffffff 58%);
+  stroke-dasharray: 0.14 0.86;
+  stroke-dashoffset: 0;
+  will-change: stroke-dashoffset;
+  animation: yammy-splash-outline-run 2s linear infinite;
+}
+
+/** Скелетон: пульс + полоска (общий класс для `Skeleton`). */
+.yammy-skeleton {
+  position: relative;
+  overflow: hidden;
+  animation: yammy-skeleton-pulse 1.15s ease-in-out infinite;
+}
+
+.yammy-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.08) 48%,
+    transparent 96%
+  );
+  animation: yammy-skeleton-sheen 1.5s ease-in-out infinite;
+}
+
+html:not(.dark) .yammy-skeleton::after {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgb(0 0 0 / 0.05) 48%,
+    transparent 96%
+  );
+}
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -48,6 +134,8 @@ body {
 
 :root {
   --radius: 0.625rem;
+  /** Совпадает с `bg-[#FF6BA4]` у кнопок — единый брендовый розовый. */
+  --yammy-pink: #ff6ba4;
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
   --card: #111111;

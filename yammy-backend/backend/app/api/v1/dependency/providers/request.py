@@ -1,3 +1,4 @@
+import asyncio
 from typing import AsyncIterable
 from dishka import FromDishka, Provider, Scope, provide
 from dishka.integrations.fastapi import inject
@@ -113,4 +114,5 @@ async def get_current_user(
     auth_service: FromDishka[services.AuthService],
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
+    await asyncio.sleep(3)
     return await auth_service.verify_user_token(credentials.credentials)

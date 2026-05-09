@@ -18,9 +18,9 @@ const DashboardPage = (): JSX.Element => {
   const mode = searchParams.get('mode') || 'swipe'
 
   const filterParams = useFiltersSearchParams()
-  const { data: users = [], isLoading } = useUsersSearch(filterParams)
+  const { data: users, isSuccess } = useUsersSearch(filterParams)
 
-  if (isLoading) {
+  if (!isSuccess) {
     return (
       <div className={dashboardColumnClassName}>
         <Header />

@@ -42,6 +42,17 @@ export interface FilterCategoryDto {
 
 export type FiltersMetadataResponse = FilterCategoryDto[]
 
+export type UserLanguage = 'ru' | 'en'
+
+export interface UserProfilePhotoDto {
+  id: string
+  file_path: string
+  order: number
+  is_main: boolean
+}
+
+export type ProfilePhotoItem = UserProfilePhotoDto
+
 export interface UserSearchResult {
   user_id: string
   username: string
@@ -63,4 +74,30 @@ export interface UserSearchResult {
   is_banned: boolean
   adequacy_score: number
   match_percentage: number
+}
+
+/** Ответ GET /api/v1/users/ (свой профиль). */
+export interface UserProfileDto {
+  name: string
+  age: number
+  gender: string
+  relationship_goal: string
+  bio: string | null
+  city: string | null
+  job: string | null
+  job_sphere: string | null
+  education_level: string | null
+  education_details: string | null
+  subscription_tier: string
+  boost_expires_at: string | null
+  last_seen: string
+  is_banned: boolean
+  superlikes_balance: number
+  boosts_balance: number
+  notifications_enabled: boolean
+  language: UserLanguage
+  photos: UserProfilePhotoDto[]
+  subscription_expires_at: string | null
+  adequacy_score: number
+  referrals_count: number
 }

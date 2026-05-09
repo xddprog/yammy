@@ -1,23 +1,35 @@
 import type { ApiErrorResponse } from './types'
 import { parseErrorDetail } from '@/shared/lib/parseErrorDetail'
+import {
+  USER_ERROR_CONNECTION_LOST,
+  USER_ERROR_INTERNAL_SERVER,
+} from '@/shared/lib/formatUserErrorMessage'
 
-/**
- * Парсит тело ответа и выбрасывает Error с сообщением из API или fallback.
- */
-export async function throwApiError(response: Response, fallbackPrefix: string): Promise<never> {
-  let message = `${fallbackPrefix}: ${response.status} ${response.statusText}`
+export async function throwApiError(response: Response, _fallbackPrefix: string): Promise<never> {
+  if (response.status === 500) {
+    throw new Error(USER_ERROR_INTERNAL_SERVER)
+  }
+
+  let message: string | null = null
 
   const text = await response.text()
-  if (text) {
+  if (text?.trim()) {
     try {
       const errorJson = JSON.parse(text) as ApiErrorResponse
-      if (errorJson.detail) {
-        message = parseErrorDetail(errorJson.detail)
+      if (errorJson.detail !== undefined && errorJson.detail !== null && errorJson.detail !== '') {
+        const parsed = parseErrorDetail(errorJson.detail).trim()
+        if (parsed.length > 0) {
+          message = parsed
+        }
       }
     } catch {
-      message = text
+      const trimmed = text.trim()
+      if (trimmed.length > 0) {
+        message = trimmed
+      }
     }
   }
 
-  throw new Error(message)
+  const finalMessage = message?.trim() ?? ''
+  throw new Error(finalMessage.length > 0 ? finalMessage : USER_ERROR_CONNECTION_LOST)
 }

@@ -10,12 +10,14 @@ const REQUEST_TIMEOUT_MS = 60_000
 export const publicApi = ky.create({
   prefixUrl: API_BASE_URL,
   timeout: REQUEST_TIMEOUT_MS,
+  throwHttpErrors: false,
   parseJson: (text) => JSON.parse(text),
 })
 
 export const authApi = ky.create({
   prefixUrl: API_BASE_URL,
   timeout: REQUEST_TIMEOUT_MS,
+  throwHttpErrors: false,
   hooks: {
     beforeRequest: [
       (request): void => {

@@ -1,4 +1,6 @@
 from pathlib import Path
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -73,7 +75,9 @@ class AppConfig(Config):
     model_config = _settings_config(env_prefix="APP_CONFIG__")
     APP_NAME: str = Field(default="yammy")
     DEBUG: bool = Field(default=False)
-    
+    """development: POST /auth/telegram использует заглушку без проверки init_data. production — реальная проверка WebApp."""
+    ENVIRONMENT: Literal["development", "production"] = Field(default="development")
+
     BASE_URL: str = Field(default="http://localhost:8000")
     STATIC_URL: str = Field(default="http://localhost:8000/static/images")
     

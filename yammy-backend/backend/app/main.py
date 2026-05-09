@@ -46,8 +46,10 @@ async def lifespan(app):
                 es_client=es_client,
                 ml_service=MLService()
             )
-    except Exception as e:
-        logger.error("application_startup_error", error=e)
+        logger.info("App work with environment", environment=APP_CONFIG.ENVIRONMENT)
+    except Exception:
+        logger.exception("application_startup_error")
+        raise
     
     logger.info("database_connected")
     logger.info("elasticsearch_initialized")

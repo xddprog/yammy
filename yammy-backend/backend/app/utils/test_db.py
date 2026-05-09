@@ -10,8 +10,12 @@ from app.infrastructure.database.models.admin import Admin
 from app.infrastructure.database.models.user import User, UserPhoto
 from app.infrastructure.database.models.filter import FilterCategory, FilterSubcategory, FilterOption, UserFilterAssociation
 from app.utils.enums import (
-    GenderEnum, JobSphereEnum, RelationshipGoalEnum, 
-    EducationLevelEnum, SubscriptionTierEnum
+    GenderEnum,
+    JobSphereEnum,
+    RelationshipGoalEnum,
+    EducationLevelEnum,
+    SubscriptionTierEnum,
+    UserLanguageEnum,
 )
 from app.infrastructure.logging.logger import get_logger
 from app.core.services.ml_service import MLService
@@ -215,8 +219,9 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> None:
                 adequacy_score=round(random.uniform(9.0, 10.0), 1) if is_high_match else round(random.uniform(5.0, 10.0), 1),
                 last_seen=datetime.now() - timedelta(minutes=random.randint(0, 120)) if is_high_match else datetime.now() - timedelta(minutes=random.randint(0, 10000)),
                 referral_code=f"REF{random.randint(1000, 9999)}{i}",
-                
-                boost_expires_at=datetime.now() + timedelta(hours=2) if is_high_match else (datetime.now() + timedelta(hours=2) if random.random() > 0.9 else None)
+                notifications_enabled=random.random() > 0.4,
+                boost_expires_at=datetime.now() + timedelta(hours=2) if is_high_match else (datetime.now() + timedelta(hours=2) if random.random() > 0.9 else None),
+                language=random.choice(list(UserLanguageEnum)),
             )
             
             session.add(user)

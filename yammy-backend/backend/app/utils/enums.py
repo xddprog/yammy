@@ -8,6 +8,11 @@ class PaymentStatus(str, Enum):
     REFUNDED = "refunded"
 
 
+class UserLanguageEnum(str, Enum):
+    RU = "ru"
+    EN = "en"
+
+
 class GenderEnum(str,Enum):
     MALE = "male"
     FEMALE = "female"
@@ -61,7 +66,7 @@ class RelationshipGoalEnum(str, Enum):
 class JobSphereEnum(str, Enum):
     IT = "it"
     
-    ART_DESIGN = "art_design"
+    DESIGN = "design"
     FASHION = "fashion"
     MEDIA = "media"
     

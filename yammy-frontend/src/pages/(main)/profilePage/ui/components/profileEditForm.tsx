@@ -11,7 +11,7 @@ import {
   RELATIONSHIP_GOAL_OPTIONS,
   WORK_SPHERE_MOCK_OPTIONS,
 } from './profile.constants'
-import type { ProfilePhotoItem } from '../profilePage'
+import type { ProfilePhotoItem } from '@/entities/user/types/types'
 import { ProfileAutocompleteRow } from './profileAutocompleteRow'
 import { ProfilePhotosEditor } from './profilePhotosEditor'
 

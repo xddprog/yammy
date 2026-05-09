@@ -2,11 +2,11 @@ from typing import Annotated
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, Depends
 
-from app.api.v1.dependency.providers.request import get_current_admin, get_current_user
-from app.core.dto.auth import LoginSchema, RefreshTokenSchema, TokenSchema
+from app.api.v1.dependency.providers.request import get_current_user
+from app.core.dto.auth import LoginSchema, RefreshTokenSchema, TelegramAuthSchema, TokenSchema
 from app.core.dto.user import BaseUserSchema
 from app.core.services.auth_service import AuthService
-from app.infrastructure.errors.auth_errors import InvalidCredentials
+from app.infrastructure.errors.auth_errors import InvalidCredentials, InvalidTelegramData
 from app.utils.error_extra import error_response
 from app.infrastructure.database.models.user import User
 
@@ -14,13 +14,19 @@ from app.infrastructure.database.models.user import User
 router = APIRouter()
 
 
-@router.post("/login", responses={**error_response(InvalidCredentials)})
+@router.post(
+    "/telegram",
+    responses={
+        **error_response(InvalidCredentials),
+        **error_response(InvalidTelegramData),
+    },
+)
 @inject
-async def login(
-    form: LoginSchema,
+async def login_telegram(
+    telegram_auth: TelegramAuthSchema,
     auth_service: FromDishka[AuthService],
 ) -> TokenSchema:
-    return await auth_service.login_admin(form)
+    return await auth_service.authenticate_telegram(telegram_auth)
 
 
 @router.get("/current_user")
@@ -37,5 +43,5 @@ async def refresh_token(
     refresh_data: RefreshTokenSchema,
     auth_service: FromDishka[AuthService],
 ) -> TokenSchema:
-    return await auth_service.refresh_admin_token(refresh_data.refresh_token)
+    return await auth_service.refresh_user_token(refresh_data.refresh_token)
 

@@ -5,11 +5,12 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.utils.url_helper import get_absolute_url
 
 from app.utils.enums import (
-    GenderEnum, 
-    RelationshipGoalEnum, 
-    SubscriptionTierEnum, 
-    EducationLevelEnum, 
-    JobSphereEnum
+    GenderEnum,
+    RelationshipGoalEnum,
+    SubscriptionTierEnum,
+    EducationLevelEnum,
+    JobSphereEnum,
+    UserLanguageEnum,
 )
 from app.utils.response_examples import USER_PROFILE_RESPONSE, USER_SEARCH_RESPONSE
 
@@ -29,6 +30,10 @@ class BaseUserSchema(BaseModel):
     boost_expires_at: datetime | None = None
     last_seen: datetime
     is_banned: bool = False
+    superlikes_balance: int
+    boosts_balance: int
+    notifications_enabled: bool
+    language: UserLanguageEnum
 
 
 class UserPhoto(BaseModel):
@@ -54,6 +59,8 @@ class UserUpdateRequest(BaseModel):
     education_level: EducationLevelEnum | None = None
     education_details: str | None = None
     filters: list[UUID] = Field(default_factory=list)
+    notifications_enabled: bool | None = None
+    language: UserLanguageEnum | None = None
 
     @model_validator(mode="after")
     def validate_filters(self):
@@ -65,6 +72,9 @@ class UserUpdateRequest(BaseModel):
 
 class UserProfileSchema(BaseUserSchema):
     photos: list[UserPhoto] = []
+    subscription_expires_at: datetime | None = None
+    adequacy_score: float = 10.0
+    referrals_count: int = 0
 
     @field_validator("filters", mode="before", check_fields=False)
     @classmethod
@@ -112,7 +122,6 @@ class UserSearchResponseSchema(UserProfileSchema):
     filters: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
     personality_vector: list[float] | None = Field(None, exclude=True) 
     appearance_vector: list[float] | None = Field(None, exclude=True) 
-    adequacy_score: float
 
     match_percentage: int | None = Field(None)
 

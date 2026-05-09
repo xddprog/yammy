@@ -8,7 +8,8 @@ from app.infrastructure.config.config import APP_CONFIG
 def configure_logging() -> None:    
     logging.getLogger("uvicorn.access").disabled = True
     logging.getLogger("uvicorn.error").disabled = True
-    
+    logging.getLogger("dishka.graph_builder.activation").setLevel(logging.INFO)
+
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,

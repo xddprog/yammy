@@ -2,7 +2,7 @@ version: '3.0'
 
 
 x-app-env: &app-env
-  - DATABASE_CONFIG__DB_NAME=postgres123
+  - DATABASE_CONFIG__DB_NAME=postgrez
   - DATABASE_CONFIG__DB_HOST=db
   - DATABASE_CONFIG__DB_PORT=5432
   - DATABASE_CONFIG__DB_USER=postgres123
@@ -32,6 +32,7 @@ x-app-env: &app-env
   # App
   - APP_CONFIG__APP_NAME=lascovo-api
   - APP_CONFIG__DEBUG=true
+  - APP_CONFIG__ENVIRONMENT=production
   - APP_CONFIG__BASE_URL=https://api.lascovo.ru
   - APP_CONFIG__STATIC_URL=https://api.lascovo.ru/static/images
   - APP_CONFIG__SLOW_REQUEST_THRESHOLD=1.0
@@ -72,6 +73,8 @@ services:
   redis:
     image: redis:7
     container_name: redis-store
+    ports:
+      - "6379:6379"
     networks:
       - app-network
 

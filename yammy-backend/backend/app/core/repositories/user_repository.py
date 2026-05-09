@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import delete, insert, select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.core.repositories.base import SqlAlchemyRepository
 from app.infrastructure.database.models.user import User, UserPhoto
@@ -30,21 +30,31 @@ class UserRepository(SqlAlchemyRepository[User]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_user_profile(self, user_id: UUID) -> User | None:
+    async def get_user_profile(self, user_id: UUID) -> tuple[User, int] | None:
+        referred = aliased(User, name="referred_users")
         stmt = (
-            select(User)
+            select(User, func.count(referred.id))
+            .outerjoin(referred, referred.referred_by_id == User.id)
             .where(User.id == user_id)
             .options(
                 selectinload(User.filters).options(
                     selectinload(FilterOption.subcategory)
                     .selectinload(FilterSubcategory.category)
                 ),
-                selectinload(User.photos)
+                selectinload(User.photos),
             )
+            .group_by(User)
         )
         result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
-    
+        row = result.one_or_none()
+
+        if row is None:
+            return None
+
+        user, referrals_count = row
+        
+        return user, int(referrals_count)
+
     async def get_random_users_with_photos(self, exclude_user_ids: list[UUID], limit: int = 20) -> list[User]:
         query = (
             select(User)

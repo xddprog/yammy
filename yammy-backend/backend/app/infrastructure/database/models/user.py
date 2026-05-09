@@ -1,12 +1,19 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 import uuid
-from sqlalchemy import BigInteger, DateTime, Enum as SQLAlchemyEnum, ForeignKey, Text, and_, func
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum as SQLAlchemyEnum, ForeignKey, Text, and_, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.models.base import Base
-from app.utils.enums import EducationLevelEnum, GenderEnum, JobSphereEnum, RelationshipGoalEnum, SubscriptionTierEnum
+from app.utils.enums import (
+    EducationLevelEnum,
+    GenderEnum,
+    JobSphereEnum,
+    RelationshipGoalEnum,
+    SubscriptionTierEnum,
+    UserLanguageEnum,
+)
 
 
 if TYPE_CHECKING:
@@ -63,6 +70,12 @@ class User(Base):
     subscription_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     superlikes_balance: Mapped[int] = mapped_column(default=1)
     boosts_balance: Mapped[int] = mapped_column(default=1)
+    notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+    language: Mapped[UserLanguageEnum] = mapped_column(
+        SQLAlchemyEnum(UserLanguageEnum),
+        default=UserLanguageEnum.RU,
+    )
 
     referral_code: Mapped[str] = mapped_column(unique=True)
     referred_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)

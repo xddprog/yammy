@@ -14,13 +14,23 @@ class UserService:
         self.image_service = image_service
 
     async def get_user_profile(self, user_id: UUID) -> UserProfileSchema:
-        user = await self.user_repository.get_user_profile(user_id)
-        return UserProfileSchema.model_validate(user, from_attributes=True)
+        row = await self.user_repository.get_user_profile(user_id)
+        if row is None:
+            raise NotFoundException("Пользователь не найден")
+
+        user, referrals_count = row
+        
+        return UserProfileSchema.model_validate(
+            user, from_attributes=True
+        ).model_copy(update={"referrals_count": referrals_count})
 
     async def update_user(self, user_id: UUID, form: UserUpdateRequest) -> None:
         if form.filters:
             await self.user_repository.update_filters(user_id, form.filters)
-        await self.user_repository.update_item(user_id, **form.model_dump(exclude_unset=True))
+        await self.user_repository.update_item(
+            user_id,
+            **form.model_dump(exclude_unset=True, exclude={"filters"}),
+        )
 
     async def delete_user_image(self, user_id: UUID, image_id: UUID) -> None:
         try:

@@ -8,7 +8,7 @@ import { Image, cn } from '@/shared'
 import { triggerHaptic } from '@/shared/lib/haptics'
 
 import { MAX_PROFILE_PHOTOS } from './profile.constants'
-import type { ProfilePhotoItem } from '../profilePage'
+import type { ProfilePhotoItem } from '@/entities/user/types/types'
 
 interface ProfilePhotosEditorProps {
   photos: ProfilePhotoItem[]
@@ -113,8 +113,8 @@ export const ProfilePhotosEditor = ({
   } | null>(null)
   const pointerFloatMetricsRef = useRef<{ w: number; h: number } | null>(null)
 
-  const mainPhoto = photos.find((p) => p.isMain) ?? photos[0]
-  const nonMain = photos.filter((p) => !p.isMain)
+  const mainPhoto = photos.find((p) => p.is_main)
+  const nonMain = photos.filter((p) => !p.is_main)
   const slots: Array<ProfilePhotoItem | null> = Array.from(
     { length: MAX_PROFILE_PHOTOS },
     (_, i) => nonMain[i] ?? null,
@@ -154,13 +154,14 @@ export const ProfilePhotosEditor = ({
     const selected = Array.from(files ?? [])
     if (!selected.length) return
     setPhotos((prev) => {
-      const currentNonMain = prev.filter((p) => !p.isMain)
+      const currentNonMain = prev.filter((p) => !p.is_main)
       const available = Math.max(0, MAX_PROFILE_PHOTOS - currentNonMain.length)
       const nextFiles = selected.slice(0, available)
       const nextPhotos = nextFiles.map((file, index) => ({
         id: `photo-upload-${Date.now()}-${index}`,
-        url: URL.createObjectURL(file),
-        isMain: false,
+        file_path: URL.createObjectURL(file),
+        is_main: false,
+        order: currentNonMain.length + index,
       }))
       return [...prev, ...nextPhotos]
     })
@@ -168,15 +169,15 @@ export const ProfilePhotosEditor = ({
 
   const onMainFile = (file: File | undefined) => {
     if (!file) return
-    const url = URL.createObjectURL(file)
+    const file_path = URL.createObjectURL(file)
     setPhotos((prev) => {
-      const rest = prev.filter((p) => !p.isMain)
-      return [{ id: `photo-main-${Date.now()}`, url, isMain: true }, ...rest]
+      const rest = prev.filter((p) => !p.is_main)
+      return [{ id: `photo-main-${Date.now()}`, file_path, is_main: true, order: 0 }, ...rest]
     })
   }
 
   const setMainPhotoById = (id: string) => {
-    setPhotos((prev) => prev.map((p) => ({ ...p, isMain: p.id === id })))
+    setPhotos((prev) => prev.map((p) => ({ ...p, is_main: p.id === id })))
   }
 
   const clearDragVisual = () => {
@@ -229,7 +230,7 @@ export const ProfilePhotosEditor = ({
       return
     }
 
-    const nonMainNow = photosRef.current.filter((p) => !p.isMain)
+    const nonMainNow = photosRef.current.filter((p) => !p.is_main)
     const photoAtHovered = nonMainNow[hovered]
     if (!photoAtHovered) {
       setSwapPreviewWithIndex((p) => (p === null ? p : null))
@@ -266,8 +267,8 @@ export const ProfilePhotosEditor = ({
   const applySwap = useCallback(
     (from: number, targetPhotoId: string) => {
       setPhotos((prev) => {
-        const main = prev.find((item) => item.isMain)
-        const list = [...prev.filter((item) => !item.isMain)]
+        const main = prev.find((item) => item.is_main)
+        const list = [...prev.filter((item) => !item.is_main)]
         const to = list.findIndex((p) => p.id === targetPhotoId)
         if (to < 0 || from === to || from >= list.length) return prev
         ;[list[from], list[to]] = [list[to], list[from]]
@@ -338,7 +339,7 @@ export const ProfilePhotosEditor = ({
               triggerHaptic({ style: 'medium'})
               pointerReorderActiveRef.current = true
               draggedPhotoIdRef.current = photoId
-              const nm = photosRef.current.filter((p) => !p.isMain)
+              const nm = photosRef.current.filter((p) => !p.is_main)
               const fromIdx = nm.findIndex((p) => p.id === photoId)
               dragSourceIndexRef.current = fromIdx >= 0 ? fromIdx : null
               slotRectsSnapshotRef.current = [0, 1, 2, 3, 4].map(
@@ -447,7 +448,7 @@ export const ProfilePhotosEditor = ({
               if ((hid == null || hid === from) && previewJ != null && previewJ !== from) {
                 hid = previewJ
               }
-              const nm = photosRef.current.filter((p) => !p.isMain)
+              const nm = photosRef.current.filter((p) => !p.is_main)
               if (from != null && hid != null && hid !== from) {
                 const targetPhoto = nm[hid]
                 if (targetPhoto) applySwap(from, targetPhoto.id)
@@ -598,7 +599,7 @@ export const ProfilePhotosEditor = ({
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-transparent">
               {mainPhoto ? (
                 <Image
-                  src={mainPhoto.url}
+                  src={mainPhoto.file_path}
                   alt="Главное фото"
                   className="size-full object-cover"
                 />
@@ -656,7 +657,7 @@ export const ProfilePhotosEditor = ({
                   >
                     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-transparent">
                       <Image
-                        src={photo.url}
+                        src={photo.file_path}
                         alt={`Фото ${n}`}
                         className="size-full object-cover"
                       />
@@ -721,7 +722,7 @@ export const ProfilePhotosEditor = ({
                   >
                     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-transparent">
                       <Image
-                        src={photo.url}
+                        src={photo.file_path}
                         alt={`Фото ${n}`}
                         className="size-full object-cover"
                       />
@@ -820,7 +821,7 @@ export const ProfilePhotosEditor = ({
           }}
         >
           <Image
-            src={pointerFloatPhoto.url}
+            src={pointerFloatPhoto.file_path}
             alt=""
             className="size-full object-cover"
           />
