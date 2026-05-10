@@ -38,7 +38,7 @@ export function mapFiltersToSearchRequest(state: FiltersState): SearchUsersReque
     params.education_levels = [educationCode]
   }
   if (state.educationInstitution.trim() !== '') {
-    params.education_query = state.educationInstitution.trim()
+    params.education_details = state.educationInstitution.trim()
   }
   if (Object.keys(state.filters).length > 0) {
     params.filters = state.filters

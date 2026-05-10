@@ -1,11 +1,22 @@
-import ky from 'ky'
+import ky, { type Options } from 'ky'
 
-import { getAccessToken, getRefreshToken } from '@/entities'
+import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from '@/entities'
 
 const API_BASE_URL = 'http://localhost:8000/'
 
 /** Таймаут запросов к API (мс). Бэкенд может отвечать долго. */
 const REQUEST_TIMEOUT_MS = 60_000
+
+const REFRESH_SUBPATH = '/api/v1/auth/refresh'
+
+type TokenPair = {
+  access_token: string
+  refresh_token: string
+}
+
+type KyRetryContext = Options & {
+  context?: { authAccessRetry?: boolean }
+}
 
 export const publicApi = ky.create({
   prefixUrl: API_BASE_URL,
@@ -14,6 +25,42 @@ export const publicApi = ky.create({
   parseJson: (text) => JSON.parse(text),
 })
 
+async function refreshUserTokensOnce(): Promise<boolean> {
+  const refresh = getRefreshToken()
+  if (!refresh) {
+    return false
+  }
+
+  const response = await publicApi.post('api/v1/auth/refresh', {
+    json: { refresh_token: refresh },
+  })
+
+  if (!response.ok) {
+    return false
+  }
+
+  const data = (await response.json()) as TokenPair
+  if (!data.access_token || !data.refresh_token) {
+    return false
+  }
+
+  setAccessToken(data.access_token)
+  setRefreshToken(data.refresh_token)
+  return true
+}
+
+/** Один общий refresh на параллельные 401, чтобы не дёргать /refresh десять раз подряд. */
+let refreshInFlight: Promise<boolean> | null = null
+
+function refreshUserTokensDeduped(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshUserTokensOnce().finally(() => {
+      refreshInFlight = null
+    })
+  }
+  return refreshInFlight
+}
+
 export const authApi = ky.create({
   prefixUrl: API_BASE_URL,
   timeout: REQUEST_TIMEOUT_MS,
@@ -21,39 +68,48 @@ export const authApi = ky.create({
   hooks: {
     beforeRequest: [
       (request): void => {
-        const token = getAccessToken() || '123'
+        const token = getAccessToken()
         if (token) {
           request.headers.set('Authorization', `Bearer ${token}`)
         }
       },
     ],
     afterResponse: [
-      //   async (request, options, response) => {
-      async (_: Request, __: RequestInit, response: Response): Promise<Response> => {
-        if (response.status === 401) {
-          const refresh = getRefreshToken()
-          if (!refresh) {
-            console.warn('Refresh token missing, redirecting to login...')
-            return response
-          }
-
-          //   const refreshResponse = await refreshToken({ refreshToken: refresh });
-
-          //   if (refreshResponse?.accessToken) {
-          //     setAccessToken(refreshResponse.accessToken);
-          //     setRefreshToken(refreshResponse.refreshToken);
-
-          //     return ky(request, {
-          //       ...options,
-          //       headers: {
-          //         ...options.headers,
-          //         Authorization: `Bearer ${refreshResponse.accessToken}`,
-          //       },
-          //     });
-          //   }
+      async (request, options, response): Promise<Response> => {
+        if (response.status !== 401) {
+          return response
         }
 
-        return response
+        if (request.url.includes(REFRESH_SUBPATH)) {
+          return response
+        }
+
+        const opts = options as KyRetryContext
+        if (opts.context?.authAccessRetry) {
+          return response
+        }
+
+        const refreshed = await refreshUserTokensDeduped()
+        if (!refreshed) {
+          return response
+        }
+
+        const token = getAccessToken()
+        if (!token) {
+          return response
+        }
+
+        const headers = new Headers(request.headers)
+        headers.set('Authorization', `Bearer ${token}`)
+
+        return authApi(request.url, {
+          ...options,
+          headers,
+          context: {
+            ...opts.context,
+            authAccessRetry: true,
+          },
+        })
       },
     ],
   },

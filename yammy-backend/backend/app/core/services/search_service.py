@@ -11,7 +11,7 @@ from app.core.dto.user import UserSearchResponseSchema
 from app.core.dto.appearance_rating import AppearanceRatingSchema
 from app.core.builders.user_query_builder import UserSearchQueryBuilder
 from app.infrastructure.database.models.user import User
-from app.utils.cache_keys import UserCacheKeys, AppearanceRatingCacheKeys
+from app.utils.constants.cache_keys import UserCacheKeys, AppearanceRatingCacheKeys
 
 
 
@@ -57,7 +57,7 @@ class SearchService:
             .add_social_filters(
                 job_sphere=search_request.job_spheres,
                 edu_level=search_request.education_levels,
-                edu_query=search_request.education_details
+                edu_query=search_request.education_details,
             )
             .add_premium_filter(search_request.only_premium)
             .exclude_users(exclude_list)

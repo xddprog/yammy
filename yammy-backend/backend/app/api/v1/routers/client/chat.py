@@ -1,12 +1,12 @@
 from uuid import UUID
 from fastapi import APIRouter, HTTPException
-from fastapi_limiter.depends import WebSocketRateLimiter
-from pyrate_limiter import Duration, Limiter, Rate
+from app.utils.helpers.rate_limit import RateLimited
+from pyrate_limiter import Duration
 from app.core.services import AuthService, ChatService, WebSocketService
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import WebSocket
 
-from app.utils.enums import ChatEvents
+from app.utils.constants.enums import ChatEvents
 from app.infrastructure.logging import get_logger
 from app.core.dto.chat import ChatErrorResponseSchema
 from app.core.dto.message import MessageCreateRequest, MessageEditRequest
@@ -14,8 +14,6 @@ from app.core.services.message_service import MessageService
 
 
 router = APIRouter()
-
-
 
 logger = get_logger(__name__)
 
@@ -34,11 +32,11 @@ async def chat_websocket(
     await ws_service.connect(match_id, websocket)
     try:
         user = await auth_service.verify_user_token(access_token)
-        ratelimit = WebSocketRateLimiter(limiter=Limiter(Rate(5, Duration.SECOND)))
+        ratelimit = RateLimited(5, Duration.SECOND, is_websocket=True)
 
         while True:
             user_input = await websocket.receive_json()
-            await ratelimit(websocket)
+            await ratelimit.ws(websocket)
             event = user_input.get("event")
 
             response = None

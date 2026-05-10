@@ -1,10 +1,10 @@
-import asyncio
 from typing import AsyncIterable
 from dishka import FromDishka, Provider, Scope, provide
 from dishka.integrations.fastapi import inject
 from fastapi import Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
+
 
 from app.core import repositories, services
 from app.core.clients.redis_client import RedisClient
@@ -88,14 +88,24 @@ class RequestProvider(Provider):
         )
 
     @provide(scope=Scope.REQUEST)
-    def get_university_service(self) -> services.UniversityService:
-        return services.UniversityService()
+    def get_university_service(self, redis_client: RedisClient) -> services.UniversityService:
+        return services.UniversityService(redis_client=redis_client)
 
     @provide(scope=Scope.REQUEST)
-    def get_user_service(self, session: AsyncSession, image_service: services.ImageService) -> services.UserService:
+    def get_city_service(self, redis_client: RedisClient) -> services.CityService:
+        return services.CityService(redis_client=redis_client)
+
+    @provide(scope=Scope.REQUEST)
+    def get_user_service(
+        self,
+        session: AsyncSession,
+        image_service: services.ImageService,
+        moderation_service: services.ModerationService,
+    ) -> services.UserService:
         return services.UserService(
             user_repository=repositories.UserRepository(session=session),
-            image_service=image_service
+            image_service=image_service,
+            moderation_service=moderation_service,
         )
 
 
@@ -114,5 +124,4 @@ async def get_current_user(
     auth_service: FromDishka[services.AuthService],
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
-    await asyncio.sleep(3)
     return await auth_service.verify_user_token(credentials.credentials)

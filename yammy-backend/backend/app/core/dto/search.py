@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from app.utils.enums import GenderEnum, JobSphereEnum, RelationshipGoalEnum, EducationLevelEnum
+from app.utils.constants.enums import GenderEnum, JobSphereEnum, RelationshipGoalEnum, EducationLevelEnum
 
 class SearchRequest(BaseModel):
     gender: GenderEnum
@@ -47,7 +47,7 @@ class SearchRequest(BaseModel):
                 "city": "Москва",
                 "job_spheres": ["it", "art_design"],
                 "education_levels": ["higher"],
-                "education_query": "МГУ",
+                "education_details": "МГУ",
                 "filters": {
                     "appearance": {
                         "hair": ["bob", "long"],

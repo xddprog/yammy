@@ -1,6 +1,4 @@
-import asyncio
 from dishka import Provider, Scope, provide
-from fastapi import Request
 
 from app.core.clients.elasticsearch_client import ElasticsearchClient
 from app.core.services.ml_service import MLService

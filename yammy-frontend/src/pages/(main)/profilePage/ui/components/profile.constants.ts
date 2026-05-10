@@ -10,19 +10,6 @@ export const PROFILE_PHOTOS = [
 
 export const MAX_PROFILE_PHOTOS = 5
 
-export const CITY_MOCK_OPTIONS = [
-  'Москва',
-  'Санкт-Петербург',
-  'Казань',
-  'Екатеринбург',
-  'Новосибирск',
-  'Нижний Новгород',
-  'Краснодар',
-  'Ростов-на-Дону',
-  'Самара',
-  'Воронеж',
-] as const
-
 export const RELATIONSHIP_GOAL_OPTIONS = [
   { label: 'Серьезные отношения', value: 'serious' },
   { label: 'Знакомства', value: 'dating' },
@@ -43,15 +30,3 @@ export const EDUCATION_LEVEL_OPTIONS = [
   { label: 'Высшее', value: 'higher' },
 ] as const
 
-export const EDUCATION_INSTITUTION_MOCK_OPTIONS = [
-  'МГУ',
-  'МГТУ им. Н.Э. Баумана',
-  'ВШЭ',
-  'СПбГУ',
-  'МФТИ',
-  'ИТМО',
-  'МГИМО',
-  'РАНХиГС',
-  'КФУ',
-  'УрФУ',
-] as const

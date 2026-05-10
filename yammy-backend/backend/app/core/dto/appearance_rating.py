@@ -1,7 +1,7 @@
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
-from app.utils.url_helper import get_absolute_url
+from app.utils.helpers.url_helper import get_absolute_url
 from app.core.dto.user import UserPhoto
 
 

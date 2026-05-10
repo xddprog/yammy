@@ -2,9 +2,9 @@ from uuid import UUID
 
 from dishka.integrations.fastapi import FromDishka, inject
 from typing import Annotated
-from fastapi import APIRouter, Depends, UploadFile, File
-from fastapi_limiter.depends import RateLimiter
-from pyrate_limiter import Limiter, Rate, Duration
+from fastapi import APIRouter, Depends, UploadFile, File, Query
+from app.utils.helpers.rate_limit import RateLimited
+from pyrate_limiter import Duration
 
 from app.core.dto.search import SearchRequest
 from app.core.services import ModerationService, SearchService, UserService
@@ -26,7 +26,7 @@ router = APIRouter()
     "/",
     response_model=UserProfileSchema,
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=20, interval=Duration.MINUTE))))
+        Depends(RateLimited(20, Duration.MINUTE))
     ]
 )
 @inject
@@ -40,7 +40,7 @@ async def get_user_profile(
 @router.post(
     "/search",
     # dependencies=[
-    #     Depends(RateLimiter(Limiter(Rate(limit=4, interval=Duration.MINUTE))))
+    #     Depends(RateLimited(4, Duration.MINUTE))
     # ]
 )
 @inject
@@ -55,7 +55,7 @@ async def search_users(
 @router.put(
     "/",
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=10, interval=Duration.MINUTE))))
+        Depends(RateLimited(10, Duration.MINUTE))
     ]
 )
 @inject
@@ -70,25 +70,24 @@ async def update_user_profile(
 @router.patch(
     "/image/{image_id}/order",
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=10, interval=Duration.MINUTE))))
+        Depends(RateLimited(10, Duration.MINUTE))
     ],
 )
 @inject
 async def update_image_order(
-    image_id: UUID,
     body: ImageOrderUpdateSchema,
     current_user: Annotated[User, Depends(get_current_user)],
     user_service: FromDishka[UserService],
 ) -> list[UserPhoto]:
     return await user_service.update_image_order(
-        current_user.id, image_id, body.order
+        current_user.id, body
     )
 
 
 @router.delete(
     "/image",
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=10, interval=Duration.MINUTE))))
+        Depends(RateLimited(10, Duration.MINUTE))
     ]
 )
 @inject
@@ -103,7 +102,7 @@ async def delete_image(
 @router.post(
     "/image",
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=5, interval=Duration.MINUTE))))
+        Depends(RateLimited(5, Duration.MINUTE))
     ]
 )
 @inject
@@ -112,23 +111,22 @@ async def upload_new_image(
     current_user: Annotated[User, Depends(get_current_user)],
     moderation_service: FromDishka[ModerationService],
     image: UploadFile = File(...),
-) -> None:
-    await moderation_service.moderate_image(image)
+) -> UserPhoto:
+    await moderation_service.moderate_image(image, is_main=False)
     return await user_service.add_user_image(current_user.id, image)
 
 
 @router.patch(
     "/image/main",
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=5, interval=Duration.MINUTE))))
+        Depends(RateLimited(10, Duration.MINUTE))
     ],
 )
 @inject
 async def set_main_image(
     current_user: Annotated[User, Depends(get_current_user)],
-    moderation_service: FromDishka[ModerationService],
     user_service: FromDishka[UserService],
-    image: UploadFile = File(...),
-) -> None:
-    await moderation_service.moderate_image(image)
-    return await user_service.set_main_image(current_user.id, image)
+    image: UploadFile = File(default=None),
+    existing_image_id: UUID | None = None,
+) -> UserPhoto | list[UserPhoto]:
+    return await user_service.set_main_image(current_user.id, image, existing_image_id)

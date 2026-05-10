@@ -2,7 +2,7 @@ from uuid import UUID
 
 from app.core.repositories.appearance_rating_repository import AppearanceRatingRepository
 from app.core.clients.redis_client import RedisClient
-from app.utils.cache_keys import AppearanceRatingCacheKeys
+from app.utils.constants.cache_keys import AppearanceRatingCacheKeys
 from app.infrastructure.logging.logger import get_logger
 
 

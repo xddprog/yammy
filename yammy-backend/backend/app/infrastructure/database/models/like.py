@@ -1,7 +1,7 @@
 from sqlalchemy import ForeignKey, Enum as SQLAlchemyEnum, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from app.infrastructure.database.models.base import Base
-from app.utils.enums import LikeTypeEnum
+from app.utils.constants.enums import LikeTypeEnum
 import uuid
 
 class Like(Base):

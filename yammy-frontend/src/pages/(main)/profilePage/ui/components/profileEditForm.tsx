@@ -3,15 +3,11 @@ import type React from 'react'
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { cn } from '@/shared'
+import { useCityNames } from '@/shared/hooks/useCityNames'
+import { useUniversityNames } from '@/shared/hooks/useUniversityNames'
 
-import {
-  CITY_MOCK_OPTIONS,
-  EDUCATION_INSTITUTION_MOCK_OPTIONS,
-  EDUCATION_LEVEL_OPTIONS,
-  RELATIONSHIP_GOAL_OPTIONS,
-  WORK_SPHERE_MOCK_OPTIONS,
-} from './profile.constants'
 import type { ProfilePhotoItem } from '@/entities/user/types/types'
+import { EDUCATION_LEVEL_OPTIONS, RELATIONSHIP_GOAL_OPTIONS, WORK_SPHERE_MOCK_OPTIONS } from './profile.constants'
 import { ProfileAutocompleteRow } from './profileAutocompleteRow'
 import { ProfilePhotosEditor } from './profilePhotosEditor'
 
@@ -39,6 +35,10 @@ export const ProfileEditForm = ({
     RELATIONSHIP_GOAL_OPTIONS.find((option) => option.value === draft.relationshipGoals[0])?.label ?? ''
   const userAge = Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)
   const { data: filtersMetadata } = useFiltersMetadata()
+  const { data: cityNames = [] } = useCityNames(draft.city)
+  const { data: universityNames = [] } = useUniversityNames(draft.educationInstitution, {
+    enabled: isHigherEducation,
+  })
 
   return (
     <section className="flex flex-col gap-3">
@@ -91,7 +91,7 @@ export const ProfileEditForm = ({
           label="Город"
           value={draft.city}
           onChange={(value) => setDraft((prev) => ({ ...prev, city: value }))}
-          options={CITY_MOCK_OPTIONS}
+          options={cityNames}
           placeholder="Не указано"
           ariaLabel="Город"
         />
@@ -119,7 +119,8 @@ export const ProfileEditForm = ({
             setDraft((prev) => ({
               ...prev,
               educationLevel: selected?.value ?? (value ? prev.educationLevel : null),
-              educationInstitution: selected?.value === 'higher' ? prev.educationInstitution : '',
+              educationInstitution:
+                selected?.value === 'higher' ? prev.educationInstitution : '',
             }))
           }}
           options={EDUCATION_LEVEL_OPTIONS.map((option) => option.label)}
@@ -132,7 +133,7 @@ export const ProfileEditForm = ({
             label="ВУЗ"
             value={draft.educationInstitution}
             onChange={(value) => setDraft((prev) => ({ ...prev, educationInstitution: value }))}
-            options={EDUCATION_INSTITUTION_MOCK_OPTIONS}
+            options={universityNames}
             placeholder="Не указано"
             ariaLabel="Учебное заведение"
           />

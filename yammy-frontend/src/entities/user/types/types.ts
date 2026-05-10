@@ -7,7 +7,7 @@ export interface SearchUsersRequest {
   age_min?: number
   city?: string
   education_levels?: string[]
-  education_query?: string
+  education_details?: string
   filters?: SearchFilters
   gender?: string
   job_spheres?: string[]
@@ -51,7 +51,10 @@ export interface UserProfilePhotoDto {
   is_main: boolean
 }
 
-export type ProfilePhotoItem = UserProfilePhotoDto
+/** Локально: превью только на время загрузки. */
+export type ProfilePhotoItem = UserProfilePhotoDto & {
+  uploadStatus?: 'uploading'
+}
 
 export interface UserSearchResult {
   user_id: string

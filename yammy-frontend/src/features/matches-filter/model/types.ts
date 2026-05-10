@@ -19,9 +19,8 @@ export interface FiltersState {
   workFields: string[]
   /** Уровень образования */
   educationLevel: string | null
-  /** Учебное заведение (свободный ввод) */
+  /** Учебное заведение (название ВУЗа, хранится в users.education_details) */
   educationInstitution: string
-  /** Приоритеты (веса) в процентах: [внешность, социум, личность] */
   priorities: [number, number, number]
   /** Только премиум-анкеты */
   premiumOnly: boolean

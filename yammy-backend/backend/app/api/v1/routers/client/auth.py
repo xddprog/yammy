@@ -7,7 +7,7 @@ from app.core.dto.auth import LoginSchema, RefreshTokenSchema, TelegramAuthSchem
 from app.core.dto.user import BaseUserSchema
 from app.core.services.auth_service import AuthService
 from app.infrastructure.errors.auth_errors import InvalidCredentials, InvalidTelegramData
-from app.utils.error_extra import error_response
+from app.infrastructure.errors.error_extra import error_response
 from app.infrastructure.database.models.user import User
 
 

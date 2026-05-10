@@ -2,9 +2,9 @@
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
-from app.utils.url_helper import get_absolute_url
+from app.utils.helpers.url_helper import get_absolute_url
 
-from app.utils.enums import (
+from app.utils.constants.enums import (
     GenderEnum,
     RelationshipGoalEnum,
     SubscriptionTierEnum,
@@ -12,7 +12,7 @@ from app.utils.enums import (
     JobSphereEnum,
     UserLanguageEnum,
 )
-from app.utils.response_examples import USER_PROFILE_RESPONSE, USER_SEARCH_RESPONSE
+from app.utils.constants.response_examples import USER_PROFILE_RESPONSE, USER_SEARCH_RESPONSE
 
 
 class BaseUserSchema(BaseModel):
@@ -42,9 +42,18 @@ class UserPhoto(BaseModel):
     order: int
     is_main: bool = False
 
+    @field_validator("file_path", mode="before")
+    @classmethod
+    def transform_file_path(cls, v):
+        return get_absolute_url(v)
+
+class UpdateImageOrderSchema(BaseModel):
+    id: UUID
+    order: int
+
 
 class ImageOrderUpdateSchema(BaseModel):
-    order: int = Field(..., ge=0, description="Новый порядок изображения")
+    photos: list[UpdateImageOrderSchema]
 
 
 class UserUpdateRequest(BaseModel):
@@ -66,8 +75,9 @@ class UserUpdateRequest(BaseModel):
     def validate_filters(self):
         if self.job and not self.job_sphere:
             raise ValueError("Job sphere is required if job is provided")
-        if self.education_details and self.education_level != EducationLevelEnum.UNIVERSITY:
-            raise ValueError("Education level must be university if education details are provided")
+        if (self.education_details or "").strip():
+            if self.education_level != EducationLevelEnum.HIGHER:
+                raise ValueError("Education level must be higher if education details are provided")
         return self
 
 class UserProfileSchema(BaseUserSchema):

@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.models.base import Base
-from app.utils.enums import (
+from app.utils.constants.enums import (
     EducationLevelEnum,
     GenderEnum,
     JobSphereEnum,

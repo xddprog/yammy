@@ -7,6 +7,8 @@ import { memo, useCallback } from 'react'
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import { DragIndicator, SheetCard } from '@/features/matches-feed/ui/sheet-card'
 import { Button } from '@/shared'
+import { useCityNames } from '@/shared/hooks/useCityNames'
+import { useUniversityNames } from '@/shared/hooks/useUniversityNames'
 
 import { GENDER_OPTIONS } from '../../lib/constants'
 import { useFiltersState } from '../../model/useFiltersState'
@@ -34,38 +36,12 @@ const RELATIONSHIP_GOAL_OPTIONS = [
   { label: 'Дружба', value: 'friendship' },
 ] as const
 
-const CITY_MOCK_OPTIONS = [
-  'Москва',
-  'Санкт-Петербург',
-  'Казань',
-  'Екатеринбург',
-  'Новосибирск',
-  'Нижний Новгород',
-  'Краснодар',
-  'Ростов-на-Дону',
-  'Самара',
-  'Воронеж',
-] as const
-
 const WORK_SPHERE_MOCK_OPTIONS = [
   { label: 'IT', value: 'it' },
   { label: 'Дизайн', value: 'design' },
   { label: 'Маркетинг', value: 'marketing' },
   { label: 'Финансы', value: 'finance' },
   { label: 'Образование', value: 'education' },
-] as const
-
-const EDUCATION_INSTITUTION_MOCK_OPTIONS = [
-  'МГУ',
-  'МГТУ им. Н.Э. Баумана',
-  'ВШЭ',
-  'СПбГУ',
-  'МФТИ',
-  'ИТМО',
-  'МГИМО',
-  'РАНХиГС',
-  'КФУ',
-  'УрФУ',
 ] as const
 
 const getEducationLabelFromState = (value: string | null): string | null => {
@@ -90,6 +66,12 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
   const dragControls = useDragControls()
   const filters = useFiltersState()
   const { data: filtersMetadata } = useFiltersMetadata()
+  const { data: cityNames = [] } = useCityNames(filters.state.city)
+  const showUniversityField =
+    getEducationLabelFromState(filters.state.educationLevel) === HIGHER_EDUCATION_LEVEL_LABEL
+  const { data: universityNames = [] } = useUniversityNames(filters.state.educationInstitution, {
+    enabled: showUniversityField,
+  })
 
   const handleCancel = useCallback(() => {
     filters.setState(filters.appliedState)
@@ -212,7 +194,7 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                 <FilterComboboxField
                   value={filters.state.city}
                   onChange={filters.setCity}
-                  options={CITY_MOCK_OPTIONS}
+                  options={cityNames}
                   placeholder="Город"
                   ariaLabel="Город"
                 />
@@ -249,23 +231,26 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                     const label = v[0]
                     if (!label) {
                       filters.setEducationLevel(null)
+                      filters.setEducationInstitution('')
                       return
                     }
                     const code =
                       EDUCATION_LEVEL_TO_API[label as (typeof EDUCATION_LEVEL_OPTIONS)[number]] ??
                       label
                     filters.setEducationLevel(code)
+                    if (code !== 'higher') {
+                      filters.setEducationInstitution('')
+                    }
                   }}
                   multiple={false}
                   aria-label="Уровень образования"
                 />
-                {getEducationLabelFromState(filters.state.educationLevel) ===
-                  HIGHER_EDUCATION_LEVEL_LABEL && (
+                {showUniversityField && (
                   <div className="mt-2">
                     <FilterComboboxField
                       value={filters.state.educationInstitution}
                       onChange={filters.setEducationInstitution}
-                      options={EDUCATION_INSTITUTION_MOCK_OPTIONS}
+                      options={universityNames}
                       placeholder="Учебное заведение"
                       ariaLabel="Учебное заведение"
                     />

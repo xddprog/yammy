@@ -105,6 +105,15 @@ export const MatchesCardContent = ({
     relationship: 'Отношения',
   }
 
+  const educationLevelLabelMap: Record<string, string> = {
+    school: 'Школьное',
+    college: 'Среднее специальное',
+    higher: 'Высшее',
+    Школьное: 'Школьное',
+    'Среднее специальное': 'Среднее специальное',
+    Высшее: 'Высшее',
+  }
+
   const hasDisplayValue = (value: string | null | undefined): boolean => {
     if (value == null) return false
     const normalized = value.trim().toLowerCase()
@@ -118,7 +127,13 @@ export const MatchesCardContent = ({
       value: relationshipGoalLabelMap[relationshipGoal ?? ''] ?? relationshipGoal ?? '',
     },
     { label: 'город', value: city },
-    { label: 'образование', value: educationDetails ?? educationLevel ?? '' },
+    {
+      label: 'образование',
+      value:
+        educationDetails && educationDetails.trim() !== ''
+          ? educationDetails
+          : educationLevelLabelMap[educationLevel ?? ''] ?? educationLevel ?? '',
+    },
     { label: 'работа', value: job ?? '' },
     { label: 'сфера работы', value: jobSphere ?? '' },
   ].filter((row) => hasDisplayValue(row.value))

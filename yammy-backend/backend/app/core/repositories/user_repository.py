@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
 from app.core.repositories.base import SqlAlchemyRepository
+from app.core.dto.user import ImageOrderUpdateSchema
 from app.infrastructure.database.models.user import User, UserPhoto
 from app.infrastructure.database.models.filter import FilterOption, FilterSubcategory, UserFilterAssociation
 
@@ -85,18 +86,34 @@ class UserRepository(SqlAlchemyRepository[User]):
         await self.session.execute(insert_query)
 
     async def delete_image(self, user_id: UUID, image_id: UUID) -> str | None:
-        query = (
-            delete(UserPhoto)
-            .where(
-                UserPhoto.id == image_id, 
-                UserPhoto.user_id == user_id
+        result = await self.session.execute(
+            select(UserPhoto).where(
+                UserPhoto.id == image_id,
+                UserPhoto.user_id == user_id,
             )
-            .returning(UserPhoto.file_path)
         )
-        image_path = (await self.session.execute(query)).scalar_one_or_none()
+        photo = result.scalar_one_or_none()
+        if photo is None:
+            return None
+        if photo.is_main:
+            raise ValueError("cannot_delete_main")
+        image_path = photo.file_path
+        await self.session.delete(photo)
+        await self.session.flush()
+
+        remaining_q = (
+            select(UserPhoto)
+            .where(UserPhoto.user_id == user_id)
+            .order_by(UserPhoto.order)
+        )
+        remaining = list((await self.session.execute(remaining_q)).scalars().all())
+        for i, p in enumerate(remaining):
+            p.order = i
+
+        await self.session.commit()
         return image_path
 
-    async def add_image(self, user_id: UUID, image_path: str):
+    async def add_image(self, user_id: UUID, image_path: str) -> UserPhoto:
         max_order_query = (
             select(UserPhoto.order)
             .where(UserPhoto.user_id == user_id)
@@ -112,27 +129,49 @@ class UserRepository(SqlAlchemyRepository[User]):
             user_id=user_id,
             file_path=image_path,
             order=max_order_row + 1 if max_order_row else 0,
+            is_main=False,
         )
-        
-        await self.session.add(new_photo)
+
+        self.session.add(new_photo)
         await self.session.commit()
+        await self.session.refresh(new_photo)
+        return new_photo
 
     async def set_main_image(
         self, user_id: UUID, image_path: str
-    ) -> None:
-        prev_main_photo = await self.session.execute(
+    ) -> UserPhoto:
+        prev_main_photo_result = await self.session.execute(
             select(UserPhoto)
-            .where(UserPhoto.user_id == user_id, UserPhoto.is_main == True)
+            .where(
+                UserPhoto.user_id == user_id, 
+                UserPhoto.is_main == True
+            )
         )
-        prev_main_photo = prev_main_photo.scalar_one_or_none()
-    
-        prev_main_photo.file_path = image_path
-        
-        await self.session.commit()
+        prev_main_photo = prev_main_photo_result.scalar_one()
+        if prev_main_photo is None:
+            raise ValueError("no_main_photo")
 
-    async def update_image_order(
-        self, user_id: UUID, image_id: UUID, new_order: int
-    ) -> list[UserPhoto] | None:
+        prev_main_photo.file_path = image_path
+
+        await self.session.commit()
+        await self.session.refresh(prev_main_photo)
+        return prev_main_photo
+
+    async def swap_main_with_existing_gallery_photo(
+        self,
+        user_id: UUID,
+        gallery_photo_id: UUID,
+    ) -> list[UserPhoto]:
+        old_main_row = await self.session.execute(
+            select(UserPhoto).where(
+                UserPhoto.user_id == user_id, 
+                UserPhoto.is_main == True
+            )
+        )
+        old_main = old_main_row.scalar_one()
+        if old_main is None:
+            raise ValueError("no_main_photo")
+
         result = await self.session.execute(
             select(UserPhoto)
             .where(UserPhoto.user_id == user_id)
@@ -140,29 +179,47 @@ class UserRepository(SqlAlchemyRepository[User]):
         )
         images = list(result.scalars().all())
 
-        updated_image = next((img for img in images if img.id == image_id), None)
-        if not updated_image:
-            return []
-        
-        if updated_image.is_main:
-            raise ValueError("main_photo")
-        
-        new_order = max(0, min(new_order, len(images) - 1))
-        if new_order == 0:
-            raise ValueError("main_photo")
+        target = next((p for p in images if p.id == gallery_photo_id), None)
 
-        if updated_image.order == new_order:
-            return list(images)
+        if target is None:
+            raise ValueError("photo_not_found")
+        if target.is_main or target.id == old_main.id:
+            return images
 
-        images_without_current = [img for img in images if img.id != image_id]
-        images_without_current.insert(new_order, updated_image)
-        
-        for index, image in enumerate(images_without_current):
-            image.order = index
-        
+        target_order_before = target.order
+        old_main_order_before = old_main.order
+
+        target.is_main = True
+        target.order = old_main_order_before
+
+        old_main.is_main = False
+        old_main.order = target_order_before
+
         await self.session.commit()
-        
-        for image in images_without_current:
-            await self.session.refresh(image)
-        
-        return images_without_current
+
+        refreshed = await self.session.execute(
+            select(UserPhoto)
+            .where(UserPhoto.user_id == user_id)
+            .order_by(UserPhoto.order)
+        )
+        return list(refreshed.scalars().all())
+
+    async def update_image_order(self, user_id: UUID, body: ImageOrderUpdateSchema) -> list[UserPhoto]:
+        query = (
+            select(UserPhoto)
+            .where(UserPhoto.user_id == user_id)
+            .order_by(UserPhoto.order)
+        )
+        images = (await self.session.execute(query)).scalars().all()
+        by_id = {image.id: image for image in images}
+
+        for photo in body.photos:
+            image = by_id.get(photo.id)
+            if image is None:
+                raise ValueError("photo_not_found")
+            image.order = photo.order
+
+        await self.session.commit()
+
+        refreshed = await self.session.execute(query)
+        return refreshed.scalars().all()

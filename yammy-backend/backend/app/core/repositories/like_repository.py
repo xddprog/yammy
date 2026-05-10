@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.core.repositories.base import SqlAlchemyRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.utils.enums import LikeTypeEnum
+from app.utils.constants.enums import LikeTypeEnum
 
 class LikeRepository(SqlAlchemyRepository[Like]):
     def __init__(self, session: AsyncSession):

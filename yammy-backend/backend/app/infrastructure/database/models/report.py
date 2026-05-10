@@ -1,7 +1,7 @@
 from sqlalchemy import ForeignKey, Enum as SQLAlchemyEnum, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.infrastructure.database.models.base import Base
-from app.utils.enums import ReportReasonEnum
+from app.utils.constants.enums import ReportReasonEnum
 import uuid
 
 class Report(Base):

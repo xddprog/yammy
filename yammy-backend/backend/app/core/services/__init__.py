@@ -10,6 +10,7 @@ from app.core.services.moderation_service import ModerationService
 from app.core.services.websocket_service import WebSocketService
 from app.core.services.chat_service import ChatService
 from app.core.services.user_service import UserService
+from app.core.services.city_service import CityService
 
 __all__ = [
     "AuthService",
@@ -23,5 +24,6 @@ __all__ = [
     "ModerationService",
     "WebSocketService",
     "ChatService",
-    "UserService"
+    "UserService",
+    "CityService",
 ]

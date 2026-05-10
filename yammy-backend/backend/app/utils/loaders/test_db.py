@@ -1,15 +1,18 @@
 import random
+import uuid
 from datetime import datetime, timedelta
 from faker import Faker
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from passlib.context import CryptContext
 
+from dishka import AsyncContainer
+
 from app.infrastructure.database.models.admin import Admin
 from app.infrastructure.database.models.user import User, UserPhoto
 from app.infrastructure.database.models.filter import FilterCategory, FilterSubcategory, FilterOption, UserFilterAssociation
-from app.utils.enums import (
+from app.utils.constants.enums import (
     GenderEnum,
     JobSphereEnum,
     RelationshipGoalEnum,
@@ -156,7 +159,7 @@ INITIAL_FILTERS = [
 
 async def init_test_db(session: AsyncSession, count: int = 50) -> None:
     try:
-        admin_exists = (await session.execute(select(Admin))).scalars().first()
+        admin_exists = (await session.execute(select(User))).scalars().first()
         if not admin_exists:
             pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
             admin = Admin(username="admin", password_hash=pwd_context.hash("admin"))
@@ -185,8 +188,18 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> None:
 
         all_options = (await session.execute(select(FilterOption))).scalars().all()
 
+        existing_users = await session.scalar(select(func.count()).select_from(User)) or 0
+        if existing_users >= count:
+            logger.info(
+                "init_test_db_skip_user_seed",
+                existing_users=existing_users,
+                target_count=count,
+            )
+            await session.commit()
+            return
+
         logger.info(f"Starting generation of {count} users...")
-        for i in range(count):
+        for _ in range(count):
             gender = random.choice(list(GenderEnum))
             name = fake.name_female() if gender == GenderEnum.FEMALE else fake.name_male()
             is_high_match = random.random() < HIGH_MATCH_SHARE
@@ -204,21 +217,26 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> None:
                 job=fake.job(),
                 relationship_goal=random.choice(list(RelationshipGoalEnum)),
                 education_level=random.choice(list(EducationLevelEnum)),
-                education_details=random.choice([
-                    "МГУ им. М.В. Ломоносова",
-                    "СПбГУ",
-                    "МГТУ им. Н.Э. Баумана",
-                    "НИУ ВШЭ",
-                    "МФТИ",
-                    "КФУ",
-                    "УрФУ",
-                    "ИТМО"
-                ]) if random.random() > 0.3 else None,
-                
+                education_details=(
+                    random.choice(
+                        [
+                            "МГУ им. М.В. Ломоносова",
+                            "СПбГУ",
+                            "МГТУ им. Н.Э. Баумана",
+                            "НИУ ВШЭ",
+                            "МФТИ",
+                            "КФУ",
+                            "УрФУ",
+                            "ИТМО",
+                        ]
+                    )
+                    if random.random() > 0.35
+                    else None
+                ),
                 subscription_tier=random.choice(list(SubscriptionTierEnum)),
                 adequacy_score=round(random.uniform(9.0, 10.0), 1) if is_high_match else round(random.uniform(5.0, 10.0), 1),
                 last_seen=datetime.now() - timedelta(minutes=random.randint(0, 120)) if is_high_match else datetime.now() - timedelta(minutes=random.randint(0, 10000)),
-                referral_code=f"REF{random.randint(1000, 9999)}{i}",
+                referral_code=f"REF{uuid.uuid4().hex[:12].upper()}",
                 notifications_enabled=random.random() > 0.4,
                 boost_expires_at=datetime.now() + timedelta(hours=2) if is_high_match else (datetime.now() + timedelta(hours=2) if random.random() > 0.9 else None),
                 language=random.choice(list(UserLanguageEnum)),
@@ -256,9 +274,10 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> None:
 
 
 async def sync_test_users_to_es(
-    session: AsyncSession, 
-    es_client: ElasticsearchClient, 
-    ml_service: MLService
+    session: AsyncSession,
+    es_client: ElasticsearchClient,
+    *,
+    container: AsyncContainer,
 ) -> None:
     try:
         logger.info("Checking users index state before sync...")
@@ -299,6 +318,8 @@ async def sync_test_users_to_es(
         if not users:
             logger.warning("No users found in database to sync.")
             return
+
+        ml_service = await container.get(MLService)
 
         all_options = (await session.execute(select(FilterOption))).scalars().all()
         logger.info(f"Found {len(all_options)} filter options")

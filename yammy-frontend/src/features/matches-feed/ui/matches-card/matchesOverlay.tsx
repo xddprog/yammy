@@ -51,6 +51,7 @@ const OverlayContent = ({
     match_percentage,
     bio,
     relationship_goal,
+    education_level,
     education_details,
     job_sphere,
     job,
@@ -207,6 +208,7 @@ const OverlayContent = ({
             bio={bio}
             relationshipGoal={relationship_goal}
             educationDetails={education_details}
+            educationLevel={education_level}
             jobSphere={job_sphere}
             job={job}
             userFilters={filters}

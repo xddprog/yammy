@@ -2,8 +2,8 @@ from typing import Annotated
 from uuid import UUID
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, Depends
-from fastapi_limiter.depends import RateLimiter
-from pyrate_limiter import Limiter, Rate, Duration
+from app.utils.helpers.rate_limit import RateLimited
+from pyrate_limiter import Duration
 
 from app.api.v1.dependency.providers.request import get_current_user
 from app.core.services.like_service import LikeService
@@ -15,7 +15,7 @@ router = APIRouter()
 
 @router.post("/",
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=30, interval=Duration.MINUTE))))
+        Depends(RateLimited(30, Duration.MINUTE))
     ]
 )
 @inject
@@ -29,7 +29,7 @@ async def like_user(
 
 @router.post("/dislike",
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=30, interval=Duration.MINUTE))))
+        Depends(RateLimited(30, Duration.MINUTE))
     ]
 )
 @inject
@@ -43,7 +43,7 @@ async def dislike_user(
 
 @router.post("/match",
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=30, interval=Duration.MINUTE))))
+        Depends(RateLimited(30, Duration.MINUTE))
     ]
 )
 @inject

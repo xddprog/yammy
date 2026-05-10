@@ -1,6 +1,6 @@
 from typing import Any
 from datetime import datetime, timezone, timedelta
-from app.utils.enums import EducationLevelEnum, GenderEnum, JobSphereEnum, RelationshipGoalEnum
+from app.utils.constants.enums import EducationLevelEnum, GenderEnum, JobSphereEnum, RelationshipGoalEnum
 from typing_extensions import Self
 
 class UserSearchQueryBuilder:

@@ -4,7 +4,7 @@ from app.core.services.ml_service import MLService
 from app.infrastructure.errors.image_errors import ImageProcessingError
 from app.infrastructure.errors.moderation_errors import TextModerationError
 from app.infrastructure.logging.logger import get_logger
-from app.utils.moderation_constants import (
+from app.utils.constants.moderation_constants import (
     TEXT_MODERATION_ERROR_MESSAGES,
     IMAGE_MODERATION_ERROR_MESSAGES
 )

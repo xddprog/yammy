@@ -5,7 +5,7 @@ from sqlalchemy import ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.models.base import Base
-from app.utils.enums import PaymentStatus
+from app.utils.constants.enums import PaymentStatus
 
 
 if TYPE_CHECKING:

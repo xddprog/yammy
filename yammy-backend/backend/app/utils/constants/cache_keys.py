@@ -1,7 +1,3 @@
-"""
-Константы для ключей кеша Redis
-"""
-
 from enum import IntEnum
 
 
@@ -27,3 +23,11 @@ class LikeCacheKeys:
 class AppearanceRatingCacheKeys:
     APPEARANCE_RATING_BUFFER = "appearance_rating:buffer"
     APPEARANCE_RATED_USERS = "user:{user_id}:appearance_rated_users"
+
+
+class CityCacheKeys:
+    NAMES = "cities:names"
+
+
+class UniversityCacheKeys:
+    NAMES = "universities:names"

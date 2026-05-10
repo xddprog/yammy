@@ -1,8 +1,8 @@
 from typing import Annotated
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, Depends
-from fastapi_limiter.depends import RateLimiter
-from pyrate_limiter import Limiter, Rate, Duration
+from app.utils.helpers.rate_limit import RateLimited
+from pyrate_limiter import Duration
 
 from app.api.v1.dependency.providers.request import get_current_user
 from app.core.services.search_service import SearchService
@@ -16,7 +16,7 @@ router = APIRouter()
 
 @router.get("/appearance-rating", response_model=list[AppearanceRatingSchema],
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=10, interval=Duration.MINUTE))))
+        Depends(RateLimited(10, Duration.MINUTE))
     ]
 )
 @inject
@@ -29,7 +29,7 @@ async def get_users_for_appearance_rating(
 
 @router.post("/appearance-rating",
     dependencies=[
-        Depends(RateLimiter(Limiter(Rate(limit=60, interval=Duration.MINUTE))))
+        Depends(RateLimited(60, Duration.MINUTE))
     ]
 )
 @inject

@@ -4,7 +4,7 @@ from app.core.clients.redis_client import RedisClient
 from app.core.dto.filter import FilterCategorySchema
 from app.core.repositories.filter_repository import FilterRepository
 from app.infrastructure.database.models.filter import FilterCategory
-from app.utils.cache_keys import CacheTTL, FilterCacheKeys
+from app.utils.constants.cache_keys import CacheTTL, FilterCacheKeys
 
 
 class FilterService:

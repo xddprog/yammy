@@ -117,9 +117,9 @@ const ErrorToastStrip = ({
           : { duration: fadeMs / 1000, ease: [0.4, 0, 1, 1] }
       }
       exit={{ opacity: 0, transition: { duration: 0.2 } }}
-      className="flex w-full items-end gap-1 rounded-[28px] border border-neutral-200 bg-white px-4 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+      className="flex w-full items-center gap-1 rounded-[28px] border border-neutral-200 bg-white px-4 py-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
     >
-      <CircleAlert className="size-5 shrink-0 text-black" aria-hidden />
+      <CircleAlert className="size-6 shrink-0 text-black" aria-hidden />
       <p className="min-w-0 flex-1 text-left text-[14px] leading-snug text-black font-[200]">{message}</p>
     </motion.div>
   )

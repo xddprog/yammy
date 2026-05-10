@@ -1,8 +1,8 @@
 from uuid import UUID
 from app.core.repositories.like_repository import LikeRepository
 from app.core.clients.redis_client import RedisClient
-from app.utils.cache_keys import LikeCacheKeys, UserCacheKeys
-from app.utils.enums import LikeTypeEnum
+from app.utils.constants.cache_keys import LikeCacheKeys, UserCacheKeys
+from app.utils.constants.enums import LikeTypeEnum
 from app.infrastructure.logging.logger import get_logger
 
 

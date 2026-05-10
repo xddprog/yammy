@@ -1,14 +1,60 @@
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { ImagePlus, SquarePen, X } from 'lucide-react'
+import { ImagePlus, Loader2, SquarePen, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useQueryClient } from '@tanstack/react-query'
+
+import {
+  deleteUserGalleryPhoto,
+  uploadUserGalleryPhoto,
+  uploadUserMainPhoto,
+  setMainFromGalleryPhoto,
+  updateUserPhotosOrder,
+} from '@/entities/user/api/userService'
+import {
+  mergeUploadedGalleryPhotoInCache,
+  mergeUploadedMainPhotoInCache,
+  patchProfilePhotosInCache,
+  removeProfilePhotoFromCache,
+} from '@/entities/user/lib/patchProfilePhotosCache'
+import { usersQueryKeys } from '@/entities/user/lib/usersQueryKeys'
 
 import { Image, cn } from '@/shared'
 import { triggerHaptic } from '@/shared/lib/haptics'
 
 import { MAX_PROFILE_PHOTOS } from './profile.constants'
 import type { ProfilePhotoItem } from '@/entities/user/types/types'
+
+const SERVER_PHOTO_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function buildPhotosOrderPayload(list: ProfilePhotoItem[]): { id: string; order: number }[] | null {
+  const main = list.find((p) => p.is_main)
+  if (!main) return null
+  const gallery = list.filter((p) => !p.is_main)
+  const ordered = [main, ...gallery]
+  if (!ordered.every((p) => SERVER_PHOTO_ID_RE.test(p.id))) return null
+  return ordered.map((p, i) => ({ id: p.id, order: i }))
+}
+
+function renumberPhotosOrder(photos: ProfilePhotoItem[]): ProfilePhotoItem[] {
+  return [...photos].sort((a, b) => a.order - b.order).map((item, index) => ({ ...item, order: index }))
+}
+
+function PhotoUploadStateOverlay({ visible }: { visible: boolean }): React.JSX.Element | null {
+  if (!visible) return null
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-[15] flex flex-col items-center justify-center rounded-2xl bg-black/55 backdrop-blur-[1px]"
+      aria-live="polite"
+      aria-busy
+    >
+      <Loader2 className="size-9 shrink-0 animate-spin text-white" aria-hidden />
+    </div>
+  )
+}
 
 interface ProfilePhotosEditorProps {
   photos: ProfilePhotoItem[]
@@ -71,6 +117,7 @@ export const ProfilePhotosEditor = ({
   photos,
   setPhotos,
 }: ProfilePhotosEditorProps): React.JSX.Element => {
+  const queryClient = useQueryClient()
   const reorderMode = usePhotoReorderMode()
   const photosRef = useRef(photos)
   photosRef.current = photos
@@ -139,9 +186,53 @@ export const ProfilePhotosEditor = ({
     return undefined
   }
 
-  const removePhoto = (id: string) => {
-    setPhotos((prev) => prev.filter((p) => p.id !== id))
-  }
+  const revokeIfBlobUrl = useCallback((url: string | undefined | null): void => {
+    if (!url?.startsWith('blob:')) return
+    URL.revokeObjectURL(url)
+  }, [])
+
+  const persistPhotosOrder = useCallback(
+    (snapshot: ProfilePhotoItem[]) => {
+      const photos = buildPhotosOrderPayload(snapshot)
+      if (!photos?.length) return
+      const anchorId = photos[0]!.id
+      void (async () => {
+        try {
+          const nextPhotos = await updateUserPhotosOrder(anchorId, photos)
+          patchProfilePhotosInCache(queryClient, nextPhotos)
+        } catch {
+          void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+        }
+      })()
+    },
+    [queryClient],
+  )
+
+  const removePhoto = useCallback(
+    (id: string): void => {
+      const victim = photosRef.current.find((p) => p.id === id)
+      revokeIfBlobUrl(victim?.file_path)
+
+      if (!SERVER_PHOTO_ID_RE.test(id)) {
+        setPhotos((prev) => renumberPhotosOrder(prev.filter((p) => p.id !== id)))
+        return
+      }
+
+      const rollback = [...photosRef.current]
+      setPhotos((prev) => renumberPhotosOrder(prev.filter((p) => p.id !== id)))
+      removeProfilePhotoFromCache(queryClient, id)
+
+      void (async () => {
+        try {
+          await deleteUserGalleryPhoto(id)
+        } catch {
+          setPhotos(rollback)
+          void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+        }
+      })()
+    },
+    [queryClient, revokeIfBlobUrl, setPhotos],
+  )
 
   const clearHoldTimer = () => {
     if (holdTimerRef.current != null) {
@@ -150,34 +241,97 @@ export const ProfilePhotosEditor = ({
     }
   }
 
-  const onExtrasFiles = (files: FileList | null) => {
+  const runGalleryUpload = useCallback(
+    (file: File): void => {
+      const blobUrl = URL.createObjectURL(file)
+      const tempId = `photo-upload-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+      const orders = photosRef.current.map((p) => p.order)
+      const baseOrder = orders.length > 0 ? Math.max(...orders) : -1
+
+      flushSync(() => {
+        setPhotos((prev) => {
+          const nonMainCount = prev.filter((p) => !p.is_main).length
+          if (nonMainCount >= MAX_PROFILE_PHOTOS) {
+            URL.revokeObjectURL(blobUrl)
+            return prev
+          }
+
+          return [
+            ...prev,
+            {
+              id: tempId,
+              file_path: blobUrl,
+              is_main: false,
+              order: baseOrder + 1,
+              uploadStatus: 'uploading' as const,
+            },
+          ]
+        })
+      })
+
+      void (async () => {
+        try {
+          const created = await uploadUserGalleryPhoto(file)
+          revokeIfBlobUrl(blobUrl)
+          setPhotos((prev) => prev.filter((p) => p.id !== tempId))
+          mergeUploadedGalleryPhotoInCache(queryClient, created)
+        } catch {
+          revokeIfBlobUrl(blobUrl)
+          setPhotos((prev) => prev.filter((p) => p.id !== tempId))
+          void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+        }
+      })()
+    },
+    [queryClient, revokeIfBlobUrl, setPhotos],
+  )
+
+  const onExtrasFiles = (files: FileList | null): void => {
     const selected = Array.from(files ?? [])
     if (!selected.length) return
-    setPhotos((prev) => {
-      const currentNonMain = prev.filter((p) => !p.is_main)
-      const available = Math.max(0, MAX_PROFILE_PHOTOS - currentNonMain.length)
-      const nextFiles = selected.slice(0, available)
-      const nextPhotos = nextFiles.map((file, index) => ({
-        id: `photo-upload-${Date.now()}-${index}`,
-        file_path: URL.createObjectURL(file),
-        is_main: false,
-        order: currentNonMain.length + index,
-      }))
-      return [...prev, ...nextPhotos]
-    })
+
+    for (const file of selected) {
+      const nonMainCount = photosRef.current.filter((p) => !p.is_main).length
+      const available = Math.max(0, MAX_PROFILE_PHOTOS - nonMainCount)
+      if (available <= 0) break
+      runGalleryUpload(file)
+    }
   }
 
-  const onMainFile = (file: File | undefined) => {
+  const onMainFile = (file: File | undefined): void => {
     if (!file) return
-    const file_path = URL.createObjectURL(file)
-    setPhotos((prev) => {
-      const rest = prev.filter((p) => !p.is_main)
-      return [{ id: `photo-main-${Date.now()}`, file_path, is_main: true, order: 0 }, ...rest]
-    })
-  }
+    const blobUrl = URL.createObjectURL(file)
+    const tempId = `photo-main-upload-${Date.now()}`
 
-  const setMainPhotoById = (id: string) => {
-    setPhotos((prev) => prev.map((p) => ({ ...p, is_main: p.id === id })))
+    flushSync(() => {
+      setPhotos((prev) => {
+        const oldMain = prev.find((p) => p.is_main)
+        revokeIfBlobUrl(oldMain?.file_path)
+        const rest = prev.filter((p) => !p.is_main)
+        return [
+          {
+            id: tempId,
+            file_path: blobUrl,
+            is_main: true,
+            order: 0,
+            uploadStatus: 'uploading' as const,
+          },
+          ...rest,
+        ]
+      })
+    })
+
+    void (async () => {
+      try {
+        const mainRow = await uploadUserMainPhoto(file)
+        revokeIfBlobUrl(blobUrl)
+        setPhotos((prev) => prev.filter((p) => p.id !== tempId))
+        mergeUploadedMainPhotoInCache(queryClient, mainRow)
+      } catch {
+        revokeIfBlobUrl(blobUrl)
+        setPhotos((prev) => prev.filter((p) => p.id !== tempId))
+        void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+      }
+    })()
   }
 
   const clearDragVisual = () => {
@@ -268,14 +422,17 @@ export const ProfilePhotosEditor = ({
     (from: number, targetPhotoId: string) => {
       setPhotos((prev) => {
         const main = prev.find((item) => item.is_main)
+        if (!main) return prev
         const list = [...prev.filter((item) => !item.is_main)]
         const to = list.findIndex((p) => p.id === targetPhotoId)
         if (to < 0 || from === to || from >= list.length) return prev
         ;[list[from], list[to]] = [list[to], list[from]]
-        return main ? [main, ...list] : list
+        const next = [main, ...list]
+        queueMicrotask(() => persistPhotosOrder(next))
+        return next
       })
     },
-    [setPhotos],
+    [setPhotos, persistPhotosOrder],
   )
 
   /** Внешняя ячейка слота без transform — стабильная зона dragOver/drop (иначе transform даёт мигание dragLeave). */
@@ -605,6 +762,7 @@ export const ProfilePhotosEditor = ({
                 />
               ) : null}
             </div>
+            <PhotoUploadStateOverlay visible={mainPhoto?.uploadStatus === 'uploading'} />
             <span className="absolute bottom-2 left-2 z-10 rounded-full bg-black/50 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
               Главное фото
             </span>
@@ -662,6 +820,7 @@ export const ProfilePhotosEditor = ({
                         className="size-full object-cover"
                       />
                     </div>
+                    <PhotoUploadStateOverlay visible={photo.uploadStatus === 'uploading'} />
                     <span className={INDEX_BADGE_CLASS}>{n}</span>
                     <button
                       type="button"
@@ -727,6 +886,7 @@ export const ProfilePhotosEditor = ({
                         className="size-full object-cover"
                       />
                     </div>
+                    <PhotoUploadStateOverlay visible={photo.uploadStatus === 'uploading'} />
                     <span className={INDEX_BADGE_CLASS}>{n}</span>
                     <button
                       type="button"
@@ -788,15 +948,24 @@ export const ProfilePhotosEditor = ({
                 >
                   Загрузить новое фото
                 </button>
-                {nonMain.map((photo, index) => (
+                {nonMain
+                  .filter((p) => p.uploadStatus == null)
+                  .map((photo, index) => (
                   <button
                     key={photo.id}
                     type="button"
                     className="w-full rounded-[16px] px-3 py-2.5 text-left text-[13px] font-[200] text-foreground transition-colors hover:bg-background/60"
                     onClick={() => {
                       triggerHaptic()
-                      setMainPhotoById(photo.id)
                       setIsMainPhotoMenuOpen(false)
+                      void (async () => {
+                        try {
+                          const nextPhotos = await setMainFromGalleryPhoto(photo.id)
+                          patchProfilePhotosInCache(queryClient, nextPhotos)
+                        } catch {
+                          void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+                        }
+                      })()
                     }}
                   >
                     Фото {index + 1}

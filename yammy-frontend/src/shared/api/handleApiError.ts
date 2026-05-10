@@ -1,12 +1,15 @@
 import type { ApiErrorResponse } from './types'
 import { parseErrorDetail } from '@/shared/lib/parseErrorDetail'
 import {
+  formatUserErrorMessage,
   USER_ERROR_CONNECTION_LOST,
   USER_ERROR_INTERNAL_SERVER,
 } from '@/shared/lib/formatUserErrorMessage'
+import { showErrorToast } from '@/shared/ui/error-toast/errorToastBus'
 
 export async function throwApiError(response: Response, _fallbackPrefix: string): Promise<never> {
   if (response.status === 500) {
+    showErrorToast(USER_ERROR_INTERNAL_SERVER)
     throw new Error(USER_ERROR_INTERNAL_SERVER)
   }
 
@@ -31,5 +34,9 @@ export async function throwApiError(response: Response, _fallbackPrefix: string)
   }
 
   const finalMessage = message?.trim() ?? ''
-  throw new Error(finalMessage.length > 0 ? finalMessage : USER_ERROR_CONNECTION_LOST)
+  const userMessage = formatUserErrorMessage(
+    finalMessage.length > 0 ? new Error(finalMessage) : USER_ERROR_CONNECTION_LOST,
+  )
+  showErrorToast(userMessage)
+  throw new Error(userMessage)
 }
