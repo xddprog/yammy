@@ -13,7 +13,11 @@ from transformers import CLIPModel, CLIPProcessor
 
 from app.infrastructure.config.config import BASE_DIR
 from app.utils.constants.moderation_constants import (
-    IMAGE_MODERATION_CATEGORIES,
+    IMAGE_CLIP_LOGIT_SCALE,
+    IMAGE_CLIP_PAIR_LOGIT_MARGIN,
+    IMAGE_MODERATION_CLIP_THRESHOLD,
+    IMAGE_MODERATION_FLAGS,
+    IMAGE_MODERATION_SAFE_ANCHOR,
     TEXT_MODERATION_PATTERNS,
     TEXT_SIMILARITY_MAX,
     TEXT_SIMILARITY_MIN,
@@ -37,6 +41,9 @@ class MLService(metaclass=SingletonMeta):
         self._executor = ThreadPoolExecutor(max_workers=4)
 
         self._cached_pattern_embeddings = self._precompute_pattern_embeddings()
+        self._clip_moderation_flag_categories, self._clip_moderation_text_feats = (
+            self._precompute_clip_moderation_text_embeddings()
+        )
 
     @classmethod
     def _hub_roots(cls) -> list[Path]:
@@ -113,6 +120,27 @@ class MLService(metaclass=SingletonMeta):
             cached[category] = embeddings
         return cached
 
+    def _precompute_clip_moderation_text_embeddings(
+        self,
+    ) -> tuple[list[str], torch.Tensor]:
+        texts = [prompt for _, prompt in IMAGE_MODERATION_FLAGS] + [IMAGE_MODERATION_SAFE_ANCHOR]
+        categories = [cat for cat, _ in IMAGE_MODERATION_FLAGS]
+        device = next(self.clip_model.parameters()).device
+        inputs = self.clip_processor(
+            text=texts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+        )
+        tensor_inputs = {
+            k: v.to(device) for k, v in inputs.items() if torch.is_tensor(v)
+        }
+        with torch.no_grad():
+            text_out = self.clip_model.get_text_features(**tensor_inputs)
+            feats = text_out.pooler_output
+            feats = feats / feats.norm(dim=-1, keepdim=True)
+        return categories, feats
+
     def _encode_sync(self, text: str):
         embedding = self.embeddings_model.encode(text)
         return embedding.tolist()
@@ -123,24 +151,47 @@ class MLService(metaclass=SingletonMeta):
         return result
 
     def _moderate_content_sync(self, image_bytes: bytes) -> dict[str, float]:
-        image = Image.open(io.BytesIO(image_bytes))
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        device = next(self.clip_model.parameters()).device
+        img_inputs = self.clip_processor(images=image, return_tensors="pt")
+        pixel_values = img_inputs["pixel_values"].to(device)
 
-        result = {}
+        text_all = self._clip_moderation_text_feats
+        categories = self._clip_moderation_flag_categories
 
         with torch.no_grad():
-            for category, labels in IMAGE_MODERATION_CATEGORIES.items():
-                inputs = self.clip_processor(
-                    text=labels,
-                    images=image,
-                    return_tensors="pt",
-                    padding=True,
-                )
+            image_out = self.clip_model.get_image_features(pixel_values=pixel_values)
+            image_feat = image_out.pooler_output
+            image_feat = image_feat / image_feat.norm(dim=-1, keepdim=True)
 
-                outputs = self.clip_model(**inputs)
-                logits_per_image = outputs.logits_per_image[0]
-                probs = logits_per_image.softmax(dim=0)
+            unsafe_feats = text_all[:-1]
+            safe_vec = text_all[-1:]
+            scale = float(IMAGE_CLIP_LOGIT_SCALE)
 
-                result[category] = float(probs[1])
+            logits_u = scale * (image_feat * unsafe_feats).sum(dim=-1)
+            logits_s = scale * (image_feat * safe_vec).sum(dim=-1).expand_as(logits_u)
+            logits = torch.stack([logits_u, logits_s], dim=-1)
+            probs = logits.softmax(dim=-1)
+            prob_unsafe = probs[:, 0]
+            margin = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN)
+            logit_diff = logits_u - logits_s
+            prob_unsafe = torch.where(
+                logit_diff >= margin,
+                prob_unsafe,
+                torch.zeros_like(prob_unsafe),
+            )
+
+        result: dict[str, float] = {
+            "nsfw": 0.0,
+            "weapons": 0.0,
+            "drugs": 0.0,
+            "violence": 0.0,
+            "hate": 0.0,
+        }
+        for i, cat in enumerate(categories):
+            p = float(prob_unsafe[i].item())
+            if p > result[cat]:
+                result[cat] = p
 
         return result
 
@@ -179,7 +230,11 @@ class MLService(metaclass=SingletonMeta):
             image_bytes,
         )
 
-    async def moderate_content(self, image: UploadFile, threshold: float = 0.3) -> tuple[bool, dict[str, float]]:
+    async def moderate_content(
+        self,
+        image: UploadFile,
+        threshold: float | None = None,
+    ) -> tuple[bool, dict[str, float]]:
         image_bytes = await image.read()
 
         loop = asyncio.get_event_loop()
@@ -189,8 +244,9 @@ class MLService(metaclass=SingletonMeta):
             image_bytes,
         )
 
+        t = threshold if threshold is not None else IMAGE_MODERATION_CLIP_THRESHOLD
         unsafe_categories = ["nsfw", "weapons", "drugs", "violence", "hate"]
-        is_safe = all(probabilities[cat] < threshold for cat in unsafe_categories)
+        is_safe = all(probabilities[cat] < t for cat in unsafe_categories)
 
         return is_safe, probabilities
 

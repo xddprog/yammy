@@ -1,6 +1,3 @@
-# Фразы для модерации текста. Из них извлекаются ключевые слова (токены от 3 символов).
-# Только однозначные маркеры нарушений. Без общих слов: фото, услуги, платно, встреча,
-# досуг, развлечения, деньги, помощь, продам/куплю/обмен без контекста, акция, распродажа.
 TEXT_MODERATION_PATTERNS = {
     "scam": [
         "переведи на карту срочно",
@@ -78,38 +75,62 @@ TEXT_MODERATION_ERROR_MESSAGES = {
     "crypto": "обнаружены упоминания криптовалют или инвестиций",
     "drugs": "обнаружены упоминания наркотических веществ",
     "escort": "обнаружены упоминания интим-услуг",
-    "spam": "обнаружены признаки рекламы или спама"
+    "spam": "обнаружены признаки рекламы или спама",
 }
 
-IMAGE_MODERATION_CATEGORIES = {
-    "nsfw": [
-        "safe appropriate photo, normal content, regular picture, clothed person",
-        "nsfw explicit photo, nude naked person, pornographic sexual content, nudity"
-    ],
-    "weapons": [
-        "safe photo without weapons, peaceful picture, normal content",
-        "photo with weapons, gun, firearm, pistol, rifle, knife, dangerous weapon"
-    ],
-    "drugs": [
-        "photo without drugs, normal content, safe picture",
-        "photo with drugs, narcotics, pills, cannabis, marijuana, illegal substances, smoking drugs"
-    ],
-    "violence": [
-        "peaceful safe photo, normal content, calm picture",
-        "violent photo, blood, gore, injury, fighting, abuse, attack, violence"
-    ],
-    "hate": [
-        "normal photo, appropriate content, safe picture",
-        "photo with hate symbols, nazi symbols, swastika, extremism, offensive symbols, hate speech"
-    ]
-}
+IMAGE_MODERATION_SAFE_ANCHOR = (
+    "fully clothed person in everyday or sports context, dating app profile photo, "
+    "soccer player in team kit celebrating on a pitch, family photo, portrait at work, "
+    "night city skyline with lit hotel tower and traffic lights, cyclist silhouette on sidewalk, "
+    "appropriate public content, no pornography no weapons no drugs no gore no hate symbols"
+)
+
+IMAGE_MODERATION_FLAGS: list[tuple[str, str]] = [
+    (
+        "nsfw",
+        "hardcore pornography with visible genitals or explicit sex act in frame",
+    ),
+    (
+        "nsfw",
+        "completely naked adult with uncovered breasts and genitals porn shoot",
+    ),
+    (
+        "nsfw",
+        "close-up photograph whose main subject is uncovered female nipples or genitals",
+    ),
+    ("weapons", "clear close photograph of metal handgun or revolver in someones hand"),
+    (
+        "weapons",
+        "identifiable shotgun or rifle receiver and barrel held as a weapon not building spire",
+    ),
+    (
+        "weapons",
+        "person clearly holding pistol or rifle with trigger guard and barrel visible",
+    ),
+    ("weapons", "large combat knife or machete brandished as a weapon not kitchen use"),
+    ("drugs", "syringe injecting illegal drugs or obvious heroin spoon and needle"),
+    ("drugs", "marijuana buds baggie of weed with drug dealing paraphernalia"),
+    ("drugs", "white powder lines on mirror with rolled banknote cocaine scene"),
+    ("drugs", "pile of recreational pills with drug slang packaging street deal"),
+    ("violence", "graphic open wound with severe blood and visible tissue injury"),
+    ("violence", "person being beaten with visible blood spray on face"),
+    ("violence", "dead body or extreme gore intended to shock viewer"),
+    ("hate", "large nazi swastika or SS bolts worn as proud hate symbol in photo"),
+    ("hate", "Ku Klux Klan hood or white supremacist rally salute as main subject"),
+]
+
+IMAGE_CLIP_LOGIT_SCALE: float = 100.0
+
+IMAGE_CLIP_PAIR_LOGIT_MARGIN: float = 3.4
+
+IMAGE_MODERATION_CLIP_THRESHOLD: float = 0.52
 
 IMAGE_MODERATION_ERROR_MESSAGES = {
     "nsfw": "обнаружен NSFW",
     "weapons": "обнаружено оружие",
     "drugs": "обнаружены наркотики",
     "violence": "обнаружено насилие",
-    "hate": "обнаружены символы ненависти"
+    "hate": "обнаружены символы ненависти",
 }
 
 TEXT_SIMILARITY_MIN = 0.35

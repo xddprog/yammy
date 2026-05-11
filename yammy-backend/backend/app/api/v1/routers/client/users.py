@@ -101,9 +101,9 @@ async def delete_image(
 
 @router.post(
     "/image",
-    dependencies=[
-        Depends(RateLimited(5, Duration.MINUTE))
-    ]
+    # dependencies=[
+    #     Depends(RateLimited(5, Duration.MINUTE))
+    # ]
 )
 @inject
 async def upload_new_image(
@@ -118,9 +118,9 @@ async def upload_new_image(
 
 @router.patch(
     "/image/main",
-    dependencies=[
-        Depends(RateLimited(10, Duration.MINUTE))
-    ],
+    # dependencies=[
+    #     Depends(RateLimited(10, Duration.MINUTE))
+    # ],
 )
 @inject
 async def set_main_image(

@@ -5,8 +5,9 @@ from app.infrastructure.errors.image_errors import ImageProcessingError
 from app.infrastructure.errors.moderation_errors import TextModerationError
 from app.infrastructure.logging.logger import get_logger
 from app.utils.constants.moderation_constants import (
+    IMAGE_MODERATION_CLIP_THRESHOLD,
+    IMAGE_MODERATION_ERROR_MESSAGES,
     TEXT_MODERATION_ERROR_MESSAGES,
-    IMAGE_MODERATION_ERROR_MESSAGES
 )
 
 logger = get_logger(__name__)
@@ -33,8 +34,9 @@ class ModerationService:
             
             if not is_safe:
                 unsafe_cats = {
-                    cat: prob for cat, prob in probabilities.items() 
-                    if prob >= 0.3
+                    cat: prob
+                    for cat, prob in probabilities.items()
+                    if prob >= IMAGE_MODERATION_CLIP_THRESHOLD
                 }
                 logger.warning("Unsafe content detected", categories=unsafe_cats)
                 
