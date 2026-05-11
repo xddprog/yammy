@@ -20,6 +20,7 @@ from app.utils.constants.moderation_constants import (
     IMAGE_MODERATION_CLIP_THRESHOLD_NSFW,
     IMAGE_MODERATION_FLAGS,
     IMAGE_MODERATION_SAFE_ANCHOR,
+    TEXT_MODERATION_DEFAULT_THRESHOLD,
     TEXT_MODERATION_PATTERNS,
     TEXT_SIMILARITY_MAX,
     TEXT_SIMILARITY_MIN,
@@ -323,7 +324,7 @@ class MLService(metaclass=SingletonMeta):
 
         return is_safe, probabilities
 
-    async def moderate_text(self, text: str, threshold: float = 0.3) -> tuple[bool, dict[str, float]]:
+    async def moderate_text(self, text: str) -> tuple[bool, dict[str, float]]:
         loop = asyncio.get_event_loop()
         probabilities = await loop.run_in_executor(
             self._executor,
@@ -332,8 +333,10 @@ class MLService(metaclass=SingletonMeta):
         )
 
         logger.warning("Text probabilities", probabilities=probabilities)
-        unsafe_categories = ["scam", "crypto", "drugs", "escort", "spam"]
-        is_safe = all(probabilities[cat] < threshold for cat in unsafe_categories)
+        is_safe = all(
+            probabilities[cat] < TEXT_MODERATION_DEFAULT_THRESHOLD
+            for cat in TEXT_MODERATION_PATTERNS.keys()
+        )
 
         return is_safe, probabilities
 
