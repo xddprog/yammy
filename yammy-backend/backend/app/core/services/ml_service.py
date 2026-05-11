@@ -14,8 +14,10 @@ from transformers import CLIPModel, CLIPProcessor
 from app.infrastructure.config.config import BASE_DIR
 from app.utils.constants.moderation_constants import (
     IMAGE_CLIP_LOGIT_SCALE,
-    IMAGE_CLIP_PAIR_LOGIT_MARGIN,
+    IMAGE_CLIP_PAIR_LOGIT_MARGIN_NON_NSFW,
+    IMAGE_CLIP_PAIR_LOGIT_MARGIN_NSFW,
     IMAGE_MODERATION_CLIP_THRESHOLD,
+    IMAGE_MODERATION_CLIP_THRESHOLD_NSFW,
     IMAGE_MODERATION_FLAGS,
     IMAGE_MODERATION_SAFE_ANCHOR,
     TEXT_MODERATION_PATTERNS,
@@ -173,10 +175,19 @@ class MLService(metaclass=SingletonMeta):
             logits = torch.stack([logits_u, logits_s], dim=-1)
             probs = logits.softmax(dim=-1)
             prob_unsafe = probs[:, 0]
-            margin = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN)
             logit_diff = logits_u - logits_s
+            m_nsfw = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN_NSFW)
+            m_other = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN_NON_NSFW)
+            row_margins = torch.tensor(
+                [
+                    m_nsfw if cat == "nsfw" else m_other
+                    for cat in categories
+                ],
+                device=logit_diff.device,
+                dtype=logit_diff.dtype,
+            )
             prob_unsafe = torch.where(
-                logit_diff >= margin,
+                logit_diff >= row_margins,
                 prob_unsafe,
                 torch.zeros_like(prob_unsafe),
             )
@@ -194,6 +205,65 @@ class MLService(metaclass=SingletonMeta):
                 result[cat] = p
 
         return result
+
+    def clip_moderation_rows_detail(self, image_bytes: bytes) -> list[dict[str, object]]:
+        """Per-flag CLIP unsafe-vs-safe row scores (for benchmarks / diagnostics)."""
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        device = next(self.clip_model.parameters()).device
+        img_inputs = self.clip_processor(images=image, return_tensors="pt")
+        pixel_values = img_inputs["pixel_values"].to(device)
+
+        text_all = self._clip_moderation_text_feats
+        categories = self._clip_moderation_flag_categories
+
+        with torch.no_grad():
+            image_out = self.clip_model.get_image_features(pixel_values=pixel_values)
+            image_feat = image_out.pooler_output
+            image_feat = image_feat / image_feat.norm(dim=-1, keepdim=True)
+
+            unsafe_feats = text_all[:-1]
+            safe_vec = text_all[-1:]
+            scale = float(IMAGE_CLIP_LOGIT_SCALE)
+
+            logits_u = scale * (image_feat * unsafe_feats).sum(dim=-1)
+            logits_s = scale * (image_feat * safe_vec).sum(dim=-1).expand_as(logits_u)
+            logits = torch.stack([logits_u, logits_s], dim=-1)
+            probs = logits.softmax(dim=-1)
+            prob_unsafe_raw = probs[:, 0]
+            logit_diff = logits_u - logits_s
+            m_nsfw = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN_NSFW)
+            m_other = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN_NON_NSFW)
+            row_margins = torch.tensor(
+                [
+                    m_nsfw if cat == "nsfw" else m_other
+                    for cat in categories
+                ],
+                device=logit_diff.device,
+                dtype=logit_diff.dtype,
+            )
+            prob_after_margin = torch.where(
+                logit_diff >= row_margins,
+                prob_unsafe_raw,
+                torch.zeros_like(prob_unsafe_raw),
+            )
+
+        out: list[dict[str, object]] = []
+        for i, cat in enumerate(categories):
+            margin = float(m_nsfw if cat == "nsfw" else m_other)
+            prompt = IMAGE_MODERATION_FLAGS[i][1]
+            out.append(
+                {
+                    "index": i,
+                    "category": cat,
+                    "prompt": prompt,
+                    "logit_diff": float(logit_diff[i].item()),
+                    "margin": margin,
+                    "prob_unsafe_raw": float(prob_unsafe_raw[i].item()),
+                    "prob_after_margin": float(prob_after_margin[i].item()),
+                    "passes_margin": bool(logit_diff[i].item() >= margin),
+                }
+            )
+        return out
 
     def _moderate_text_sync(self, normalized_text: str) -> dict[str, float]:
         if len(normalized_text) < 3:
@@ -245,8 +315,11 @@ class MLService(metaclass=SingletonMeta):
         )
 
         t = threshold if threshold is not None else IMAGE_MODERATION_CLIP_THRESHOLD
+        t_nsfw = threshold if threshold is not None else IMAGE_MODERATION_CLIP_THRESHOLD_NSFW
         unsafe_categories = ["nsfw", "weapons", "drugs", "violence", "hate"]
-        is_safe = all(probabilities[cat] < t for cat in unsafe_categories)
+        is_safe = probabilities["nsfw"] < t_nsfw and all(
+            probabilities[c] < t for c in unsafe_categories if c != "nsfw"
+        )
 
         return is_safe, probabilities
 

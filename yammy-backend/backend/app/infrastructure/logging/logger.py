@@ -34,6 +34,16 @@ def configure_logging() -> None:
         format="%(message)s",
         level=logging.DEBUG if APP_CONFIG.DEBUG else logging.INFO,
     )
+    for name in (
+        "multipart",
+        "multipart.multipart",
+        "python_multipart",
+        "PIL",
+        "PIL.PngImagePlugin",
+        "PIL.JpegImagePlugin",
+        "PIL.TiffImagePlugin",
+    ):
+        logging.getLogger(name).setLevel(logging.WARNING)
     
 
 def get_logger(name: str = __name__) -> Any:

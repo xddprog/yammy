@@ -79,24 +79,48 @@ TEXT_MODERATION_ERROR_MESSAGES = {
 }
 
 IMAGE_MODERATION_SAFE_ANCHOR = (
-    "fully clothed person in everyday or sports context, dating app profile photo, "
-    "soccer player in team kit celebrating on a pitch, family photo, portrait at work, "
-    "night city skyline with lit hotel tower and traffic lights, cyclist silhouette on sidewalk, "
+    "dating app profile photo, fully clothed everyday person, "
+    "t-shirt blouse or tank top with deep v-neck or scoop neck showing some cleavage is normal, "
+    "jeans hoodie mirror selfie on bed or couch, sports kit, office portrait, city night scene, "
+    "gaming chair mirror selfie with purple LED and black zip front bodysuit showing cleavage only is normal fashion, "
+    "gym locker room or home workout mirror selfie in sports bra and athletic shorts or leggings is normal, "
+    "outdoor sunny beach ocean shore pool deck or lake photo in bikini one piece swimsuit thong swim bottom or swim trunks "
+    "with bare back legs midriff or side profile is normal public swimwear not lingerie or sex act, "
     "appropriate public content, no pornography no weapons no drugs no gore no hate symbols"
 )
 
 IMAGE_MODERATION_FLAGS: list[tuple[str, str]] = [
     (
         "nsfw",
-        "hardcore pornography with visible genitals or explicit sex act in frame",
+        "close-up photograph clearly showing erect penis or uncovered vulva labia in frame",
     ),
     (
         "nsfw",
-        "completely naked adult with uncovered breasts and genitals porn shoot",
+        "woman wearing thong or g-string lingerie with bare naked buttocks filling much of frame",
     ),
     (
         "nsfw",
-        "close-up photograph whose main subject is uncovered female nipples or genitals",
+        "indoor photograph zip front bodysuit or catsuit unzipped low enough that bare breasts nipples or full topless torso are clearly visible",
+    ),
+    (
+        "nsfw",
+        "bedroom or hotel mirror boudoir photo adult in matching lace or satin lingerie bra and thong with bare midriff and hips as deliberate intimate pose not athletic wear",
+    ),
+    (
+        "nsfw",
+        "see-through lace or mesh lingerie bodysuit with nipples or areola clearly visible through sheer fabric",
+    ),
+    (
+        "nsfw",
+        "topless adult with bare chest nipples or most of breasts fully visible not covered by fabric",
+    ),
+    (
+        "nsfw",
+        "person wearing only panties or thong with bare buttocks hips or lower back as the dominant subject in frame",
+    ),
+    (
+        "nsfw",
+        "indoor mirror or bed photo adult in only bra and underwear or panties only with bare stomach thighs or buttocks emphasized",
     ),
     ("weapons", "clear close photograph of metal handgun or revolver in someones hand"),
     (
@@ -121,9 +145,13 @@ IMAGE_MODERATION_FLAGS: list[tuple[str, str]] = [
 
 IMAGE_CLIP_LOGIT_SCALE: float = 100.0
 
-IMAGE_CLIP_PAIR_LOGIT_MARGIN: float = 3.4
+IMAGE_CLIP_PAIR_LOGIT_MARGIN_NSFW: float = 2.5
+
+IMAGE_CLIP_PAIR_LOGIT_MARGIN_NON_NSFW: float = 6.5
 
 IMAGE_MODERATION_CLIP_THRESHOLD: float = 0.52
+
+IMAGE_MODERATION_CLIP_THRESHOLD_NSFW: float = 0.72
 
 IMAGE_MODERATION_ERROR_MESSAGES = {
     "nsfw": "обнаружен NSFW",
