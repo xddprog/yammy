@@ -86,6 +86,7 @@ IMAGE_MODERATION_SAFE_ANCHOR = (
     "gym locker room or home workout mirror selfie in sports bra and athletic shorts or leggings is normal, "
     "outdoor sunny beach ocean shore pool deck or lake photo in bikini one piece swimsuit thong swim bottom or swim trunks "
     "with bare back legs midriff or side profile is normal public swimwear not lingerie or sex act, "
+    "rear view of person in swim thong or bikini bottom on sand grass towel pool deck or pier in daylight is normal vacation not lingerie catalog, "
     "appropriate public content, no pornography no weapons no drugs no gore no hate symbols"
 )
 
