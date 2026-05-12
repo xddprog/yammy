@@ -33,3 +33,16 @@ grafana-data/
 .DS_Store
 Thumbs.db
 hf_model_cache/
+
+.png
+.jpeg
+.jpg
+.webp
+.gif
+.svg
+.ico
+.bmp
+.tiff
+.tif
+.heic
+.heif

@@ -7,12 +7,6 @@ const GENDER_TO_API: Record<NonNullable<FiltersState['gender']>, string> = {
   Женский: 'female',
 }
 
-const EDUCATION_LEVEL_TO_API: Record<string, string> = {
-  Школьное: 'school',
-  'Среднее специальное': 'secondary_special',
-  Высшее: 'higher',
-}
-
 /** Преобразует состояние фильтров UI в параметры запроса поиска пользователей. */
 export function mapFiltersToSearchRequest(state: FiltersState): SearchUsersRequest {
   const [ageMin, ageMax] = state.ageRange
@@ -34,8 +28,7 @@ export function mapFiltersToSearchRequest(state: FiltersState): SearchUsersReque
     params.job_spheres = [...state.workFields]
   }
   if (state.educationLevel != null) {
-    const educationCode = EDUCATION_LEVEL_TO_API[state.educationLevel] ?? state.educationLevel
-    params.education_levels = [educationCode]
+    params.education_levels = [state.educationLevel]
   }
   if (state.educationInstitution.trim() !== '') {
     params.education_details = state.educationInstitution.trim()

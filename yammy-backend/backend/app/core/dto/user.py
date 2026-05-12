@@ -3,7 +3,7 @@ from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 from app.utils.helpers.url_helper import get_absolute_url
-
+from app.infrastructure.database.models.filter import FilterOption
 from app.utils.constants.enums import (
     GenderEnum,
     RelationshipGoalEnum,
@@ -12,6 +12,7 @@ from app.utils.constants.enums import (
     JobSphereEnum,
     UserLanguageEnum,
 )
+
 from app.utils.constants.response_examples import USER_PROFILE_RESPONSE, USER_SEARCH_RESPONSE
 
 
@@ -85,34 +86,12 @@ class UserProfileSchema(BaseUserSchema):
     subscription_expires_at: datetime | None = None
     adequacy_score: float = 10.0
     referrals_count: int = 0
+    filter_option_ids: list[UUID] = Field(default_factory=list, validation_alias="filters")
 
-    @field_validator("filters", mode="before", check_fields=False)
+    @field_validator("filter_option_ids", mode="before")
     @classmethod
-    def transform_to_filters_dict(cls, v):
-        if not v: 
-            return {}
-        
-        if isinstance(v, dict):
-            return v
-        
-        nested_traits = {}
-        for opt in v:
-            try:
-                cat_name = opt.subcategory.category.name
-                sub_name = opt.subcategory.name
-                opt_name = opt.name
-                
-                if cat_name not in nested_traits:
-                    nested_traits[cat_name] = {}
-                
-                if sub_name not in nested_traits[cat_name]:
-                    nested_traits[cat_name][sub_name] = []
-                    
-                nested_traits[cat_name][sub_name].append(opt_name)
-            except AttributeError:
-                continue
-                
-        return nested_traits
+    def filter_option_ids_coerce(cls, v: list[FilterOption]) -> list[UUID]:
+        return [x.id for x in v]
 
     @field_validator("photos", mode="before")
     @classmethod
@@ -125,20 +104,42 @@ class UserProfileSchema(BaseUserSchema):
         json_schema_extra = USER_PROFILE_RESPONSE
 
 
-class UserSearchResponseSchema(UserProfileSchema):
+class UserSearchResponseSchema(BaseUserSchema):
     id: UUID = Field(serialization_alias="user_id")
-
     photos: list[str] = []
     filters: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
-    personality_vector: list[float] | None = Field(None, exclude=True) 
-    appearance_vector: list[float] | None = Field(None, exclude=True) 
-
+    subscription_expires_at: datetime | None = None
+    adequacy_score: float = 10.0
+    referrals_count: int = 0
+    personality_vector: list[float] | None = Field(None, exclude=True)
+    appearance_vector: list[float] | None = Field(None, exclude=True)
     match_percentage: int | None = Field(None)
+
+    @field_validator("filters", mode="before")
+    @classmethod
+    def transform_filters(cls, v) -> dict[str, dict[str, list[str]]]:
+        if not v:
+            return {}
+        if isinstance(v, dict):
+            return v
+        nested: dict[str, dict[str, list[str]]] = {}
+        for opt in v:
+            try:
+                cat_slug = opt.subcategory.category.slug
+                sub_slug = opt.subcategory.slug
+                opt_slug = opt.slug
+            except AttributeError:
+                continue
+            nested.setdefault(cat_slug, {}).setdefault(sub_slug, [])
+            slugs = nested[cat_slug][sub_slug]
+            if opt_slug not in slugs:
+                slugs.append(opt_slug)
+        return nested
 
     @field_validator("photos", mode="before")
     @classmethod
     def transform_photos(cls, v):
-        if not v: 
+        if not v:
             return []
         if isinstance(v, list) and not all(isinstance(item, str) for item in v):
             return [get_absolute_url(p.file_path) for p in sorted(v, key=lambda x: x.order)]

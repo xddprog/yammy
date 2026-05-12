@@ -10,23 +10,14 @@ export const PROFILE_PHOTOS = [
 
 export const MAX_PROFILE_PHOTOS = 5
 
-export const RELATIONSHIP_GOAL_OPTIONS = [
-  { label: 'Серьезные отношения', value: 'serious' },
-  { label: 'Знакомства', value: 'dating' },
-  { label: 'Дружба', value: 'friendship' },
-] as const
-
-export const WORK_SPHERE_MOCK_OPTIONS = [
-  { label: 'IT', value: 'it' },
-  { label: 'Дизайн', value: 'design' },
-  { label: 'Маркетинг', value: 'marketing' },
-  { label: 'Финансы', value: 'finance' },
-  { label: 'Образование', value: 'education' },
-] as const
+export {
+  RELATIONSHIP_GOAL_OPTIONS,
+  WORK_SPHERE_OPTIONS,
+} from '@/entities/user/constants/profileFieldOptions'
 
 export const EDUCATION_LEVEL_OPTIONS = [
   { label: 'Школьное', value: 'school' },
-  { label: 'Среднее специальное', value: 'secondary_special' },
+  { label: 'Среднее специальное', value: 'college' },
   { label: 'Высшее', value: 'higher' },
 ] as const
 

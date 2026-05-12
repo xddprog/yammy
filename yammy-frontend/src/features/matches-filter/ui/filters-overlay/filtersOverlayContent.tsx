@@ -4,6 +4,10 @@ import isEqual from 'lodash/isEqual'
 import { ListFilter, X } from 'lucide-react'
 import { memo, useCallback } from 'react'
 
+import {
+  RELATIONSHIP_GOAL_OPTIONS,
+  WORK_SPHERE_OPTIONS,
+} from '@/entities/user/constants/profileFieldOptions'
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import { DragIndicator, SheetCard } from '@/features/matches-feed/ui/sheet-card'
 import { Button } from '@/shared'
@@ -11,6 +15,7 @@ import { useCityNames } from '@/shared/hooks/useCityNames'
 import { useUniversityNames } from '@/shared/hooks/useUniversityNames'
 
 import { GENDER_OPTIONS } from '../../lib/constants'
+import type { EducationLevel } from '../../model/educationLevel'
 import { useFiltersState } from '../../model/useFiltersState'
 import { FilterChipGroup } from './FilterChipGroup'
 import { FilterComboboxField } from './FilterComboboxField'
@@ -21,41 +26,11 @@ import { PrioritySliders } from './PrioritySliders'
 const DRAG_CLOSE_THRESHOLD = 120
 const DRAG_VELOCITY_THRESHOLD = 400
 
-const EDUCATION_LEVEL_OPTIONS = ['Школьное', 'Среднее специальное', 'Высшее'] as const
-const HIGHER_EDUCATION_LEVEL_LABEL = 'Высшее' as const
-
-const EDUCATION_LEVEL_TO_API: Record<(typeof EDUCATION_LEVEL_OPTIONS)[number], string> = {
-  Школьное: 'school',
-  'Среднее специальное': 'secondary_special',
-  Высшее: 'higher',
-}
-
-const RELATIONSHIP_GOAL_OPTIONS = [
-  { label: 'Серьезные отношения', value: 'serious' },
-  { label: 'Знакомства', value: 'dating' },
-  { label: 'Дружба', value: 'friendship' },
-] as const
-
-const WORK_SPHERE_MOCK_OPTIONS = [
-  { label: 'IT', value: 'it' },
-  { label: 'Дизайн', value: 'design' },
-  { label: 'Маркетинг', value: 'marketing' },
-  { label: 'Финансы', value: 'finance' },
-  { label: 'Образование', value: 'education' },
-] as const
-
-const getEducationLabelFromState = (value: string | null): string | null => {
-  if (!value) return null
-  if (EDUCATION_LEVEL_OPTIONS.includes(value as (typeof EDUCATION_LEVEL_OPTIONS)[number])) {
-    return value
-  }
-
-  const entry = (Object.entries(EDUCATION_LEVEL_TO_API) as [string, string][]).find(
-    ([, code]) => code === value,
-  )
-
-  return entry?.[0] ?? null
-}
+const EDUCATION_OPTIONS: { label: string; value: EducationLevel }[] = [
+  { label: 'Школьное', value: 'school' },
+  { label: 'Среднее специальное', value: 'college' },
+  { label: 'Высшее', value: 'higher' },
+]
 
 export interface FiltersOverlayContentProps {
   onClose: () => void
@@ -67,8 +42,7 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
   const filters = useFiltersState()
   const { data: filtersMetadata } = useFiltersMetadata()
   const { data: cityNames = [] } = useCityNames(filters.state.city)
-  const showUniversityField =
-    getEducationLabelFromState(filters.state.educationLevel) === HIGHER_EDUCATION_LEVEL_LABEL
+  const showUniversityField = filters.state.educationLevel === 'higher'
   const { data: universityNames = [] } = useUniversityNames(filters.state.educationInstitution, {
     enabled: showUniversityField,
   })
@@ -203,17 +177,17 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
               <FilterSection label="Сфера работы">
                 <FilterComboboxField
                   value={
-                    WORK_SPHERE_MOCK_OPTIONS.find((option) =>
+                    WORK_SPHERE_OPTIONS.find((option) =>
                       filters.state.workFields.includes(option.value),
                     )?.label ?? ''
                   }
                   onChange={(value) => {
-                    const selected = WORK_SPHERE_MOCK_OPTIONS.find(
+                    const selected = WORK_SPHERE_OPTIONS.find(
                       (option) => option.label === value,
                     )
                     filters.setWorkFields(selected ? [selected.value] : value ? [value] : [])
                   }}
-                  options={WORK_SPHERE_MOCK_OPTIONS.map((option) => option.label)}
+                  options={WORK_SPHERE_OPTIONS.map((option) => option.label)}
                   placeholder="Сфера работы"
                   ariaLabel="Сфера работы"
                 />
@@ -221,12 +195,10 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
 
               <FilterSection label="Образование">
                 <FilterChipGroup
-                  options={EDUCATION_LEVEL_OPTIONS}
-                  value={
-                    getEducationLabelFromState(filters.state.educationLevel)
-                      ? [getEducationLabelFromState(filters.state.educationLevel)!]
-                      : []
-                  }
+                  options={EDUCATION_OPTIONS.map((o) => o.label)}
+                  value={EDUCATION_OPTIONS.filter((o) => o.value === filters.state.educationLevel).map(
+                    (o) => o.label,
+                  )}
                   onChange={(v) => {
                     const label = v[0]
                     if (!label) {
@@ -234,11 +206,9 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                       filters.setEducationInstitution('')
                       return
                     }
-                    const code =
-                      EDUCATION_LEVEL_TO_API[label as (typeof EDUCATION_LEVEL_OPTIONS)[number]] ??
-                      label
-                    filters.setEducationLevel(code)
-                    if (code !== 'higher') {
+                    const row = EDUCATION_OPTIONS.find((o) => o.label === label)
+                    filters.setEducationLevel(row?.value ?? null)
+                    if (row?.value !== 'higher') {
                       filters.setEducationInstitution('')
                     }
                   }}

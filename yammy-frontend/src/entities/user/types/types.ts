@@ -103,4 +103,23 @@ export interface UserProfileDto {
   subscription_expires_at: string | null
   adequacy_score: number
   referrals_count: number
+  /** UUID выбранных `FilterOption` (как в PUT `filters`). */
+  filter_option_ids: string[]
+}
+
+/** Тело PUT /api/v1/users/ (все поля опциональны). */
+export interface UserUpdateRequestDto {
+  name?: string
+  age?: number
+  gender?: string
+  relationship_goal?: string
+  bio?: string
+  city?: string
+  job?: string
+  job_sphere?: string
+  education_level?: string
+  education_details?: string
+  filters?: string[]
+  notifications_enabled?: boolean
+  language?: UserLanguage
 }

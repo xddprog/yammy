@@ -2,6 +2,7 @@ import type { UserFilters } from '@/entities/user/types/types'
 
 import type { GenderOption } from '../lib/constants'
 import { AGE_DEFAULT_MAX, AGE_DEFAULT_MIN } from '../lib/constants'
+import type { EducationLevel } from './educationLevel'
 
 /** Состояние фильтров для UI и последующей отправки на бэкенд */
 export interface FiltersState {
@@ -17,8 +18,10 @@ export interface FiltersState {
   relationshipGoals: string[]
   /** Сфера работы (множественный выбор) */
   workFields: string[]
-  /** Уровень образования */
-  educationLevel: string | null
+  /** Должность / место работы (`users.job` на бэкенде; вместе с `job_sphere`). */
+  job: string
+  /** Уровень образования (`EducationLevelEnum` бэкенда). */
+  educationLevel: EducationLevel | null
   /** Учебное заведение (название ВУЗа, хранится в users.education_details) */
   educationInstitution: string
   priorities: [number, number, number]
@@ -34,6 +37,7 @@ export const getDefaultFiltersState = (): FiltersState => ({
   filters: {},
   relationshipGoals: [],
   workFields: [],
+  job: '',
   educationLevel: null,
   educationInstitution: '',
   priorities: [50, 50, 50],

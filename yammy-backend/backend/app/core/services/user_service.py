@@ -27,17 +27,19 @@ class UserService:
 
         user, referrals_count = row
         
-        return UserProfileSchema.model_validate(
-            user, from_attributes=True
-        ).model_copy(update={"referrals_count": referrals_count})
+        return UserProfileSchema.model_validate(user, from_attributes=True).model_copy(
+            update={"referrals_count": referrals_count}
+        )
 
     async def update_user(self, user_id: UUID, form: UserUpdateRequest) -> None:
         if "bio" in form.model_fields_set:
             await self.moderation_service.moderate_text(form.bio)
 
-        if form.filters:
+        if "filters" in form.model_fields_set:
+            if not form.filters:
+                raise BadRequestException("Выберите хотя бы одну характеристику о себе")
             await self.user_repository.update_filters(user_id, form.filters)
-        
+
         await self.user_repository.update_item(
             user_id,
             **form.model_dump(exclude_unset=True, exclude={"filters"}),
@@ -68,9 +70,14 @@ class UserService:
         if image:
             await self.moderation_service.moderate_image(image, is_main=True)
             image_path = await self.image_service.upload_and_convert(image, f"users/{user_id}")
-            
-            row = await self.user_repository.set_main_image(user_id, image_path)
-            return UserPhoto.model_validate(row, from_attributes=True)
+
+            row, previous_path = await self.user_repository.set_main_image(user_id, image_path)
+            if previous_path and previous_path != image_path:
+                await self.image_service.delete_image(previous_path)
+
+            return UserPhoto.model_validate(row, from_attributes=True).model_copy(
+                update={"file_path": get_absolute_url(row.file_path)}
+            )
         else:
             try:
                 user_photos = await self.user_repository.swap_main_with_existing_gallery_photo(user_id, existing_image_id)

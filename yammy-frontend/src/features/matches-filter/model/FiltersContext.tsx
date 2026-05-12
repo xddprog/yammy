@@ -79,7 +79,11 @@ function useSetters(
   )
   const setWorkFields = useCallback(
     (v: FiltersState['workFields']) => {
-      setState((s) => ({ ...s, workFields: v }))
+      setState((s) => ({
+        ...s,
+        workFields: v,
+        job: v.length === 0 ? '' : s.job,
+      }))
     },
     [setState],
   )

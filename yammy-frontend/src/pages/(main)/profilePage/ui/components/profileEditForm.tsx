@@ -3,12 +3,14 @@ import type React from 'react'
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { cn } from '@/shared'
-import { useCityNames } from '@/shared/hooks/useCityNames'
-import { useUniversityNames } from '@/shared/hooks/useUniversityNames'
 
-import type { ProfilePhotoItem } from '@/entities/user/types/types'
-import { EDUCATION_LEVEL_OPTIONS, RELATIONSHIP_GOAL_OPTIONS, WORK_SPHERE_MOCK_OPTIONS } from './profile.constants'
-import { ProfileAutocompleteRow } from './profileAutocompleteRow'
+import type { ProfilePhotoItem, UserFilters } from '@/entities/user/types/types'
+import {
+  EDUCATION_LEVEL_OPTIONS,
+  RELATIONSHIP_GOAL_OPTIONS,
+  WORK_SPHERE_OPTIONS,
+} from './profile.constants'
+import { ProfileEditSheetRow } from './profileEditSheetRow'
 import { ProfilePhotosEditor } from './profilePhotosEditor'
 
 interface ProfileEditFormProps {
@@ -25,115 +27,121 @@ export const ProfileEditForm = ({
   setPhotos,
 }: ProfileEditFormProps): React.JSX.Element => {
   const educationLevelLabel =
-    EDUCATION_LEVEL_OPTIONS.find(
-      (option) => option.value === draft.educationLevel || option.label === draft.educationLevel,
-    )?.label ?? ''
+    EDUCATION_LEVEL_OPTIONS.find((option) => option.value === draft.educationLevel)?.label ?? ''
   const isHigherEducation = educationLevelLabel === 'Высшее'
   const workFieldLabel =
-    WORK_SPHERE_MOCK_OPTIONS.find((option) => option.value === draft.workFields[0])?.label ?? ''
+    WORK_SPHERE_OPTIONS.find((option) => option.value === draft.workFields[0])?.label ?? ''
   const relationshipGoalLabel =
     RELATIONSHIP_GOAL_OPTIONS.find((option) => option.value === draft.relationshipGoals[0])?.label ?? ''
   const userAge = Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)
   const { data: filtersMetadata } = useFiltersMetadata()
-  const { data: cityNames = [] } = useCityNames(draft.city)
-  const { data: universityNames = [] } = useUniversityNames(draft.educationInstitution, {
-    enabled: isHigherEducation,
-  })
 
   return (
     <section className="flex flex-col gap-3">
       <ProfilePhotosEditor photos={photos} setPhotos={setPhotos} />
 
       <div className="mb-4 flex flex-col gap-1.5">
-        <ProfileAutocompleteRow
+        <ProfileEditSheetRow
+          mode="age"
           label="Возраст"
           value={String(userAge)}
-          onChange={(value) => {
-            const age = Number(value)
-            if (!Number.isFinite(age) || age < 18 || age > 100) return
-            setDraft((prev) => ({ ...prev, ageRange: [age, age] }))
-          }}
-          options={Array.from({ length: 83 }, (_, index) => String(index + 18))}
+          onApplyAge={(age) => setDraft((prev) => ({ ...prev, ageRange: [age, age] }))}
           placeholder="Не указано"
           ariaLabel="Возраст"
         />
 
-        <ProfileAutocompleteRow
+        <ProfileEditSheetRow
+          mode="pick"
           label="Пол"
-          value={draft.gender ?? ''}
-          onChange={(value) =>
+          displayValue={draft.gender ?? ''}
+          options={['Мужской', 'Женский']}
+          onPick={(label) =>
             setDraft((prev) => ({
               ...prev,
-              gender: value ? (value as 'Мужской' | 'Женский') : null,
+              gender: label ? (label as 'Мужской' | 'Женский') : null,
             }))
           }
-          options={['Мужской', 'Женский']}
           placeholder="Не указано"
           ariaLabel="Пол"
         />
 
-        <ProfileAutocompleteRow
+        <ProfileEditSheetRow
+          mode="pick"
           label="Цель отношений"
-          value={relationshipGoalLabel}
-          onChange={(label) => {
+          displayValue={relationshipGoalLabel}
+          options={RELATIONSHIP_GOAL_OPTIONS.map((option) => option.label)}
+          onPick={(label) => {
             const selected = RELATIONSHIP_GOAL_OPTIONS.find((option) => option.label === label)
             setDraft((prev) => ({
               ...prev,
               relationshipGoals: selected ? [selected.value] : [],
             }))
           }}
-          options={RELATIONSHIP_GOAL_OPTIONS.map((option) => option.label)}
           placeholder="Не указано"
           ariaLabel="Цель отношений"
         />
 
-        <ProfileAutocompleteRow
+        <ProfileEditSheetRow
+          mode="city"
           label="Город"
           value={draft.city}
-          onChange={(value) => setDraft((prev) => ({ ...prev, city: value }))}
-          options={cityNames}
+          onApply={(value) => setDraft((prev) => ({ ...prev, city: value }))}
           placeholder="Не указано"
           ariaLabel="Город"
         />
 
-        <ProfileAutocompleteRow
+        <ProfileEditSheetRow
+          mode="pick"
           label="Сфера работы"
-          value={workFieldLabel}
-          onChange={(value) => {
-            const selected = WORK_SPHERE_MOCK_OPTIONS.find((option) => option.label === value)
+          displayValue={workFieldLabel}
+          options={WORK_SPHERE_OPTIONS.map((option) => option.label)}
+          onPick={(label) => {
+            const selected = WORK_SPHERE_OPTIONS.find((option) => option.label === label)
+            const nextFields = selected ? [selected.value] : label ? [label] : []
             setDraft((prev) => ({
               ...prev,
-              workFields: selected ? [selected.value] : value ? [value] : [],
+              workFields: nextFields,
+              job: nextFields.length === 0 ? '' : prev.job,
             }))
           }}
-          options={WORK_SPHERE_MOCK_OPTIONS.map((option) => option.label)}
           placeholder="Не указано"
           ariaLabel="Сфера работы"
         />
 
-        <ProfileAutocompleteRow
+        <ProfileEditSheetRow
+          mode="text"
+          label="Должность"
+          value={draft.job}
+          onApply={(value) => setDraft((prev) => ({ ...prev, job: value }))}
+          textPlaceholder="Например, менеджер проектов"
+          placeholder="Не указано"
+          ariaLabel="Должность"
+        />
+
+        <ProfileEditSheetRow
+          mode="pick"
           label="Образование"
-          value={educationLevelLabel}
-          onChange={(value) => {
-            const selected = EDUCATION_LEVEL_OPTIONS.find((option) => option.label === value)
+          displayValue={educationLevelLabel}
+          options={EDUCATION_LEVEL_OPTIONS.map((option) => option.label)}
+          onPick={(label) => {
+            const selected = EDUCATION_LEVEL_OPTIONS.find((option) => option.label === label)
             setDraft((prev) => ({
               ...prev,
-              educationLevel: selected?.value ?? (value ? prev.educationLevel : null),
-              educationInstitution:
-                selected?.value === 'higher' ? prev.educationInstitution : '',
+              educationLevel: selected?.value ?? (label ? prev.educationLevel : null),
+              educationInstitution: selected?.value === 'higher' ? prev.educationInstitution : '',
             }))
           }}
-          options={EDUCATION_LEVEL_OPTIONS.map((option) => option.label)}
           placeholder="Не указано"
           ariaLabel="Образование"
         />
 
         {isHigherEducation && (
-          <ProfileAutocompleteRow
+          <ProfileEditSheetRow
+            mode="university"
             label="ВУЗ"
             value={draft.educationInstitution}
-            onChange={(value) => setDraft((prev) => ({ ...prev, educationInstitution: value }))}
-            options={universityNames}
+            suggestEnabled={isHigherEducation}
+            onApply={(value) => setDraft((prev) => ({ ...prev, educationInstitution: value }))}
             placeholder="Не указано"
             ariaLabel="Учебное заведение"
           />
@@ -141,11 +149,12 @@ export const ProfileEditForm = ({
       </div>
 
       {filtersMetadata?.map((category) => (
-        <div key={category.slug} className="rounded-[28px] px-4 py-3.5">
+        <div key={category.slug} className="rounded-[28px] py-3.5">
           <p className="mb-3 text-sm font-normal text-white">{category.name}</p>
           <div className="space-y-3">
             {category.subcategories.map((subcategory) => {
-              const selectedSlugs = draft.filters?.[category.slug]?.[subcategory.slug] ?? []
+              const subMap = draft.filters[category.slug]
+              const tokens = subMap?.[subcategory.slug] ?? []
               return (
                 <div key={`${category.slug}:${subcategory.slug}`}>
                   <p className="mb-2 text-[13px] font-[160] text-muted-foreground">
@@ -154,25 +163,26 @@ export const ProfileEditForm = ({
                   <div className="-mx-1 w-auto min-w-0 max-w-none overflow-x-auto overflow-y-hidden px-1 no-scrollbar">
                     <div className="inline-flex min-w-max gap-2 pr-1">
                       {subcategory.options.map((option) => {
-                        const selected = selectedSlugs.includes(option.slug)
+                        const selected = tokens.includes(option.slug)
                         return (
                           <button
                             key={option.slug}
                             type="button"
                             onClick={() => {
-                              const next = selected
-                                ? selectedSlugs.filter((slug) => slug !== option.slug)
-                                : [...selectedSlugs, option.slug]
-                              setDraft((prev) => ({
-                                ...prev,
-                                filters: {
+                              setDraft((prev) => {
+                                const prevCat = prev.filters[category.slug] ?? {}
+                                const currentSlugs = prevCat[subcategory.slug] ?? []
+                                const wasSelected = currentSlugs.includes(option.slug)
+                                const nextSlugs = wasSelected
+                                  ? currentSlugs.filter((s) => s !== option.slug)
+                                  : [...currentSlugs, option.slug]
+                                const nextCat: Record<string, string[]> = { ...prevCat, [subcategory.slug]: nextSlugs }
+                                const nextFilters: UserFilters = {
                                   ...prev.filters,
-                                  [category.slug]: {
-                                    ...(prev.filters?.[category.slug] ?? {}),
-                                    [subcategory.slug]: next,
-                                  },
-                                },
-                              }))
+                                  [category.slug]: nextCat,
+                                }
+                                return { ...prev, filters: nextFilters }
+                              })
                             }}
                             className={cn(
                               'shrink-0 whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] font-light transition-colors touch-manipulation cursor-pointer select-none border',

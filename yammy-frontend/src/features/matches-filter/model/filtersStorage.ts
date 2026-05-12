@@ -78,9 +78,13 @@ export function loadFilters(): FiltersState {
       workFields: ensureArrayOfStrings(
         (parsed as Record<string, unknown>).workFields,
       ) as FiltersState['workFields'],
+      job:
+        typeof (parsed as Record<string, unknown>).job === 'string'
+          ? ((parsed as Record<string, unknown>).job as string)
+          : defaults.job,
       educationLevel:
         typeof (parsed as Record<string, unknown>).educationLevel === 'string'
-          ? ((parsed as Record<string, unknown>).educationLevel as string)
+          ? ((parsed as Record<string, unknown>).educationLevel as FiltersState['educationLevel'])
           : defaults.educationLevel,
       educationInstitution:
         typeof (parsed as Record<string, unknown>).educationInstitution === 'string'

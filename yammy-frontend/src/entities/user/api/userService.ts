@@ -7,6 +7,7 @@ import type {
   UserProfileDto,
   UserProfilePhotoDto,
   UserSearchResult,
+  UserUpdateRequestDto,
 } from '../types/types'
 
 const SEARCH_ENDPOINT = 'api/v1/users/search'
@@ -46,7 +47,15 @@ export class UserService {
       await throwApiError(response, 'Ошибка загрузки профиля')
     }
 
-    return response.json() as Promise<UserProfileDto>
+    const data = (await response.json()) as UserProfileDto
+    return { ...data, filter_option_ids: data.filter_option_ids ?? [] }
+  }
+
+  public async updateUserProfile(body: UserUpdateRequestDto): Promise<void> {
+    const response = await authApi.put(PROFILE_ENDPOINT, { json: body })
+    if (!response.ok) {
+      await throwApiError(response, 'Сохранение профиля')
+    }
   }
 
   /** Доп. фото: модерация + сохранение (POST). */
@@ -111,6 +120,7 @@ export const {
   getUsersSearch,
   getFilters,
   getUserProfile,
+  updateUserProfile,
   uploadUserGalleryPhoto,
   uploadUserMainPhoto,
   setMainFromGalleryPhoto,

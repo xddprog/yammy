@@ -1,11 +1,15 @@
 import type { JSX } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
+import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
+import { useUpdateUserProfile } from '@/entities/user/hooks/useUpdateUserProfile'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
 import type { ProfilePhotoItem } from '@/entities/user/types/types'
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { useFiltersState } from '@/features/matches-filter/model/useFiltersState'
+import { showErrorToast } from '@/shared'
 import { stickyTopHeaderClassNames } from '@/widgets'
+import { buildProfileUpdateBody, userProfileToFiltersState } from '../lib/profileApiMapper'
 import { ProfileEditForm } from './components/profileEditForm'
 import { ProfileHeader } from './components/profileHeader'
 import { ProfilePageSkeleton } from './components/profilePageSkeleton'
@@ -15,10 +19,13 @@ type ProfileScreen = 'view' | 'edit'
 
 const ProfilePage = (): JSX.Element => {
   const filters = useFiltersState()
+  const { data: filtersMetadata } = useFiltersMetadata()
+  const updateUserProfileMutation = useUpdateUserProfile()
   const { data: profile, status } = useUserProfile()
   const [screen, setScreen] = useState<ProfileScreen>('view')
   const [draft, setDraft] = useState<FiltersState>(filters.state)
   const [photos, setPhotos] = useState<ProfilePhotoItem[]>([])
+  const profileFiltersHydratedRef = useRef(true)
 
   useEffect(() => {
     if (profile?.photos?.length) {
@@ -32,15 +39,39 @@ const ProfilePage = (): JSX.Element => {
     }
   }, [filters.state, screen])
 
+  useEffect(() => {
+    if (screen !== 'edit' || !profile || profileFiltersHydratedRef.current || !filtersMetadata?.length) {
+      return
+    }
+    setDraft((prev) => userProfileToFiltersState(profile, prev, filtersMetadata))
+    profileFiltersHydratedRef.current = true
+  }, [screen, profile, filtersMetadata])
+
   const saveProfileSettings = (): void => {
-    filters.setState(draft)
-    filters.persist()
-    setScreen('view')
+    if (!filtersMetadata?.length) {
+      showErrorToast('Не удалось загрузить каталог характеристик. Попробуйте позже.')
+      return
+    }
+    void (async () => {
+      try {
+        const body = buildProfileUpdateBody(draft, filtersMetadata)
+        await updateUserProfileMutation.mutateAsync(body)
+        filters.setState(draft)
+        filters.persist()
+        setScreen('view')
+      } catch {
+        /* throwApiError / mutate уже показали тост */
+      }
+    })()
   }
 
   const profileTitle = profile ? `${profile.name}, ${profile.age}` : 'Профиль'
 
   const openEdit = (): void => {
+    profileFiltersHydratedRef.current = Boolean(filtersMetadata?.length)
+    if (profile) {
+      setDraft(userProfileToFiltersState(profile, filters.state, filtersMetadata ?? undefined))
+    }
     if (profile?.photos?.length) {
       setPhotos([...profile.photos].sort((a, b) => a.order - b.order))
     }

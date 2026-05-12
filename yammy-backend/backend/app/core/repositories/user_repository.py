@@ -38,10 +38,7 @@ class UserRepository(SqlAlchemyRepository[User]):
             .outerjoin(referred, referred.referred_by_id == User.id)
             .where(User.id == user_id)
             .options(
-                selectinload(User.filters).options(
-                    selectinload(FilterOption.subcategory)
-                    .selectinload(FilterSubcategory.category)
-                ),
+                selectinload(User.filters),
                 selectinload(User.photos),
             )
             .group_by(User)
@@ -139,23 +136,24 @@ class UserRepository(SqlAlchemyRepository[User]):
 
     async def set_main_image(
         self, user_id: UUID, image_path: str
-    ) -> UserPhoto:
+    ) -> tuple[UserPhoto, str]:
         prev_main_photo_result = await self.session.execute(
             select(UserPhoto)
             .where(
-                UserPhoto.user_id == user_id, 
-                UserPhoto.is_main == True
+                UserPhoto.user_id == user_id,
+                UserPhoto.is_main == True,
             )
         )
-        prev_main_photo = prev_main_photo_result.scalar_one()
+        prev_main_photo = prev_main_photo_result.scalar_one_or_none()
         if prev_main_photo is None:
             raise ValueError("no_main_photo")
 
+        previous_path = prev_main_photo.file_path
         prev_main_photo.file_path = image_path
 
         await self.session.commit()
         await self.session.refresh(prev_main_photo)
-        return prev_main_photo
+        return prev_main_photo, previous_path
 
     async def swap_main_with_existing_gallery_photo(
         self,
