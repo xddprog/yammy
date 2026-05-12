@@ -9,6 +9,8 @@ export const PROFILE_PHOTOS = [
 
 export const MAX_PROFILE_PHOTOS = 5
 
+export const PROFILE_BIO_MAX_LENGTH = 2000
+
 export {
   RELATIONSHIP_GOAL_OPTIONS,
   WORK_SPHERE_OPTIONS,

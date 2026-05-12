@@ -6,6 +6,8 @@ import { Button, cn, showErrorToast, useOverlay } from '@/shared'
 import { useCityNames } from '@/shared/hooks/useCityNames'
 import { useUniversityNames } from '@/shared/hooks/useUniversityNames'
 
+import { PROFILE_BIO_MAX_LENGTH } from './profile.constants'
+
 const PANEL_CLASS =
   '!h-auto max-h-[92vh] mt-auto self-end !bg-transparent shadow-none flex flex-col justify-end pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]'
 
@@ -41,6 +43,13 @@ export type ProfileEditSheetRowProps = SheetBase &
       }
     | {
         mode: 'text'
+        value: string
+        onApply: (value: string) => void
+        textPlaceholder?: string
+        maxLength?: number
+      }
+    | {
+        mode: 'longtext'
         value: string
         onApply: (value: string) => void
         textPlaceholder?: string
@@ -139,6 +148,60 @@ function FreeTextPanel({
             <Forward className="size-[22px]" strokeWidth={2} />
           </Button>
         </div>
+      </div>
+    </SheetChrome>
+  )
+}
+
+function LongTextPanel({
+  initialValue,
+  onApply,
+  close,
+  label,
+  textPlaceholder = 'Расскажите о себе…',
+  maxLength = PROFILE_BIO_MAX_LENGTH,
+}: {
+  initialValue: string
+  onApply: (value: string) => void
+  close: () => void
+  label: string
+  textPlaceholder?: string
+  maxLength?: number
+}): JSX.Element {
+  const [text, setText] = useState(initialValue)
+  const areaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => areaRef.current?.focus())
+    return () => window.cancelAnimationFrame(id)
+  }, [])
+
+  const apply = (): void => {
+    onApply(text.slice(0, maxLength).trim())
+    close()
+  }
+
+  return (
+    <SheetChrome title={label} close={close}>
+      <div className="flex flex-col gap-3 pb-1">
+        <textarea
+          ref={areaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value.slice(0, maxLength))}
+          placeholder={textPlaceholder}
+          maxLength={maxLength}
+          rows={6}
+          className="min-h-[140px] w-full resize-y rounded-[24px] border-none bg-card px-4 py-3 text-[15px] font-[100] text-foreground outline-none ring-0 transition-all focus:ring-2 focus:ring-[#FF6BA4]/50 placeholder:font-[100] placeholder:text-muted-foreground"
+        />
+        <Button
+          type="button"
+          size="default"
+          variant="ghost"
+          onClick={apply}
+          className="h-12 shrink-0 rounded-full bg-[#FF6BA4] px-6 text-white shadow-lg shadow-[#FF6BA4]/20 transition-all hover:bg-[#FF6BA4]/90 active:scale-[0.99]"
+        >
+          Сохранить
+        </Button>
       </div>
     </SheetChrome>
   )
@@ -369,14 +432,17 @@ function ProfileEditSheetRowComponent(props: ProfileEditSheetRowProps): JSX.Elem
   const { open } = useOverlay()
   const placeholder = props.placeholder ?? 'Не указано'
 
-  const summary =
-    props.mode === 'pick'
-      ? props.displayValue.trim() === ''
-        ? placeholder
-        : props.displayValue
-      : props.value.trim() === ''
-        ? placeholder
-        : props.value
+  let summary: string
+  if (props.mode === 'pick') {
+    summary = props.displayValue.trim() === '' ? placeholder : props.displayValue
+  } else {
+    const raw = props.value
+    if (raw.trim() === '') {
+      summary = placeholder
+    } else {
+      summary = props.mode === 'longtext' ? raw.replace(/\n/g, ' ').replace(/\s+/g, ' ') : raw
+    }
+  }
 
   const openSheet = (): void => {
     open({
@@ -428,6 +494,17 @@ function ProfileEditSheetRowComponent(props: ProfileEditSheetRowProps): JSX.Elem
           case 'text':
             return (
               <FreeTextPanel
+                label={props.label}
+                initialValue={props.value}
+                onApply={props.onApply}
+                close={close}
+                textPlaceholder={props.textPlaceholder}
+                maxLength={props.maxLength}
+              />
+            )
+          case 'longtext':
+            return (
+              <LongTextPanel
                 label={props.label}
                 initialValue={props.value}
                 onApply={props.onApply}

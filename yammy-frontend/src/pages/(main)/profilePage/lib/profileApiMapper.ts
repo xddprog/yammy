@@ -72,6 +72,7 @@ export function buildProfileUpdateBody(
       body.education_details = details
     }
   }
+  body.bio = draft.bio.trim()
 
   return body
 }
@@ -88,6 +89,7 @@ export function userProfileToFiltersState(
     gender,
     ageRange: [profile.age, profile.age],
     city: profile.city ?? '',
+    bio: profile.bio ?? '',
     filters,
     relationshipGoals: profile.relationship_goal ? [profile.relationship_goal] : [],
     workFields: profile.job_sphere ? [profile.job_sphere] : [],

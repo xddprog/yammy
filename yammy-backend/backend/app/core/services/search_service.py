@@ -167,22 +167,16 @@ class SearchService:
         
         return dot_product / (magnitude1 * magnitude2)
 
-    @staticmethod
-    def _norm_text(s: str | None) -> str:
-        return " ".join((s or "").strip().lower().split())
-
     def _demographic_bonus(self, viewer: User, c: dict) -> float:
         bonus = 0.0
-        my_city, their_city = self._norm_text(viewer.city), self._norm_text(c.get("city"))
-        if my_city and my_city == their_city:
+        if viewer.city == c.get("city"):
             bonus += self.BONUS_CITY
         if c.get("relationship_goal") is not None and viewer.relationship_goal.value == c["relationship_goal"]:
             bonus += self.BONUS_RELATIONSHIP_GOAL
         if c.get("education_level") is not None and viewer.education_level.value == c["education_level"]:
             bonus += self.BONUS_EDUCATION_LEVEL
-        mine = (viewer.education_details or "").strip()
-        theirs = (c.get("education_details") or "").strip()
-        if mine and theirs and self._norm_text(mine) == self._norm_text(theirs):
+        cd = c.get("education_details")
+        if viewer.education_details and cd and viewer.education_details == cd:
             bonus += self.BONUS_UNIVERSITY_SOFT
         return bonus
 
@@ -223,25 +217,19 @@ class SearchService:
         if not user_vector:
             user_vector = await self.ml_service.get_embedding(current_user.bio)
         
-        current_user_with_filters = await self.user_repository.get_user_with_filters(current_user.id)
-        my_specs = self._extract_user_specs(current_user_with_filters)
+        u = await self.user_repository.get_user_with_filters(current_user.id)
+        my_specs = self._extract_user_specs(u)
 
-        filter_city = (search_request.city or "").strip()
-        profile_city = (current_user_with_filters.city or "").strip()
-        es_city = filter_city or profile_city or None
-        tried_profile_city_only = not filter_city and bool(profile_city)
+        es_city = search_request.city if search_request.city is not None else u.city
 
         all_hits = await self._search_user_hits(search_request, user_vector, exclude_list, es_city)
-        results = self._search_results_from_hits(
-            all_hits, user_vector, my_specs, current_user_with_filters
-        )
-        if tried_profile_city_only and es_city and not results:
+        results = self._search_results_from_hits(all_hits, user_vector, my_specs, u)
+        
+        if search_request.city is None and u.city and not results:
             all_hits = await self._search_user_hits(search_request, user_vector, exclude_list, None)
-            results = self._search_results_from_hits(
-                all_hits, user_vector, my_specs, current_user_with_filters
-            )
-
-        return results[: self.FINAL_LIMIT]
+            results = self._search_results_from_hits(all_hits, user_vector, my_specs, u)
+        
+        return results[:self.FINAL_LIMIT]
 
     async def get_received_likes(self, current_user: User) -> list[UserSearchResponseSchema]:
         liker_ids = await self.like_repository.get_received_like_sender_ids(current_user.id)
