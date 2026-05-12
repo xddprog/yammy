@@ -1,17 +1,18 @@
-import { memo, useRef } from 'react'
+import { memo, useRef, forwardRef, useImperativeHandle } from 'react'
 
-import type { UserSearchResult } from '@/entities/user/types/types'
+import type { AppearanceRatingUserDto } from '@/entities/user/types/types'
 import { useSwipeFeed } from '@/features/matches-feed/hooks/useSwipeFeed'
+import type { MatchFeedAppendHandle } from '@/features/matches-feed/model/matchFeedAppendHandle'
 import { cn } from '@/shared'
 
 import { RateCard } from '../rate-card/rateCard'
 
 export interface RateFeedProps {
-  items: UserSearchResult[]
-  onSwipeLeft?: (item: UserSearchResult) => void
-  onSwipeRight?: (item: UserSearchResult) => void
-  onRate?: (item: UserSearchResult, rating: number) => void
-  onMessage?: (item: UserSearchResult) => void
+  items: AppearanceRatingUserDto[]
+  onSwipeLeft?: (item: AppearanceRatingUserDto) => void
+  onSwipeRight?: (item: AppearanceRatingUserDto) => void
+  onRate?: (item: AppearanceRatingUserDto, rating: number) => void
+  onMessage?: (item: AppearanceRatingUserDto) => void
   onEmpty?: () => void
   onNearEnd?: (remainingCount: number) => void
   nearEndThreshold?: number
@@ -20,20 +21,24 @@ export interface RateFeedProps {
   fillHeight?: boolean
 }
 
-const RateFeedComponent = ({
-  items: initialItems,
-  onSwipeLeft,
-  onSwipeRight,
-  onRate,
-  onMessage,
-  onEmpty,
-  onNearEnd,
-  nearEndThreshold,
-  className,
-  aspectRatio = 3 / 4,
-  fillHeight = false,
-}: RateFeedProps): React.JSX.Element => {
-  const { visibleItems, stackProgress, handleSwipeLeft, handleSwipeRight } = useSwipeFeed({
+const RateFeedComponent = forwardRef<MatchFeedAppendHandle, RateFeedProps>(function RateFeed(
+  {
+    items: initialItems,
+    onSwipeLeft,
+    onSwipeRight,
+    onRate,
+    onMessage,
+    onEmpty,
+    onNearEnd,
+    nearEndThreshold,
+    className,
+    aspectRatio = 3 / 4,
+    fillHeight = false,
+  },
+  ref,
+): React.JSX.Element {
+  const { visibleItems, stackProgress, handleSwipeLeft, handleSwipeRight, appendItems } =
+    useSwipeFeed<AppearanceRatingUserDto>({
     initialItems,
     onSwipeLeft,
     onSwipeRight,
@@ -41,6 +46,8 @@ const RateFeedComponent = ({
     onNearEnd,
     nearEndThreshold,
   })
+
+  useImperativeHandle(ref, () => ({ appendItems }), [appendItems])
 
   const topItemRef = useRef(visibleItems[0])
   topItemRef.current = visibleItems[0]
@@ -77,6 +84,8 @@ const RateFeedComponent = ({
       ))}
     </div>
   )
-}
+})
+
+RateFeedComponent.displayName = 'RateFeed'
 
 export const RateFeed = memo(RateFeedComponent)

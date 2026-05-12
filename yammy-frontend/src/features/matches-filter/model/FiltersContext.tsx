@@ -1,12 +1,8 @@
-import debounce from 'lodash/debounce'
 import type React from 'react'
-import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useMemo, useRef, useState } from 'react'
 
-import { loadFilters, saveFilters } from './filtersStorage'
 import type { FiltersState } from './types'
 import { getDefaultFiltersState } from './types'
-
-const PERSIST_DEBOUNCE_MS = 500
 
 export interface FiltersContextValue {
   /** Черновик фильтров (редактируется в overlay). */
@@ -25,9 +21,9 @@ export interface FiltersContextValue {
   setEducationInstitution: (v: string) => void
   setPriorities: (v: [number, number, number]) => void
   setPremiumOnly: (v: boolean) => void
-  /** Сохранить текущее состояние в localStorage (вызывать при «Применить»). */
+  /** Зафиксировать черновик как применённый (для запроса ленты; вызывать при «Применить»). */
   persist: () => void
-  /** Сбросить к дефолтам и сохранить. */
+  /** Сбросить к дефолтам в памяти. */
   reset: () => void
 }
 
@@ -141,8 +137,8 @@ function useSetters(
 }
 
 export function FiltersProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const [state, setState] = useState<FiltersState>(() => loadFilters())
-  const [appliedState, setAppliedState] = useState<FiltersState>(() => state)
+  const [state, setState] = useState<FiltersState>(() => getDefaultFiltersState())
+  const [appliedState, setAppliedState] = useState<FiltersState>(() => getDefaultFiltersState())
 
   const stateRef = useRef(state)
   stateRef.current = state
@@ -152,30 +148,13 @@ export function FiltersProvider({ children }: { children: React.ReactNode }): Re
   const persist = useCallback(() => {
     const latest = stateRef.current
     setAppliedState(latest)
-    saveFilters(latest)
   }, [])
 
   const reset = useCallback(() => {
     const defaults = getDefaultFiltersState()
     setState(defaults)
     setAppliedState(defaults)
-    saveFilters(defaults)
   }, [])
-
-  const debouncedSave = useMemo(
-    () =>
-      debounce((s: FiltersState) => {
-        saveFilters(s)
-      }, PERSIST_DEBOUNCE_MS),
-    [],
-  )
-
-  useEffect(() => {
-    debouncedSave(state)
-    return () => {
-      debouncedSave.cancel()
-    }
-  }, [state, debouncedSave])
 
   const value = useMemo<FiltersContextValue>(
     () => ({

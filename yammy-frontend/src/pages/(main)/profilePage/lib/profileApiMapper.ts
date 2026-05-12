@@ -4,6 +4,7 @@ import type {
   UserProfileDto,
   UserUpdateRequestDto,
 } from '@/entities/user/types/types'
+import { filterOptionIdsToUserFilters } from '@/entities/user/lib/filterOptionIdsToUserFilters'
 import type { FiltersState } from '@/features/matches-filter/model/types'
 
 const GENDER_TO_API: Record<NonNullable<FiltersState['gender']>, 'male' | 'female'> = {
@@ -14,35 +15,6 @@ const GENDER_TO_API: Record<NonNullable<FiltersState['gender']>, 'male' | 'femal
 const GENDER_FROM_API: Record<string, NonNullable<FiltersState['gender']>> = {
   male: 'Мужской',
   female: 'Женский',
-}
-
-/** UUID опций из GET профиля → структура slug как в UI (нужны метаданные admin/filters). */
-export function filterOptionIdsToUserFilters(
-  ids: string[],
-  metadata: FilterCategoryDto[] | undefined,
-): UserFilters {
-  if (!metadata?.length || !ids.length) {
-    return {}
-  }
-  const idSet = new Set(ids)
-  const out: UserFilters = {}
-  for (const cat of metadata) {
-    for (const sub of cat.subcategories) {
-      const slugs: string[] = []
-      for (const opt of sub.options) {
-        if (idSet.has(opt.id)) {
-          slugs.push(opt.slug)
-        }
-      }
-      if (slugs.length > 0) {
-        if (!out[cat.slug]) {
-          out[cat.slug] = {}
-        }
-        out[cat.slug][sub.slug] = slugs
-      }
-    }
-  }
-  return out
 }
 
 export function collectFilterOptionIds(

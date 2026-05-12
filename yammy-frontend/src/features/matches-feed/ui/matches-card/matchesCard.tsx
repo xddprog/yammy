@@ -7,14 +7,13 @@ import { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
+import type { TraitDisplaySection } from '@/entities/user/lib/filterLabelByLanguage'
 import type { UseSuperLikeInteractionsResult } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
 import { SheetCard } from '@/features/matches-feed/ui/sheet-card'
 import { Button, RadioGroup, RadioGroupItem } from '@/shared'
 import { Form, FormControl, FormField, FormItem } from '@/shared/ui/form/form'
 
 import { REPORT_REASON_LABELS, reportFormSchema } from '../../lib/reportFormSchema'
-
-type UserFilters = Record<string, Record<string, string[]>>
 
 interface MatchesCardContentProps {
   name: string
@@ -26,7 +25,7 @@ interface MatchesCardContentProps {
   educationDetails?: string
   educationLevel?: string
   job?: string
-  userFilters?: UserFilters
+  traitDisplaySections?: TraitDisplaySection[]
   fromChat?: boolean
   actionIndicator: React.ReactNode
   onDislike: () => void
@@ -51,7 +50,7 @@ export const MatchesCardContent = ({
   educationDetails,
   educationLevel,
   job,
-  userFilters,
+  traitDisplaySections = [],
   fromChat = false,
   actionIndicator,
   onDislike,
@@ -138,9 +137,7 @@ export const MatchesCardContent = ({
     { label: 'сфера работы', value: jobSphere ?? '' },
   ].filter((row) => hasDisplayValue(row.value))
 
-  const groupedFilters = Object.entries(userFilters ?? {}).filter(([, subgroups]) =>
-    Object.values(subgroups).some((values) => values.length > 0),
-  )
+  const hasTraits = traitDisplaySections.some((s) => s.rows.length > 0)
 
   return (
     <motion.div className="mx-auto h-full w-full">
@@ -330,26 +327,26 @@ export const MatchesCardContent = ({
                     </div>
                   ))}
 
-                  {groupedFilters.map(([groupName, subgroups]) => (
-                    <div key={groupName} className="mt-4 space-y-2 border-t border-[#14141426] pt-4">
-                      <p className="mb-2 text-[16px] text-neutral-400">
-                        {groupName}
-                      </p>
-                      {Object.entries(subgroups).map(([subcategoryName, values]) => {
-                        if (values.length === 0) return null
-                        return (
-                          <div key={subcategoryName} className="flex items-center justify-between gap-6">
-                            <span className="font-[160] text-[16px] text-neutral-400">
-                              {subcategoryName.toLowerCase()}
-                            </span>
+                  {hasTraits &&
+                    traitDisplaySections.map((section) => (
+                      <div
+                        key={section.categoryTitle}
+                        className="mt-4 space-y-2 border-t border-[#14141426] pt-4"
+                      >
+                        <p className="mb-2 text-[16px] text-neutral-400">{section.categoryTitle}</p>
+                        {section.rows.map((row) => (
+                          <div
+                            key={`${section.categoryTitle}:${row.subTitle}`}
+                            className="flex items-center justify-between gap-6"
+                          >
+                            <span className="font-[160] text-[16px] text-neutral-400">{row.subTitle}</span>
                             <div className="max-w-[62%] overflow-x-auto whitespace-nowrap text-right text-neutral-900 no-scrollbar">
-                              {values.join(', ')}
+                              {row.valuesLine}
                             </div>
                           </div>
-                        )
-                      })}
-                    </div>
-                  ))}
+                        ))}
+                      </div>
+                    ))}
                 </div>
               </div>
             </motion.div>

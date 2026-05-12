@@ -12,7 +12,6 @@ from passlib.context import CryptContext
 
 from app.core.dto.auth import LoginSchema, TokenSchema, TelegramAuthSchema
 from app.core.dto.admin import BaseAdminSchema
-from app.core.dto.user import BaseUserSchema
 from app.core.repositories.admin_repository import AdminRepository
 from app.core.repositories.user_repository import UserRepository
 from app.infrastructure.database.models.admin import Admin

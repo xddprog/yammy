@@ -14,7 +14,6 @@ from app.infrastructure.database.models.user import User
 from app.utils.constants.cache_keys import UserCacheKeys, AppearanceRatingCacheKeys
 
 
-
 class SearchService:
     SEEN_TTL = 30 * 24 * 60 * 60
     APPEARANCE_RATED_TTL = 60 * 60 
@@ -37,8 +36,20 @@ class SearchService:
         self.BOOSTED_LIMIT = 10
         self.REGULAR_LIMIT = 40
         self.MIN_MATCH_PERCENTAGE = 30
-        self.FINAL_LIMIT = 20
-    
+        self.FINAL_LIMIT = 30
+        self.MATCH_PERCENT_SPREAD_FACTOR = 1.32
+        self.BONUS_CITY = 3.0
+        self.BONUS_RELATIONSHIP_GOAL = 4.0
+        self.BONUS_EDUCATION_LEVEL = 2.0
+        self.BONUS_UNIVERSITY_SOFT = 3.0
+
+    @staticmethod
+    def _spread_from_midpoint(blended: float, factor: float) -> int:
+        if factor <= 1.0:
+            return int(round(max(0.0, min(100.0, blended))))
+        out = 50.0 + (blended - 50.0) * factor
+        return int(max(0, min(100, round(out))))
+
     def _create_base_query_builder(
         self,
         search_request: SearchRequest,
@@ -80,23 +91,12 @@ class SearchService:
         return response.get("hits", {}).get("hits", [])
     
     def _extract_user_specs(self, user: User) -> list[str]:
-        if not user or not hasattr(user, 'filters'):
+        if not user or not hasattr(user, "filters") or not user.filters:
             return []
-        specs = []
-        for filter_option in user.filters:
-            cat_slug = filter_option.subcategory.category.slug
-            sub_slug = filter_option.subcategory.slug
-            opt_slug = filter_option.slug
-            specs.append(f"{cat_slug}:{sub_slug}:{opt_slug}")
-        return specs
-    
-    def _flatten_filters_dict(self, filters_dict: dict) -> list[str]:
-        flattened = []
-        for cat_slug, subcategories in filters_dict.items():
-            for sub_slug, option_codes in subcategories.items():
-                for code in option_codes:
-                    flattened.append(f"{cat_slug}:{sub_slug}:{code}")
-        return flattened
+        return [
+            f"{f.subcategory.category.slug}:{f.subcategory.slug}:{f.slug}"
+            for f in user.filters
+        ]
     
     def _calculate_backward_match(self, my_specs: list[str], candidate_wants: list[str]) -> int:
         if not candidate_wants:
@@ -112,14 +112,6 @@ class SearchService:
         avg_match = (recall + precision) / 2
         return int(avg_match * 100)
     
-    def _parse_vector(self, vector_data):
-        import json
-        if isinstance(vector_data, bytes):
-            vector_data = vector_data.decode('utf-8')
-        if isinstance(vector_data, str):
-            return json.loads(vector_data)
-        return vector_data
-    
     def _cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         if not vec1 or not vec2:
             return 0.0
@@ -134,6 +126,46 @@ class SearchService:
             return 0.0
         
         return dot_product / (magnitude1 * magnitude2)
+
+    @staticmethod
+    def _norm_text(s: str | None) -> str:
+        return " ".join((s or "").strip().lower().split())
+
+    def _demographic_bonus(self, viewer: User, c: dict) -> float:
+        bonus = 0.0
+        my_city, their_city = self._norm_text(viewer.city), self._norm_text(c.get("city"))
+        if my_city and my_city == their_city:
+            bonus += self.BONUS_CITY
+        if c.get("relationship_goal") is not None and viewer.relationship_goal.value == c["relationship_goal"]:
+            bonus += self.BONUS_RELATIONSHIP_GOAL
+        if c.get("education_level") is not None and viewer.education_level.value == c["education_level"]:
+            bonus += self.BONUS_EDUCATION_LEVEL
+        mine = (viewer.education_details or "").strip()
+        theirs = (c.get("education_details") or "").strip()
+        if mine and theirs and self._norm_text(mine) == self._norm_text(theirs):
+            bonus += self.BONUS_UNIVERSITY_SOFT
+        return bonus
+
+    def _match_percentage_for_candidate(
+        self,
+        source: dict,
+        user_embedding: list[float] | None,
+        my_specs: list[str],
+        viewer: User,
+    ) -> int:
+        candidate_vector = source.get("personality_vector")
+        if candidate_vector and user_embedding:
+            personality_similarity = self._cosine_similarity(user_embedding, candidate_vector)
+            forward_match = int(((personality_similarity + 1) / 2) * 100)
+        else:
+            forward_match = 50
+
+        backward_match = self._calculate_backward_match(my_specs, source.get("specs"))
+
+        blended = (forward_match + backward_match) / 2.0
+        blended = min(100.0, blended + self._demographic_bonus(viewer, source))
+        raw = self._spread_from_midpoint(blended, self.MATCH_PERCENT_SPREAD_FACTOR)
+        return min(raw, 99)
 
     async def search_users(self, search_request: SearchRequest, current_user: User) -> list[UserSearchResponseSchema]:
         seen_key = UserCacheKeys.SEEN_USERS.format(user_id=current_user.id)
@@ -168,29 +200,53 @@ class SearchService:
         )
         
         all_hits = boosted_hits + regular_hits
-        
+
         results = []
         for hit in all_hits:
             source = hit["_source"]
-            
-            candidate_vector = source.get("personality_vector")
-            if candidate_vector and user_vector:
-                parsed_user_vector = self._parse_vector(user_vector)
-                personality_similarity = self._cosine_similarity(parsed_user_vector, candidate_vector)
-                forward_match = int(((personality_similarity + 1) / 2) * 100)
-            else:
-                forward_match = 50
-            
-            candidate_filters = self._flatten_filters_dict(source.get("filters", {}))
-            backward_match = self._calculate_backward_match(my_specs, candidate_filters)
-            
-            match_percentage = int((forward_match + backward_match) / 2)
-            
+            match_percentage = self._match_percentage_for_candidate(
+                source, user_vector, my_specs, current_user_with_filters
+            )
+
             if match_percentage >= self.MIN_MATCH_PERCENTAGE:
                 source["match_percentage"] = match_percentage
                 results.append(UserSearchResponseSchema.model_validate(source))
-        
+
         return results[:self.FINAL_LIMIT]
+
+    async def get_received_likes(self, current_user: User) -> list[UserSearchResponseSchema]:
+        liker_ids = await self.like_repository.get_received_like_sender_ids(current_user.id)
+        if not liker_ids:
+            return []
+
+        id_strs = [str(uid) for uid in liker_ids]
+
+        user_vector = await self.redis_client.get(UserCacheKeys.USER_VECTOR.format(user_id=current_user.id))
+        if not user_vector:
+            user_vector = await self.ml_service.get_embedding(current_user.bio)
+
+        current_user_with_filters = await self.user_repository.get_user_with_filters(current_user.id)
+        my_specs = self._extract_user_specs(current_user_with_filters)
+
+        hits = await self._execute_search(
+            UserSearchQueryBuilder().for_user_ids_with_personality_functions(
+                user_ids=id_strs,
+                personality_query_vector=user_vector or [],
+                weight_personality=0.33,
+            )
+        )
+
+        results: list[UserSearchResponseSchema] = []
+        for hit in hits:
+            source = hit["_source"]
+            match_pct = self._match_percentage_for_candidate(
+                source, user_vector, my_specs, current_user_with_filters
+            )
+            source["match_percentage"] = match_pct
+            results.append(UserSearchResponseSchema.model_validate(source))
+
+        results.sort(key=lambda u: u.match_percentage or 0, reverse=True)
+        return results
     
     async def get_users_for_appearance_rating(self, current_user_id: UUID, limit: int = 20) -> list[AppearanceRatingSchema]:
         rated_key = AppearanceRatingCacheKeys.APPEARANCE_RATED_USERS.format(user_id=current_user_id)

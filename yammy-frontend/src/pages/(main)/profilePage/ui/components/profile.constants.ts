@@ -1,7 +1,6 @@
 export const AVATAR_URL = '/images/photo_2025-12-23_22-41-09.jpg'
 
-/** Mock: заполненность профиля 0–100 (кольцо вокруг аватарки, как % мэтча в ленте). */
-export const PROFILE_COMPLETENESS_PERCENT_MOCK = 78
+export const PROFILE_COMPLETENESS_RING_VISUAL_PERCENT = 100
 
 export const PROFILE_PHOTOS = [
   '/images/photo_2025-12-23_22-41-09.jpg',

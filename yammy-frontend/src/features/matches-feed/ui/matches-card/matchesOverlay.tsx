@@ -1,7 +1,11 @@
 import { motion, type PanInfo } from 'framer-motion'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 
-import type { UserSearchResult } from '@/entities/user/types/types'
+import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
+import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
+import { filterOptionIdsToUserFilters } from '@/entities/user/lib/filterOptionIdsToUserFilters'
+import { userFiltersToTraitDisplaySections } from '@/entities/user/lib/filterLabelByLanguage'
+import type { UserSearchApiUser } from '@/entities/user/types/types'
 import { useContentAreaHeight } from '@/features/matches-feed/hooks/useContentAreaHeight'
 import { useMatchesOverlayMotion } from '@/features/matches-feed/hooks/useMatchesOverlayMotion'
 import { useSuperLikeInteractions } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
@@ -20,14 +24,8 @@ import { SuperLikeOverlayContentMemo } from '../super-like-overlay/superLikeOver
 import { MatchesCardContent } from './matchesCard'
 import { ProfilePeekCarousel } from './profilePeekCarousel'
 
-const MOCK_DETAIL_PHOTOS = [
-  '/images/photo_2025-12-23_22-41-09.jpg',
-  '/images/photo_2025-12-16_22-32-35.jpg',
-  '/images/photo_2025-04-10_00-42-15.jpg',
-]
-
 export interface MatchesOverlayProps {
-  item: UserSearchResult
+  item: UserSearchApiUser
   onClose: () => void
   onDislike?: () => void
   onLike?: () => void
@@ -44,6 +42,19 @@ const OverlayContent = ({
   fromChat,
   onSuperLike,
 }: MatchesOverlayProps): React.JSX.Element => {
+  const { data: filtersMetadata } = useFiltersMetadata()
+  const { data: viewerProfile } = useUserProfile()
+  const viewerLanguage = viewerProfile?.language
+  const traitDisplaySections = useMemo(() => {
+    const raw = item.filter_option_ids
+    const ids = Array.isArray(raw) ? raw.map(String) : []
+    if (!filtersMetadata?.length) {
+      return []
+    }
+    const userFilters = filterOptionIdsToUserFilters(ids, filtersMetadata)
+    return userFiltersToTraitDisplaySections(userFilters, filtersMetadata, viewerLanguage)
+  }, [item.filter_option_ids, item.user_id, filtersMetadata, viewerLanguage])
+
   const {
     name,
     age,
@@ -55,7 +66,6 @@ const OverlayContent = ({
     education_details,
     job_sphere,
     job,
-    filters,
   } = item
 
   const handleLike = useCallback(() => {
@@ -101,7 +111,6 @@ const OverlayContent = ({
     handleDragEnd,
     handleIndicatorClick,
   } = motionProps
-  const detailPhotos = MOCK_DETAIL_PHOTOS
   const handleOverlayDragEnd = useCallback(
     (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
       if (info.offset.y > 120 || info.velocity.y > 900) {
@@ -150,7 +159,7 @@ const OverlayContent = ({
           <motion.div className="absolute inset-0" style={{ opacity: carouselOpacity }}>
             <div className={isExpanded ? 'pointer-events-none h-full' : 'h-full'}>
               <ProfilePeekCarousel
-                images={detailPhotos}
+                images={item.photos}
                 imageAlt={name}
                 enabledImageSwiping={!isExpanded}
               />
@@ -211,7 +220,7 @@ const OverlayContent = ({
             educationLevel={education_level}
             jobSphere={job_sphere}
             job={job}
-            userFilters={filters}
+            traitDisplaySections={traitDisplaySections}
             fromChat={fromChat}
             actionIndicator={
               <DragIndicator
@@ -232,7 +241,7 @@ const OverlayContent = ({
 const OverlayContentMemo = memo(OverlayContent)
 
 type OpenProfileDetailsOptions = {
-  item: UserSearchResult
+  item: UserSearchApiUser
   onDislike?: () => void
   onLike?: () => void
   fromChat?: boolean

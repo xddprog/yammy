@@ -1,8 +1,8 @@
 USER_SEARCH_RESPONSE = {
     "example": {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
         "telegram_id": 123456789,
-        "username": "alice_yammy",
+        "username": "",
         "name": "Алиса",
         "age": 24,
         "gender": "female",
@@ -16,24 +16,13 @@ USER_SEARCH_RESPONSE = {
         "photos": [
             "/static/photos/alice_1.jpg",
             "/static/photos/alice_2.jpg",
-            "/static/photos/alice_3.jpg"
+            "/static/photos/alice_3.jpg",
         ],
-        "filters": {
-            "appearance": {
-                "hair": ["bob", "long"],
-                "style": ["classic"]
-            },
-            "lifestyle": {
-                "routine": ["owl"],
-                "pets": ["cats"]
-            }
-        },
-        "subscription_tier": "vip",
-        "adequacy_score": 9.8,
-        "last_seen": "2023-11-20T15:30:00Z",
-        "boost_expires_at": "2023-11-20T18:30:00Z",
+        "filter_option_ids": [
+            "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+            "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+        ],
         "match_percentage": 69,
-        "language": "ru",
     }
 }
 

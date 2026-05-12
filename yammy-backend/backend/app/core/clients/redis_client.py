@@ -53,3 +53,6 @@ class RedisClient:
     
     async def scard(self, key: str) -> int:
         return await self.redis.scard(key)
+
+    async def clear(self):
+        return await self.redis.flushdb()

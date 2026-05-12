@@ -1,4 +1,5 @@
 export { queryClient } from './api/queryClient'
+export { useViewerLanguage } from './hooks/useViewerLanguage'
 export { LocalStorageKeys } from './lib/localStorageKeys'
 export { cn } from './lib/mergeClass'
 export type { ResolvedTheme, Theme } from './lib/providers'

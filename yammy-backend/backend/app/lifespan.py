@@ -24,7 +24,8 @@ async def lifespan(app: FastAPI):
         taskiq_client = TaskiqClient()
         redis_client = RedisClient()
 
-        seeded_new_users = await db_connection.init_test_db()
+        seeded_new_users = await db_connection.init_test_db(clear_db=False)
+
         await load_russian_city_names_to_redis(redis_client)
         await load_university_names_to_redis(redis_client)
         if seeded_new_users:
@@ -49,4 +50,5 @@ async def lifespan(app: FastAPI):
     yield
 
     await taskiq_client.shutdown()
+    await redis_client.clear()
     logger.info("application_shutdown")

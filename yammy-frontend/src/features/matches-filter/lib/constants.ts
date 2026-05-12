@@ -11,7 +11,7 @@ export const PRIORITY_LABELS = [
 /** Диапазон возраста: минимум и максимум по умолчанию */
 export const AGE_DEFAULT_MIN = 18
 export const AGE_DEFAULT_MAX = 30
-export const AGE_ABSOLUTE_MIN = 18
+export const AGE_ABSOLUTE_MIN = 16
 export const AGE_ABSOLUTE_MAX = 100
 
 /** Плейсхолдер поля «Город» */

@@ -3,8 +3,7 @@ from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, Depends
 
 from app.api.v1.dependency.providers.request import get_current_user
-from app.core.dto.auth import LoginSchema, RefreshTokenSchema, TelegramAuthSchema, TokenSchema
-from app.core.dto.user import BaseUserSchema
+from app.core.dto.auth import CurrentUserSessionSchema, LoginSchema, RefreshTokenSchema, TelegramAuthSchema, TokenSchema
 from app.core.services.auth_service import AuthService
 from app.infrastructure.errors.auth_errors import InvalidCredentials, InvalidTelegramData
 from app.infrastructure.errors.error_extra import error_response
@@ -34,7 +33,7 @@ async def login_telegram(
 async def get_current_admin_info(
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    return BaseUserSchema.model_validate(current_user, from_attributes=True)
+    return CurrentUserSessionSchema.from_user(current_user)
 
 
 @router.post("/refresh", responses={**error_response(InvalidCredentials)})

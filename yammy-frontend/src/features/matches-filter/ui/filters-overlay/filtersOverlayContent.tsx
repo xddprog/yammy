@@ -9,6 +9,8 @@ import {
   WORK_SPHERE_OPTIONS,
 } from '@/entities/user/constants/profileFieldOptions'
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
+import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
+import { filterCatalogLabel } from '@/entities/user/lib/filterLabelByLanguage'
 import { DragIndicator, SheetCard } from '@/features/matches-feed/ui/sheet-card'
 import { Button } from '@/shared'
 import { useCityNames } from '@/shared/hooks/useCityNames'
@@ -19,6 +21,7 @@ import type { EducationLevel } from '../../model/educationLevel'
 import { useFiltersState } from '../../model/useFiltersState'
 import { FilterChipGroup } from './FilterChipGroup'
 import { FilterComboboxField } from './FilterComboboxField'
+import { AgeRangeSlider } from './AgeRangeSlider'
 import { FilterRadioGroup } from './FilterRadioGroup'
 import { FilterSection } from './FilterSection'
 import { PrioritySliders } from './PrioritySliders'
@@ -41,6 +44,8 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
   const dragControls = useDragControls()
   const filters = useFiltersState()
   const { data: filtersMetadata } = useFiltersMetadata()
+  const { data: profile } = useUserProfile()
+  const uiLang = profile?.language
   const { data: cityNames = [] } = useCityNames(filters.state.city)
   const showUniversityField = filters.state.educationLevel === 'higher'
   const { data: universityNames = [] } = useUniversityNames(filters.state.educationInstitution, {
@@ -147,6 +152,10 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                 />
               </FilterSection>
 
+              <FilterSection label="Возраст">
+                <AgeRangeSlider value={filters.state.ageRange} onValueChange={filters.setAgeRange} />
+              </FilterSection>
+
               <FilterSection label="Цель отношений">
                 <FilterChipGroup
                   options={RELATIONSHIP_GOAL_OPTIONS.map((option) => option.label)}
@@ -237,16 +246,16 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
 
               {filtersMetadata &&
                 filtersMetadata.map((category) => (
-                  <FilterSection key={category.slug} label={category.name}>
+                  <FilterSection key={category.slug} label={filterCatalogLabel(category, uiLang)}>
                     <div className="flex w-full min-w-0 flex-col gap-4">
                       {category.subcategories.map((subcategory) => {
-                        const optionNames = subcategory.options.map((option) => option.name)
                         const selectedSlugs =
                           filters.state.filters[category.slug]?.[subcategory.slug] ?? []
 
-                        const selectedNames = subcategory.options
+                        const optionDisplayLabels = subcategory.options.map((o) => filterCatalogLabel(o, uiLang))
+                        const selectedDisplay = subcategory.options
                           .filter((option) => selectedSlugs.includes(option.slug))
-                          .map((option) => option.name)
+                          .map((option) => filterCatalogLabel(option, uiLang))
 
                         return (
                           <div
@@ -254,20 +263,20 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                             className="w-full min-w-0 space-y-2"
                           >
                             <p className="font-[160] text-[13px] text-neutral-500">
-                              {subcategory.name}
+                              {filterCatalogLabel(subcategory, uiLang)}
                             </p>
                             <FilterChipGroup
-                              options={optionNames as readonly string[]}
-                              value={selectedNames}
-                              onChange={(nextNames) => {
+                              options={optionDisplayLabels as readonly string[]}
+                              value={selectedDisplay}
+                              onChange={(nextDisplay) => {
                                 const nextSlugs = subcategory.options
-                                  .filter((option) => nextNames.includes(option.name))
+                                  .filter((option) => nextDisplay.includes(filterCatalogLabel(option, uiLang)))
                                   .map((option) => option.slug)
 
                                 filters.setFilterValue(category.slug, subcategory.slug, nextSlugs)
                               }}
                               multiple
-                              aria-label={subcategory.name}
+                              aria-label={filterCatalogLabel(subcategory, uiLang)}
                             />
                           </div>
                         )

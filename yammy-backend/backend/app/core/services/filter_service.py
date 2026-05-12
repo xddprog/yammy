@@ -3,13 +3,12 @@ import json
 from app.core.clients.redis_client import RedisClient
 from app.core.dto.filter import FilterCategorySchema
 from app.core.repositories.filter_repository import FilterRepository
-from app.infrastructure.database.models.filter import FilterCategory
 from app.utils.constants.cache_keys import CacheTTL, FilterCacheKeys
 
 
 class FilterService:
     def __init__(
-        self, 
+        self,
         filter_repository: FilterRepository,
         redis_client: RedisClient
     ):
@@ -27,4 +26,3 @@ class FilterService:
         serialized = json.dumps([s.model_dump(mode="json") for s in schemas])
         await self.redis.set(FilterCacheKeys.ALL, serialized, ttl=CacheTTL.MINUTE * 60)
         return schemas
-

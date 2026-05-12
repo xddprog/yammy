@@ -83,16 +83,7 @@ const RateCardComponent = ({
       <div className="relative flex-1 min-h-0 bg-card rounded-[48px] overflow-hidden shadow-lg">
         <ImageCarousel
           enabledImageSwiping={true}
-          images={
-            photos
-              ? [
-                  '/images/photo_2025-12-23_22-41-09.jpg',
-                  '/images/photo_2025-12-16_22-32-35.jpg',
-                  '/images/photo_2025-04-10_00-42-15.jpg',
-                  '/images/i.webp',
-                ]
-              : []
-          }
+          images={photos}
           imageAlt={name ?? ''}
           blur={false}
           isTop={isTop}

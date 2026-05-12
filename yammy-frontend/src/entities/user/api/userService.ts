@@ -1,4 +1,4 @@
-import { authApi, publicApi } from '@/shared/api/baseQueryInstanse'
+import { authApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
 
 import type {
@@ -6,12 +6,13 @@ import type {
   SearchUsersRequest,
   UserProfileDto,
   UserProfilePhotoDto,
-  UserSearchResult,
+  UserSearchApiUser,
   UserUpdateRequestDto,
 } from '../types/types'
 
 const SEARCH_ENDPOINT = 'api/v1/users/search'
-const FILTERS_ENDPOINT = 'admin/filters/'
+const RECEIVED_LIKES_ENDPOINT = 'api/v1/users/likes'
+const FILTERS_ENDPOINT = 'api/v1/filters/'
 const PROFILE_ENDPOINT = 'api/v1/users/'
 const USER_IMAGE_ENDPOINT = 'api/v1/users/image'
 const USER_MAIN_IMAGE_ENDPOINT = 'api/v1/users/image/main'
@@ -19,7 +20,7 @@ const USER_MAIN_IMAGE_ENDPOINT = 'api/v1/users/image/main'
 const userImageOrderEndpoint = (imageId: string) => `${USER_IMAGE_ENDPOINT}/${imageId}/order`
 
 export class UserService {
-  public async getUsersSearch(body: SearchUsersRequest): Promise<UserSearchResult[]> {
+  public async getUsersSearch(body: SearchUsersRequest): Promise<UserSearchApiUser[]> {
     const response = await authApi.post(SEARCH_ENDPOINT, {
       json: body,
     })
@@ -28,11 +29,20 @@ export class UserService {
       await throwApiError(response, 'Ошибка поиска')
     }
 
-    return response.json() as Promise<UserSearchResult[]>
+    return response.json() as Promise<UserSearchApiUser[]>
+  }
+
+  public async getReceivedLikes(): Promise<UserSearchApiUser[]> {
+    const response = await authApi.get(RECEIVED_LIKES_ENDPOINT)
+    if (!response.ok) {
+      await throwApiError(response, 'Ошибка загрузки лайков')
+    }
+    const data = (await response.json()) as UserSearchApiUser[]
+    return data
   }
 
   public async getFilters(): Promise<FiltersMetadataResponse> {
-    const response = await publicApi.get(FILTERS_ENDPOINT)
+    const response = await authApi.get(FILTERS_ENDPOINT)
 
     if (!response.ok) {
       await throwApiError(response, 'Ошибка загрузки фильтров')
@@ -122,6 +132,7 @@ export class UserService {
 export const userService = new UserService()
 export const {
   getUsersSearch,
+  getReceivedLikes,
   getFilters,
   getUserProfile,
   updateUserProfile,

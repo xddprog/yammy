@@ -12,11 +12,11 @@ class FilterSubcategorySchema(BaseModel):
     id: UUID
     slug: str
     name: str
-    options: list[FilterOptionSchema]
+    options: list[FilterOptionSchema] = []
 
 
 class FilterCategorySchema(BaseModel):
     id: UUID
     slug: str
     name: str
-    subcategories: list[FilterSubcategorySchema]
+    subcategories: list[FilterSubcategorySchema] = []

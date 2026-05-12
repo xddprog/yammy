@@ -1,6 +1,6 @@
-import type { UserSearchResult } from '@/entities/user/types/types'
+import type { UserSearchApiUser } from '@/entities/user/types/types'
 
-export const MOCK_LIKES: UserSearchResult[] = [
+export const MOCK_LIKES: UserSearchApiUser[] = [
   {
     user_id: 'like-1',
     username: 'anna_k',
@@ -15,12 +15,7 @@ export const MOCK_LIKES: UserSearchResult[] = [
     education_level: 'Высшее',
     education_details: 'ВУЗ',
     photos: ['/images/photo_2025-12-23_22-41-09.jpg'],
-    filters: {},
-    subscription_tier: 'free',
-    boost_expires_at: null,
-    last_seen: null,
-    is_banned: false,
-    adequacy_score: 95,
+    filter_option_ids: [],
     match_percentage: 87,
   },
   {
@@ -37,12 +32,7 @@ export const MOCK_LIKES: UserSearchResult[] = [
     education_level: 'Высшее',
     education_details: 'ВУЗ',
     photos: ['/images/photo_2025-12-16_22-32-35.jpg'],
-    filters: {},
-    subscription_tier: 'free',
-    boost_expires_at: null,
-    last_seen: null,
-    is_banned: false,
-    adequacy_score: 90,
+    filter_option_ids: [],
     match_percentage: 92,
   },
   {
@@ -59,12 +49,7 @@ export const MOCK_LIKES: UserSearchResult[] = [
     education_level: 'Высшее',
     education_details: 'ВУЗ',
     photos: ['/images/photo_2025-04-10_00-42-15.jpg'],
-    filters: {},
-    subscription_tier: 'premium',
-    boost_expires_at: null,
-    last_seen: null,
-    is_banned: false,
-    adequacy_score: 88,
+    filter_option_ids: [],
     match_percentage: 78,
   },
   {
@@ -81,12 +66,7 @@ export const MOCK_LIKES: UserSearchResult[] = [
     education_level: 'Высшее',
     education_details: 'ВУЗ',
     photos: ['/images/i.webp'],
-    filters: {},
-    subscription_tier: 'free',
-    boost_expires_at: null,
-    last_seen: null,
-    is_banned: false,
-    adequacy_score: 92,
+    filter_option_ids: [],
     match_percentage: 85,
   },
   {
@@ -103,12 +83,7 @@ export const MOCK_LIKES: UserSearchResult[] = [
     education_level: 'Высшее',
     education_details: 'ВУЗ',
     photos: ['/images/photo_2025-12-23_22-41-09.jpg'],
-    filters: {},
-    subscription_tier: 'free',
-    boost_expires_at: null,
-    last_seen: null,
-    is_banned: false,
-    adequacy_score: 94,
+    filter_option_ids: [],
     match_percentage: 91,
   },
   {
@@ -125,12 +100,7 @@ export const MOCK_LIKES: UserSearchResult[] = [
     education_level: 'Высшее',
     education_details: 'ВУЗ',
     photos: ['/images/photo_2025-12-16_22-32-35.jpg'],
-    filters: {},
-    subscription_tier: 'premium',
-    boost_expires_at: null,
-    last_seen: null,
-    is_banned: false,
-    adequacy_score: 96,
+    filter_option_ids: [],
     match_percentage: 89,
   },
 ]

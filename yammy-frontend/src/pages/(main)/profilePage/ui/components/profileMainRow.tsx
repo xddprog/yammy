@@ -3,7 +3,7 @@ import type { JSX } from 'react'
 
 import { Image } from '@/shared'
 
-import { PROFILE_COMPLETENESS_PERCENT_MOCK } from './profile.constants'
+import { PROFILE_COMPLETENESS_RING_VISUAL_PERCENT } from './profile.constants'
 
 const RING_SIZE = 66
 const RING_CENTER = RING_SIZE / 2
@@ -18,19 +18,16 @@ interface ProfileMainRowProps {
   avatarUrl: string
   title: string
   onOpenEdit: () => void
-  /** 0–100: дуга кольца (как % мэтча в ленте, со скруглёнными концами). */
-  ringPercent?: number
 }
 
 export const ProfileMainRow = ({
   avatarUrl,
   title,
   onOpenEdit,
-  ringPercent = PROFILE_COMPLETENESS_PERCENT_MOCK,
 }: ProfileMainRowProps): JSX.Element => {
-  const clamped = Math.max(0, Math.min(100, Math.round(ringPercent)))
   const circumference = 2 * Math.PI * RING_RADIUS
-  const dashOffset = circumference * (1 - clamped / 100)
+  const dashOffset =
+    circumference * (1 - PROFILE_COMPLETENESS_RING_VISUAL_PERCENT / 100)
 
   return (
     <button

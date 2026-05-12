@@ -18,6 +18,21 @@ type KyRetryContext = Options & {
   context?: { authAccessRetry?: boolean }
 }
 
+/** Опции повтора без prefixUrl/hooks инстанса authApi — иначе абсолютный request.url снова склеится с базой. */
+function optionsForAbsoluteRetry(base: Options, headers: Headers): Options {
+  const { hooks: _hooks, prefixUrl: _prefixUrl, ...rest } = base as Options & {
+    hooks?: unknown
+    prefixUrl?: unknown
+  }
+  return {
+    ...rest,
+    headers,
+    timeout: REQUEST_TIMEOUT_MS,
+    throwHttpErrors: false,
+    parseJson: (text) => JSON.parse(text),
+  }
+}
+
 export const publicApi = ky.create({
   prefixUrl: API_BASE_URL,
   timeout: REQUEST_TIMEOUT_MS,
@@ -102,9 +117,8 @@ export const authApi = ky.create({
         const headers = new Headers(request.headers)
         headers.set('Authorization', `Bearer ${token}`)
 
-        return authApi(request.url, {
-          ...options,
-          headers,
+        return ky(request.url, {
+          ...optionsForAbsoluteRetry(options, headers),
           context: {
             ...opts.context,
             authAccessRetry: true,

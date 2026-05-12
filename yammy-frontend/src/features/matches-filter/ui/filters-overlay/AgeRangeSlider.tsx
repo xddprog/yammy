@@ -24,7 +24,13 @@ const AgeRangeSliderComponent = ({
   value,
   onValueChange,
 }: AgeRangeSliderProps): React.JSX.Element => (
-  <div className="flex flex-col gap-2">
+  <div className="flex flex-col gap-3">
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[13px] font-light text-black">От — до (лет)</span>
+      <span className="text-[13px] font-medium text-[#FF6BA4] tabular-nums">
+        {value[0]} — {value[1]}
+      </span>
+    </div>
     <Slider
       min={AGE_ABSOLUTE_MIN}
       max={AGE_ABSOLUTE_MAX}
@@ -34,9 +40,6 @@ const AgeRangeSliderComponent = ({
       className={PINK_SLIDER_CLASS}
       aria-label="Диапазон возраста"
     />
-    <p className="text-right text-sm text-neutral-600">
-      {value[0]} — {value[1]}
-    </p>
   </div>
 )
 

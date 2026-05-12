@@ -56,7 +56,7 @@ export type ProfilePhotoItem = UserProfilePhotoDto & {
   uploadStatus?: 'uploading'
 }
 
-export interface UserSearchResult {
+export interface UserSearchApiUser {
   user_id: string
   username: string
   name: string
@@ -70,14 +70,20 @@ export interface UserSearchResult {
   education_level: string
   education_details: string
   photos: string[]
-  filters: UserFilters
-  subscription_tier: string
-  boost_expires_at: string | null
-  last_seen: string | null
-  is_banned: boolean
-  adequacy_score: number
+  filter_option_ids: string[]
   match_percentage: number
 }
+
+export interface FeedStackCardUser {
+  user_id: string
+  name: string
+  age: number
+  city: string
+  photos: string[]
+}
+
+/** Очередь GET appearance rating — тот же контракт, что минимальная карточка. */
+export type AppearanceRatingUserDto = FeedStackCardUser
 
 /** Ответ GET /api/v1/users/ (свой профиль). */
 export interface UserProfileDto {

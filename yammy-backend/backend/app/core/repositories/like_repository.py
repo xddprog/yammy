@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import and_, exists, or_, select
 from app.infrastructure.database.models.like import Like
 from app.infrastructure.database.models.match import Match
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -56,6 +56,25 @@ class LikeRepository(SqlAlchemyRepository[Like]):
         
         result = await self.session.execute(query)
         return [str(row) for row in result.scalars().all()]
+
+    async def get_received_like_sender_ids(self, user_to_id: UUID) -> list[UUID]:
+        already_matched = exists(
+            select(1)
+            .select_from(Match)
+            .where(
+                or_(
+                    and_(Match.user1_id == user_to_id, Match.user2_id == Like.user_from_id),
+                    and_(Match.user2_id == user_to_id, Match.user1_id == Like.user_from_id),
+                )
+            )
+        )
+        query = select(Like.user_from_id).where(
+            Like.user_to_id == user_to_id,
+            Like.like_type.in_((LikeTypeEnum.LIKE, LikeTypeEnum.SUPERLIKE)),
+            ~already_matched,
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
 
     async def create_match(self, user_from_id: UUID, user_to_id: UUID):
         query = (

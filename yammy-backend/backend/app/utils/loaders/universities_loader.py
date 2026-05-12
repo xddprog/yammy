@@ -29,7 +29,7 @@ async def fetch_suggestions(session: ClientSession, letter: str) -> list[dict]:
     async with session.post(GIGDATA_CONFIG.API_URL_SUGGEST_EDUCATIONS, json=payload, headers=headers) as response:
         data = await response.json()
         return [
-            clean_whitespace(suggestion["name"])
+            clean_whitespace(suggestion["value"])
             for suggestion in data.get("suggestions", [])
         ]
 

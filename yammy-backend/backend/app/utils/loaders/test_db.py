@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from faker import Faker
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 from passlib.context import CryptContext
 
 from dishka import AsyncContainer
@@ -24,6 +24,7 @@ from app.infrastructure.logging.logger import get_logger
 from app.core.services.ml_service import MLService
 from app.core.clients.elasticsearch_client import ElasticsearchClient
 from app.core.dto.user import UserSearchResponseSchema
+from app.core.dto.filter import FilterCategorySchema
 
 
 logger = get_logger(__name__)
@@ -158,6 +159,155 @@ INITIAL_FILTERS = [
 ]
 
 
+# --- Калибровка мэтча: якорный пользователь + «близнецы» (высокий %) и контраст (низкий %) ---
+MATCH_ANCHOR_TELEGRAM_ID = 9_000_000_001
+MATCH_HIGH_TELEGRAM_START = 9_000_000_002
+MATCH_LOW_TELEGRAM_START = 9_000_000_010
+
+BIO_MATCH_CALIBRATION_ANCHOR = (
+    "Йога по утрам, книги на вечер, выходные — горы или море. Ищу спокойного человека: "
+    "без драм, с чувством юмора, любовью к путешествиям и котам. Важны честность и уважение к личным границам."
+)
+
+BIO_MATCH_CALIBRATION_LOW = (
+    "Работаю в инвестбанке, шестидневка, зал в 6:00, без кофе не просыпаюсь. "
+    "Интересуют только кейсы, цифры и сделки; про йогу, сериалы и котов не пишу — не моя вселенная."
+)
+
+ANCHOR_TRAIT_TRIPLES: list[tuple[str, str, str]] = [
+    ("appearance", "hair", "long"),
+    ("appearance", "body", "slim"),
+    ("appearance", "style", "casual"),
+    ("interests", "sport", "yoga"),
+    ("interests", "hobby", "books"),
+    ("interests", "hobby", "travel"),
+    ("interests", "hobby", "music"),
+    ("interests", "sport", "running"),
+    ("lifestyle", "pets", "cats"),
+    ("lifestyle", "routine", "morning"),
+]
+
+LOW_CONTRAST_TRAIT_TRIPLES: list[tuple[str, str, str]] = [
+    ("appearance", "hair", "bald"),
+    ("appearance", "style", "street"),
+    ("interests", "sport", "gym"),
+    ("lifestyle", "pets", "dogs"),
+    ("lifestyle", "routine", "night"),
+    ("interests", "hobby", "cinema"),
+    ("interests", "hobby", "music"),
+    ("interests", "hobby", "books"),
+]
+
+
+async def _filter_option_map_by_triple(session: AsyncSession) -> dict[tuple[str, str, str], FilterOption]:
+    stmt = select(FilterOption).options(
+        joinedload(FilterOption.subcategory).joinedload(FilterSubcategory.category),
+    )
+    rows = (await session.execute(stmt)).unique().scalars().all()
+    out: dict[tuple[str, str, str], FilterOption] = {}
+    for opt in rows:
+        key = (opt.subcategory.category.slug, opt.subcategory.slug, opt.slug)
+        out[key] = opt
+    return out
+
+
+async def seed_match_calibration_users(session: AsyncSession) -> None:
+    """Детерминированные анкеты для проверки высокого и низкого match_percentage (см. SearchService)."""
+    if await session.scalar(select(User.id).where(User.telegram_id == MATCH_ANCHOR_TELEGRAM_ID)):
+        return
+
+    triple_map = await _filter_option_map_by_triple(session)
+    missing = [t for t in ANCHOR_TRAIT_TRIPLES if t not in triple_map]
+    if missing:
+        logger.warning("match_calibration_skip_missing_traits", missing=missing)
+        return
+
+    anchor_options = [triple_map[t] for t in ANCHOR_TRAIT_TRIPLES]
+    low_missing = [t for t in LOW_CONTRAST_TRAIT_TRIPLES if t not in triple_map]
+    if low_missing:
+        logger.warning("match_calibration_skip_low_missing", missing=low_missing)
+        return
+    low_options = [triple_map[t] for t in LOW_CONTRAST_TRAIT_TRIPLES]
+
+    async def add_user_with_traits(
+        *,
+        telegram_id: int,
+        first_name: str,
+        bio: str,
+        gender: GenderEnum,
+        age: int,
+        options: list[FilterOption],
+    ) -> None:
+        u = User(
+            telegram_id=telegram_id,
+            name=first_name,
+            age=age,
+            gender=gender,
+            bio=bio,
+            city="Москва",
+            job_sphere=JobSphereEnum.IT,
+            job="Калибровка ленты",
+            relationship_goal=RelationshipGoalEnum.RELATIONSHIP,
+            education_level=EducationLevelEnum.HIGHER,
+            education_details="СПбГУ",
+            subscription_tier=SubscriptionTierEnum.FREE,
+            adequacy_score=9.5,
+            last_seen=datetime.now() - timedelta(minutes=5),
+            referral_code=f"REFCAL{telegram_id}",
+            notifications_enabled=True,
+            profile_moderation_approved=True,
+            language=UserLanguageEnum.RU,
+        )
+        session.add(u)
+        await session.flush()
+        session.add(
+            UserPhoto(
+                user_id=u.id,
+                file_path="/static/test_photos/photo_1.jpg",
+                order=0,
+                is_main=True,
+            )
+        )
+        for opt in options:
+            session.add(UserFilterAssociation(user_id=u.id, option_id=opt.id))
+        await session.flush()
+
+    await add_user_with_traits(
+        telegram_id=MATCH_ANCHOR_TELEGRAM_ID,
+        first_name="Якорь",
+        bio=BIO_MATCH_CALIBRATION_ANCHOR,
+        gender=GenderEnum.FEMALE,
+        age=27,
+        options=anchor_options,
+    )
+
+    for i in range(6):
+        await add_user_with_traits(
+            telegram_id=MATCH_HIGH_TELEGRAM_START + i,
+            first_name=f"Близнец{i + 1}",
+            bio=BIO_MATCH_CALIBRATION_ANCHOR,
+            gender=GenderEnum.MALE,
+            age=24 + (i % 4),
+            options=anchor_options,
+        )
+
+    for i in range(6):
+        await add_user_with_traits(
+            telegram_id=MATCH_LOW_TELEGRAM_START + i,
+            first_name=f"Контраст{i + 1}",
+            bio=BIO_MATCH_CALIBRATION_LOW,
+            gender=GenderEnum.MALE,
+            age=30 + i,
+            options=low_options,
+        )
+
+    logger.info(
+        "match_calibration_users_seeded",
+        anchor_telegram=MATCH_ANCHOR_TELEGRAM_ID,
+        hint="Якорь — женщина. Близнецы — мужчины с тем же био и теми же фильтрами (высокий %). Контраст — мужчины, другое био, почти другие теги (низкий %). В поиске: пол мужской, город Москва.",
+    )
+
+
 async def clear_elasticsearch_users_index(es_client: ElasticsearchClient) -> None:
     if not await es_client.index_exists("users"):
         logger.info("elasticsearch_users_index_absent_skip_clear")
@@ -273,6 +423,9 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
                     option_id=trait.id
                 )
                 session.add(user_filter)
+            await session.flush()
+
+        await seed_match_calibration_users(session)
 
         await session.commit()
         logger.info(f"Successfully seeded {count} users")
@@ -332,34 +485,40 @@ async def sync_test_users_to_es(
 
         ml_service = await container.get(MLService)
 
-        all_options = (await session.execute(select(FilterOption))).scalars().all()
-        logger.info(f"Found {len(all_options)} filter options")
+        logger.info("Building Elasticsearch documents from DB user rows")
 
         es_operations = []
 
         for i, user in enumerate(users):
             es_data = UserSearchResponseSchema.model_validate(user, from_attributes=True)
 
-            trait_names = [f.name for f in user.filters]
-            text_for_vector = f"{user.name}. {user.bio or ''}. {user.job or ''}. {', '.join(trait_names)}"
+            personality_vector = await ml_service.get_embedding(user.bio)
 
-            personality_vector = await ml_service.get_embedding(text_for_vector)
+            filter_option_ids = [str(opt.id) for opt in user.filters]
+            spec_strings = [
+                f"{opt.subcategory.category.slug}:{opt.subcategory.slug}:{opt.slug}"
+                for opt in user.filters
+            ]
 
-            # Увеличиваем количество preferences для более реалистичного matching
-            search_prefs = random.sample(all_options, k=min(random.randint(6, 12), len(all_options)))
-            prefs_dict = {}
-            for opt in search_prefs:
-                cat_slug = opt.subcategory.category.slug
-                sub_slug = opt.subcategory.slug
-                if cat_slug not in prefs_dict:
-                    prefs_dict[cat_slug] = {}
-                if sub_slug not in prefs_dict[cat_slug]:
-                    prefs_dict[cat_slug][sub_slug] = []
-                prefs_dict[cat_slug][sub_slug].append(opt.slug)
-
-            doc_dict = es_data.model_dump()
+            doc_dict = es_data.model_dump(mode="json", by_alias=True)
+            doc_dict.update(
+                {
+                    "telegram_id": user.telegram_id,
+                    "subscription_tier": user.subscription_tier,
+                    "boost_expires_at": user.boost_expires_at,
+                    "last_seen": user.last_seen,
+                    "is_banned": user.is_banned,
+                    "adequacy_score": user.adequacy_score,
+                    "superlikes_balance": user.superlikes_balance,
+                    "boosts_balance": user.boosts_balance,
+                    "notifications_enabled": user.notifications_enabled,
+                    "language": user.language,
+                    "subscription_expires_at": user.subscription_expires_at,
+                }
+            )
             doc_dict["personality_vector"] = personality_vector
-            doc_dict["filters"] = prefs_dict
+            doc_dict["filter_option_ids"] = filter_option_ids
+            doc_dict["specs"] = spec_strings
 
             es_operations.append(doc_dict)
 

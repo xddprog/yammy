@@ -2,7 +2,7 @@ import type { JSX, ReactNode } from 'react'
 import { ChevronRight, Forward, X } from 'lucide-react'
 import { memo, useEffect, useRef, useState } from 'react'
 
-import { Button, cn, useOverlay } from '@/shared'
+import { Button, cn, showErrorToast, useOverlay } from '@/shared'
 import { useCityNames } from '@/shared/hooks/useCityNames'
 import { useUniversityNames } from '@/shared/hooks/useUniversityNames'
 
@@ -164,8 +164,22 @@ function AgePanel({
   }, [])
 
   const apply = (): void => {
-    const n = Number(text.trim().replace(/\s+/g, ''))
-    if (!Number.isFinite(n) || n < 18 || n > 100) {
+    const raw = text.trim().replace(/\s+/g, '')
+    if (raw === '') {
+      showErrorToast('Укажите возраст')
+      return
+    }
+    const n = Number(raw)
+    if (!Number.isFinite(n)) {
+      showErrorToast('Введите корректный возраст')
+      return
+    }
+    if (n < 16) {
+      showErrorToast('Минимальный возраст — 16 лет')
+      return
+    }
+    if (n > 100) {
+      showErrorToast('Максимальный возраст — 100 лет')
       return
     }
     onApplyAge(n)

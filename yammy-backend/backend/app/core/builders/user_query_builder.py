@@ -144,6 +144,24 @@ class UserSearchQueryBuilder:
         ]
         return self
 
+    def for_user_ids_with_personality_functions(
+        self,
+        user_ids: list[str],
+        personality_query_vector: list[float],
+        weight_personality: float,
+    ) -> Self:
+        self.must_filters = [
+            {"ids": {"values": user_ids}},
+            {"term": {"is_banned": False}},
+        ]
+        if personality_query_vector:
+            self.add_personality_vector(
+                vector=personality_query_vector,
+                weight_personality=weight_personality,
+            )
+        self.add_system_rankings()
+        return self
+
     def build(self) -> dict[str, Any]:
         additive_functions = [f for f in self.functions if "filter" in f or "script_score" in f]
         multiplicative_functions = [f for f in self.functions if "gauss" in f or "field_value_factor" in f]

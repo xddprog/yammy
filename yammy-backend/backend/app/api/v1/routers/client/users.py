@@ -37,6 +37,21 @@ async def get_user_profile(
     return await user_service.get_user_profile(current_user.id)
 
 
+@router.get(
+    "/likes",
+    response_model=list[UserSearchResponseSchema],
+    dependencies=[
+        Depends(RateLimited(30, Duration.MINUTE)),
+    ],
+)
+@inject
+async def get_received_likes(
+    search_service: FromDishka[SearchService],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> list[UserSearchResponseSchema]:
+    return await search_service.get_received_likes(current_user)
+
+
 @router.post(
     "/search",
     # dependencies=[

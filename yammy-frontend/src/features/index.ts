@@ -1,4 +1,5 @@
 export { useSwipeCardDrag, useSwipeCardMotion, useSwipeFeed } from './matches-feed/hooks'
+export type { MatchFeedAppendHandle } from './matches-feed/model/matchFeedAppendHandle'
 export { FeedLoading } from './matches-feed/ui/feed-loading'
 export { SwipeCard, type SwipeCardProps, type SwipeDirection } from './matches-feed/ui/swipe-card'
 export { SwipeFeed, type SwipeFeedProps } from './matches-feed/ui/swipe-feed'

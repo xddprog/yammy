@@ -1,7 +1,7 @@
 
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field, field_serializer, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 from app.utils.helpers.url_helper import get_absolute_url
 from app.infrastructure.database.models.filter import FilterOption
 from app.utils.constants.enums import (
@@ -113,37 +113,36 @@ class UserProfileSchema(BaseUserSchema):
         json_schema_extra = USER_PROFILE_RESPONSE
 
 
-class UserSearchResponseSchema(BaseUserSchema):
-    id: UUID = Field(serialization_alias="user_id")
-    photos: list[str] = []
-    filters: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
-    subscription_expires_at: datetime | None = None
-    adequacy_score: float = 10.0
-    referrals_count: int = 0
-    personality_vector: list[float] | None = Field(None, exclude=True)
-    appearance_vector: list[float] | None = Field(None, exclude=True)
-    match_percentage: int | None = Field(None)
+class UserSearchResponseSchema(BaseModel):
+    model_config = ConfigDict(extra="ignore", json_schema_extra=USER_SEARCH_RESPONSE)
 
-    @field_validator("filters", mode="before")
+    id: UUID = Field(serialization_alias="user_id", validation_alias=AliasChoices("id", "user_id"))
+    telegram_id: int | None = None
+    username: str = ""
+    name: str
+    age: int
+    gender: GenderEnum
+    relationship_goal: RelationshipGoalEnum
+    bio: str | None = None
+    city: str | None = None
+    job: str | None = None
+    job_sphere: JobSphereEnum | None = None
+    education_level: EducationLevelEnum | None = None
+    education_details: str | None = None
+    photos: list[str] = []
+    filter_option_ids: list[UUID] = []
+    match_percentage: int | None = None
+
+    @field_validator("filter_option_ids", mode="before")
     @classmethod
-    def transform_filters(cls, v) -> dict[str, dict[str, list[str]]]:
+    def filter_option_ids_coerce(cls, v):
         if not v:
-            return {}
+            return []
         if isinstance(v, dict):
-            return v
-        nested: dict[str, dict[str, list[str]]] = {}
-        for opt in v:
-            try:
-                cat_slug = opt.subcategory.category.slug
-                sub_slug = opt.subcategory.slug
-                opt_slug = opt.slug
-            except AttributeError:
-                continue
-            nested.setdefault(cat_slug, {}).setdefault(sub_slug, [])
-            slugs = nested[cat_slug][sub_slug]
-            if opt_slug not in slugs:
-                slugs.append(opt_slug)
-        return nested
+            return []
+        if isinstance(v[0], FilterOption):
+            return [x.id for x in v]
+        return [UUID(str(x)) for x in v]
 
     @field_validator("photos", mode="before")
     @classmethod
@@ -153,6 +152,3 @@ class UserSearchResponseSchema(BaseUserSchema):
         if isinstance(v, list) and not all(isinstance(item, str) for item in v):
             return [get_absolute_url(p.file_path) for p in sorted(v, key=lambda x: x.order)]
         return v
-
-    class Config:
-        json_schema_extra = USER_SEARCH_RESPONSE

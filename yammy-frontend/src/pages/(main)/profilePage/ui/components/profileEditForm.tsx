@@ -1,6 +1,8 @@
 import type React from 'react'
 
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
+import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
+import { filterCatalogLabel } from '@/entities/user/lib/filterLabelByLanguage'
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { cn } from '@/shared'
 
@@ -35,6 +37,8 @@ export const ProfileEditForm = ({
     RELATIONSHIP_GOAL_OPTIONS.find((option) => option.value === draft.relationshipGoals[0])?.label ?? ''
   const userAge = Math.round((draft.ageRange[0] + draft.ageRange[1]) / 2)
   const { data: filtersMetadata } = useFiltersMetadata()
+  const { data: profile } = useUserProfile()
+  const uiLang = profile?.language
 
   return (
     <section className="flex flex-col gap-3">
@@ -150,7 +154,7 @@ export const ProfileEditForm = ({
 
       {filtersMetadata?.map((category) => (
         <div key={category.slug} className="rounded-[28px] py-3.5">
-          <p className="mb-3 text-sm font-normal text-white">{category.name}</p>
+          <p className="mb-3 text-sm font-normal text-white">{filterCatalogLabel(category, uiLang)}</p>
           <div className="space-y-3">
             {category.subcategories.map((subcategory) => {
               const subMap = draft.filters[category.slug]
@@ -158,7 +162,7 @@ export const ProfileEditForm = ({
               return (
                 <div key={`${category.slug}:${subcategory.slug}`}>
                   <p className="mb-2 text-[13px] font-[160] text-muted-foreground">
-                    {subcategory.name}
+                    {filterCatalogLabel(subcategory, uiLang)}
                   </p>
                   <div className="-mx-1 w-auto min-w-0 max-w-none overflow-x-auto overflow-y-hidden px-1 no-scrollbar">
                     <div className="inline-flex min-w-max gap-2 pr-1">
@@ -191,7 +195,7 @@ export const ProfileEditForm = ({
                                 : 'border-transparent bg-card text-foreground hover:bg-background/60',
                             )}
                           >
-                            {option.name}
+                            {filterCatalogLabel(option, uiLang)}
                           </button>
                         )
                       })}

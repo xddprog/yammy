@@ -9,7 +9,7 @@ export function useUpdateUserProfile() {
   return useMutation({
     mutationFn: (body: UserUpdateRequestDto) => updateUserProfile(body),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+      await queryClient.refetchQueries({ queryKey: usersQueryKeys.profile() })
     },
   })
 }

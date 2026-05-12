@@ -3,7 +3,7 @@ import { throwApiError } from '@/shared/api/handleApiError'
 
 import type { CurrentUser } from '../types/types'
 
-const CURRENT_USER_ENDPOINT = 'v1/auth/current_user'
+const CURRENT_USER_ENDPOINT = 'api/v1/auth/current_user'
 
 export class AuthService {
   public async getCurrentUser(): Promise<CurrentUser> {

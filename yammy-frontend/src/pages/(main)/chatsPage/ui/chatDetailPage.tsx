@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { USERS_SEARCH_FALLBACK_MOCK } from '@/entities/user/mock/apiFallbackMocks'
-import type { UserSearchResult } from '@/entities/user/types/types'
+import type { UserSearchApiUser } from '@/entities/user/types/types'
 import { ChatHeader, MessageInput, MessageList } from '@/features/chats'
 import { useMatchesOverlay } from '@/features/matches-feed/ui/matches-card/matchesOverlay'
 
@@ -60,7 +60,7 @@ const ChatDetailPage = () => {
   const { openProfileDetails } = useMatchesOverlay()
   const lastReadAt = useMemo(() => new Date(), [])
   const readAtLabel = useMemo(() => formatReadAt(lastReadAt), [lastReadAt])
-  const chatUserProfile = useMemo<UserSearchResult | null>(() => {
+  const chatUserProfile = useMemo<UserSearchApiUser | null>(() => {
     if (!chatInfo) return null
 
     const fromMock =

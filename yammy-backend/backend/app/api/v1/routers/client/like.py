@@ -29,7 +29,7 @@ async def like_user(
 
 @router.post("/dislike",
     dependencies=[
-        Depends(RateLimited(30, Duration.MINUTE))
+        Depends(RateLimited(60 , Duration.MINUTE))
     ]
 )
 @inject

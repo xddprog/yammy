@@ -2,17 +2,17 @@ import type { MotionValue } from 'framer-motion'
 import { useMotionValue } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { UserSearchResult } from '@/entities/user/types/types'
+import type { FeedStackCardUser } from '@/entities/user/types/types'
 
 const MAX_VISIBLE_CARDS = 3
 const DEFAULT_NEAR_END_THRESHOLD = 5
 const PREFETCH_AHEAD = 3
 
-export interface UseSwipeFeedOptions {
-  initialItems: UserSearchResult[]
-  onSwipeLeft?: (item: UserSearchResult) => void
-  onSwipeRight?: (item: UserSearchResult) => void
-  onSuperLike?: (item: UserSearchResult) => void
+export interface UseSwipeFeedOptions<T extends FeedStackCardUser = FeedStackCardUser> {
+  initialItems: T[]
+  onSwipeLeft?: (item: T) => void
+  onSwipeRight?: (item: T) => void
+  onSuperLike?: (item: T) => void
   onEmpty?: () => void
   /** Вызывается при приближении к концу ленты. Используйте для подгрузки новых элементов. */
   onNearEnd?: (remainingCount: number) => void
@@ -20,15 +20,15 @@ export interface UseSwipeFeedOptions {
   nearEndThreshold?: number
 }
 
-export interface UseSwipeFeedResult {
-  visibleItems: UserSearchResult[]
+export interface UseSwipeFeedResult<T extends FeedStackCardUser = FeedStackCardUser> {
+  visibleItems: T[]
   remainingCount: number
   stackProgress: MotionValue<number>
   handleSwipeLeft: () => void
   handleSwipeRight: () => void
   handleSuperLike: () => void
-  /** Добавить новые карточки в конец ленты (для бесконечной прокрутки). */
-  appendItems: (newItems: UserSearchResult[]) => void
+  /** Подмешивание после refetch; элементы должны совпадать с типом ленты (`T`). */
+  appendItems: (newItems: FeedStackCardUser[]) => number
 }
 
 /**
@@ -53,7 +53,7 @@ function prefetchImages(urls: string[]): void {
  * `handleSwipeLeft` / `handleSwipeRight` / `handleSuperLike` не пересоздаются
  * при изменении callback-ов родителя.
  */
-export function useSwipeFeed({
+export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
   initialItems,
   onSwipeLeft,
   onSwipeRight,
@@ -61,8 +61,8 @@ export function useSwipeFeed({
   onEmpty,
   onNearEnd,
   nearEndThreshold = DEFAULT_NEAR_END_THRESHOLD,
-}: UseSwipeFeedOptions): UseSwipeFeedResult {
-  const [items, setItems] = useState<UserSearchResult[]>(initialItems)
+}: UseSwipeFeedOptions<T>): UseSwipeFeedResult<T> {
+  const [items, setItems] = useState<T[]>(initialItems)
   const [currentIndex, setCurrentIndex] = useState(0)
   const stackProgress = useMotionValue(0)
 
@@ -135,9 +135,15 @@ export function useSwipeFeed({
     }
   }, [advanceCard])
 
-  /** Добавить новую порцию карточек (для бесконечной прокрутки / пагинации). */
-  const appendItems = useCallback((newItems: UserSearchResult[]) => {
-    setItems((prev) => [...prev, ...newItems])
+  /** Добавить новую порцию карточек (дедуп по `user_id`). */
+  const appendItems = useCallback((newItems: FeedStackCardUser[]) => {
+    let toAdd: T[] = []
+    setItems((prev) => {
+      const ids = new Set(prev.map((i) => i.user_id))
+      toAdd = (newItems as T[]).filter((i) => !ids.has(i.user_id))
+      return toAdd.length ? [...prev, ...toAdd] : prev
+    })
+    return toAdd.length
   }, [])
 
   // Сброс stackProgress при смене верхней карточки

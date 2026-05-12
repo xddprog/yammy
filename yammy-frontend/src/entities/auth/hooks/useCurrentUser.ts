@@ -19,6 +19,7 @@ export function useCurrentUser(
   return useQuery({
     queryKey: authQueryKeys.currentUser(),
     queryFn: () => getCurrentUser(),
+    staleTime: 60 * 1000,
     ...options,
   })
 }

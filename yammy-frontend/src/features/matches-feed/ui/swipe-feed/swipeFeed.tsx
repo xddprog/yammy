@@ -1,18 +1,19 @@
-import { memo, useCallback, useRef } from 'react'
+import { memo, useCallback, useImperativeHandle, useRef, forwardRef } from 'react'
 
 import { useSwipeFeed } from '@/features/matches-feed/hooks/useSwipeFeed'
+import type { MatchFeedAppendHandle } from '@/features/matches-feed/model/matchFeedAppendHandle'
 import { cn } from '@/shared'
 
-import type { UserSearchResult } from '@/entities/user/types/types'
+import type { UserSearchApiUser } from '@/entities/user/types/types'
 
 import { useMatchesOverlay } from '../matches-card/matchesOverlay'
 import { SwipeCard } from '../swipe-card'
 
 export interface SwipeFeedProps {
-  items: UserSearchResult[]
-  onSwipeLeft?: (item: UserSearchResult) => void
-  onSwipeRight?: (item: UserSearchResult) => void
-  onSuperLike?: (item: UserSearchResult) => void
+  items: UserSearchApiUser[]
+  onSwipeLeft?: (item: UserSearchApiUser) => void
+  onSwipeRight?: (item: UserSearchApiUser) => void
+  onSuperLike?: (item: UserSearchApiUser) => void
   onEmpty?: () => void
   /** Вызывается при приближении к концу ленты. Используйте для подгрузки новых элементов. */
   onNearEnd?: (remainingCount: number) => void
@@ -23,26 +24,29 @@ export interface SwipeFeedProps {
   fillHeight?: boolean
 }
 
-const SwipeFeedComponent = ({
-  items: initialItems,
-  onSwipeLeft,
-  onSwipeRight,
-  onSuperLike,
-  onEmpty,
-  onNearEnd,
-  nearEndThreshold,
-  className,
-  aspectRatio = 3 / 4,
-  fillHeight = false,
-}: SwipeFeedProps): React.JSX.Element => {
+const SwipeFeedComponent = forwardRef<MatchFeedAppendHandle, SwipeFeedProps>(function SwipeFeed(
+  {
+    items: initialItems,
+    onSwipeLeft,
+    onSwipeRight,
+    onSuperLike,
+    onEmpty,
+    onNearEnd,
+    nearEndThreshold,
+    className,
+    aspectRatio = 3 / 4,
+    fillHeight = false,
+  },
+  ref,
+): React.JSX.Element {
   const {
     visibleItems,
-    // remainingCount,
     stackProgress,
     handleSwipeLeft,
     handleSwipeRight,
     handleSuperLike,
-  } = useSwipeFeed({
+    appendItems,
+  } = useSwipeFeed<UserSearchApiUser>({
     initialItems,
     onSwipeLeft,
     onSwipeRight,
@@ -51,6 +55,8 @@ const SwipeFeedComponent = ({
     onNearEnd,
     nearEndThreshold,
   })
+
+  useImperativeHandle(ref, () => ({ appendItems }), [appendItems])
 
   const { openProfileDetails, openSuperLikeOverlay } = useMatchesOverlay()
 
@@ -85,21 +91,6 @@ const SwipeFeedComponent = ({
     })
   }, [openSuperLikeOverlay, handleSuperLike])
 
-  // if (remainingCount === 0) {
-  //   return (
-  //     <div
-  //       className={cn(
-  //         'flex items-center justify-center rounded-2xl bg-muted/50 text-muted-foreground',
-  //         fillHeight && 'h-full min-h-0',
-  //         className,
-  //       )}
-  //       style={fillHeight ? undefined : { aspectRatio }}
-  //     >
-  //       <p className="text-center text-sm">Больше карточек нет</p>
-  //     </div>
-  //   )
-  // }
-
   return (
     <div
       className={cn('relative w-full overflow-visible', fillHeight && 'h-full min-h-0', className)}
@@ -124,6 +115,8 @@ const SwipeFeedComponent = ({
       ))}
     </div>
   )
-}
+})
+
+SwipeFeedComponent.displayName = 'SwipeFeed'
 
 export const SwipeFeed = memo(SwipeFeedComponent)

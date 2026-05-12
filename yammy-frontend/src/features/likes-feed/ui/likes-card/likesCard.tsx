@@ -1,11 +1,11 @@
 import { Heart } from 'lucide-react'
 import { memo } from 'react'
 
-import type { UserSearchResult } from '@/entities/user/types/types'
+import type { UserSearchApiUser } from '@/entities/user/types/types'
 import { cn } from '@/shared'
 
 export interface LikesCardProps {
-  item: UserSearchResult
+  item: UserSearchApiUser
   onClick?: () => void
   onLike?: (e: React.MouseEvent) => void
   onDislike?: (e: React.MouseEvent) => void

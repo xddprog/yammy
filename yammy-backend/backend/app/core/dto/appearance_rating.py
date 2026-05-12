@@ -9,7 +9,7 @@ class AppearanceRatingSchema(BaseModel):
     id: UUID = Field(serialization_alias="user_id")
     name: str
     age: int
-    city: str | None = None
+    city: str
     photos: list[UserPhoto | str] = []
 
     @field_validator("photos")
