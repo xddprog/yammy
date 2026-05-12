@@ -162,7 +162,7 @@ class UserRepository(SqlAlchemyRepository[User]):
     ) -> list[UserPhoto]:
         old_main_row = await self.session.execute(
             select(UserPhoto).where(
-                UserPhoto.user_id == user_id, 
+                UserPhoto.user_id == user_id,
                 UserPhoto.is_main == True
             )
         )

@@ -10,7 +10,7 @@ from app.infrastructure.database.adapters.pg_connection import DatabaseConnectio
 from app.infrastructure.logging.logger import get_logger
 from app.utils.loaders.cities_loader import load_russian_city_names_to_redis
 from app.utils.loaders.universities_loader import load_university_names_to_redis
-from app.utils.loaders.test_db import sync_test_users_to_es
+from app.utils.loaders.test_db import clear_elasticsearch_users_index, sync_test_users_to_es
 
 logger = get_logger(__name__)
 
@@ -24,9 +24,11 @@ async def lifespan(app: FastAPI):
         taskiq_client = TaskiqClient()
         redis_client = RedisClient()
 
-        await db_connection.init_test_db()
+        seeded_new_users = await db_connection.init_test_db()
         await load_russian_city_names_to_redis(redis_client)
         await load_university_names_to_redis(redis_client)
+        if seeded_new_users:
+            await clear_elasticsearch_users_index(es_client)
         await es_client.init_indices()
         await taskiq_client.startup()
 

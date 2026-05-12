@@ -36,7 +36,7 @@ class SearchService:
         self.redis_client = redis_client
         self.BOOSTED_LIMIT = 10
         self.REGULAR_LIMIT = 40
-        self.MIN_MATCH_PERCENTAGE = 50
+        self.MIN_MATCH_PERCENTAGE = 30
         self.FINAL_LIMIT = 20
     
     def _create_base_query_builder(

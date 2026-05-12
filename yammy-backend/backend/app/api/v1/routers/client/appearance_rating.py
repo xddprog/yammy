@@ -14,20 +14,23 @@ from app.infrastructure.database.models.user import User
 router = APIRouter()
 
 
-@router.get("/appearance-rating", response_model=list[AppearanceRatingSchema],
+@router.get(
+    "",
+    response_model=list[AppearanceRatingSchema],
     dependencies=[
         Depends(RateLimited(10, Duration.MINUTE))
     ]
 )
 @inject
 async def get_users_for_appearance_rating(
-    user_service: FromDishka[SearchService],
+    search_service: FromDishka[SearchService],
     current_user: Annotated[User, Depends(get_current_user)]
 ) -> list[AppearanceRatingSchema]:
-    return await user_service.get_users_for_appearance_rating(current_user.id, limit=20)
+    return await search_service.get_users_for_appearance_rating(current_user.id, limit=20)
 
 
-@router.post("/appearance-rating",
+@router.post(
+    "",
     dependencies=[
         Depends(RateLimited(60, Duration.MINUTE))
     ]

@@ -9,6 +9,7 @@ from app.api.v1.routers.client.appearance_rating import router as appearance_rat
 from app.api.v1.routers.client.chat import router as chat_router
 from app.api.v1.routers.client.universities import router as universities_router
 from app.api.v1.routers.client.cities import router as cities_router
+from app.api.v1.routers.client.filters import router as filters_router
 
 
 api_v1_routers = APIRouter(prefix="/api/v1")
@@ -16,9 +17,10 @@ PROTECTED = Depends(get_current_user)
 
 
 api_v1_routers.include_router(auth_router, prefix="/auth", tags=["auth"])
-api_v1_routers.include_router(users_router, prefix="/users", tags=["users"])
-api_v1_routers.include_router(universities_router, prefix="/universities", tags=["universities"])
-api_v1_routers.include_router(like_router, prefix="/likes", tags=["likes"])
-api_v1_routers.include_router(appearance_rating_router, prefix="/appearance-ratings", tags=["appearance-ratings"])
-api_v1_routers.include_router(chat_router, prefix="/chats", tags=["chats"])
-api_v1_routers.include_router(cities_router, prefix="/cities", tags=["cities"])
+api_v1_routers.include_router(users_router, prefix="/users", tags=["users"], dependencies=[PROTECTED])
+api_v1_routers.include_router(universities_router, prefix="/universities", tags=["universities"], dependencies=[PROTECTED])
+api_v1_routers.include_router(like_router, prefix="/likes", tags=["likes"], dependencies=[PROTECTED])
+api_v1_routers.include_router(appearance_rating_router, prefix="/appearance-ratings", tags=["appearance-ratings"], dependencies=[PROTECTED])
+api_v1_routers.include_router(chat_router, prefix="/chats", tags=["chats"], dependencies=[PROTECTED])
+api_v1_routers.include_router(cities_router, prefix="/cities", tags=["cities"], dependencies=[PROTECTED])
+api_v1_routers.include_router(filters_router, prefix="/filters", tags=["filters"], dependencies=[PROTECTED])

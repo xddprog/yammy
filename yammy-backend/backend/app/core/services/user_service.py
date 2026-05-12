@@ -20,6 +20,9 @@ class UserService:
         self.image_service = image_service
         self.moderation_service = moderation_service
 
+    async def _invalidate_profile_moderation_after_photo_change(self, user_id: UUID) -> None:
+        await self.user_repository.update_item(str(user_id), profile_moderation_approved=False)
+
     async def get_user_profile(self, user_id: UUID) -> UserProfileSchema:
         row = await self.user_repository.get_user_profile(user_id)
         if row is None:
@@ -53,6 +56,7 @@ class UserService:
         if not image_path:
             raise NotFoundException("Фото пользователя не найдено")
         await self.image_service.delete_image(image_path)
+        await self._invalidate_profile_moderation_after_photo_change(user_id)
 
     async def add_user_image(self, user_id: UUID, image: UploadFile) -> UserPhoto:
         image_path = await self.image_service.upload_and_convert(image, f"users/{user_id}")
@@ -61,12 +65,13 @@ class UserService:
             row = await self.user_repository.add_image(user_id, image_path)
         except ValueError:
             raise BadRequestException("Вы превысили максимальное количество фотографий")
-        
-        return UserPhoto.model_validate(
-            row, from_attributes=True
-        ).model_copy(update={"file_path": get_absolute_url(row.file_path)})
 
-    async def set_main_image(self, user_id: UUID, image: UploadFile | None, existing_image_id: UUID | None) -> UserPhoto:
+        await self._invalidate_profile_moderation_after_photo_change(user_id)
+        return UserPhoto.model_validate(row, from_attributes=True).model_copy(
+            update={"file_path": get_absolute_url(row.file_path)}
+        )
+
+    async def set_main_image(self, user_id: UUID, image: UploadFile | None, existing_image_id: UUID | None) -> UserPhoto | list[UserPhoto]:
         if image:
             await self.moderation_service.moderate_image(image, is_main=True)
             image_path = await self.image_service.upload_and_convert(image, f"users/{user_id}")
@@ -75,19 +80,22 @@ class UserService:
             if previous_path and previous_path != image_path:
                 await self.image_service.delete_image(previous_path)
 
+            await self._invalidate_profile_moderation_after_photo_change(user_id)
             return UserPhoto.model_validate(row, from_attributes=True).model_copy(
                 update={"file_path": get_absolute_url(row.file_path)}
             )
         else:
             try:
-                user_photos = await self.user_repository.swap_main_with_existing_gallery_photo(user_id, existing_image_id)
+                user_photos = await self.user_repository.swap_main_with_existing_gallery_photo(
+                    user_id, existing_image_id
+                )
                 return [
                     UserPhoto.model_validate(photo, from_attributes=True)
                     for photo in user_photos
                 ]
             except ValueError:
                 raise NotFoundException("Изображение не найдено")
-        
+
     async def update_image_order(
         self, user_id: UUID, body: ImageOrderUpdateSchema
     ) -> list[UserPhoto]:

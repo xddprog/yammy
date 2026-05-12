@@ -157,7 +157,16 @@ INITIAL_FILTERS = [
     }
 ]
 
-async def init_test_db(session: AsyncSession, count: int = 50) -> None:
+
+async def clear_elasticsearch_users_index(es_client: ElasticsearchClient) -> None:
+    if not await es_client.index_exists("users"):
+        logger.info("elasticsearch_users_index_absent_skip_clear")
+        return
+    await es_client.delete_index("users")
+    logger.info("elasticsearch_users_index_cleared_after_test_db_seed")
+
+
+async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
     try:
         admin_exists = (await session.execute(select(User))).scalars().first()
         if not admin_exists:
@@ -196,7 +205,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> None:
                 target_count=count,
             )
             await session.commit()
-            return
+            return False
 
         logger.info(f"Starting generation of {count} users...")
         for _ in range(count):
@@ -238,6 +247,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> None:
                 last_seen=datetime.now() - timedelta(minutes=random.randint(0, 120)) if is_high_match else datetime.now() - timedelta(minutes=random.randint(0, 10000)),
                 referral_code=f"REF{uuid.uuid4().hex[:12].upper()}",
                 notifications_enabled=random.random() > 0.4,
+                profile_moderation_approved=True,
                 boost_expires_at=datetime.now() + timedelta(hours=2) if is_high_match else (datetime.now() + timedelta(hours=2) if random.random() > 0.9 else None),
                 language=random.choice(list(UserLanguageEnum)),
             )
@@ -266,6 +276,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> None:
 
         await session.commit()
         logger.info(f"Successfully seeded {count} users")
+        return True
 
     except Exception as e:
         await session.rollback()

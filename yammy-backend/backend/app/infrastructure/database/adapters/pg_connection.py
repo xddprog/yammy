@@ -11,7 +11,6 @@ from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
-
 class DatabaseConnection:
     def __init__(self):
         self._engine = create_async_engine(
@@ -21,9 +20,11 @@ class DatabaseConnection:
     async def get_session(self) -> AsyncSession:
         return AsyncSession(bind=self._engine)
         
-    async def init_test_db(self):
+    async def init_test_db(self, clear_db: bool = False) -> bool:
         async with self._engine.begin() as conn:
+            if clear_db:
+                await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         async with await self.get_session() as session:
-            await init_test_db(session)
+            return await init_test_db(session)
         

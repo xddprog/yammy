@@ -43,8 +43,8 @@ class User(Base):
     name: Mapped[str]
     age: Mapped[int]
     gender: Mapped[GenderEnum] = mapped_column(SQLAlchemyEnum(GenderEnum))
-    bio: Mapped[str | None] = mapped_column(Text)
-    city: Mapped[str | None]
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str] = mapped_column(Text, nullable=False)
     job_sphere: Mapped[JobSphereEnum | None] = mapped_column(
         SQLAlchemyEnum(JobSphereEnum), 
         nullable=True
@@ -61,7 +61,9 @@ class User(Base):
     education_details: Mapped[str | None]
 
     is_banned: Mapped[bool] = mapped_column(default=False)
-    
+
+    profile_moderation_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+
     adequacy_score: Mapped[float] = mapped_column(default=10.0)
     activity_score: Mapped[float] = mapped_column(default=1.0)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
