@@ -9,6 +9,7 @@ import { cn } from '@/shared'
 import type { ProfilePhotoItem, UserFilters } from '@/entities/user/types/types'
 import {
   EDUCATION_LEVEL_OPTIONS,
+  PROFILE_BIO_MAX_LENGTH,
   RELATIONSHIP_GOAL_OPTIONS,
   WORK_SPHERE_OPTIONS,
 } from './profile.constants'
@@ -45,6 +46,17 @@ export const ProfileEditForm = ({
       <ProfilePhotosEditor photos={photos} setPhotos={setPhotos} />
 
       <div className="mb-4 flex flex-col gap-1.5">
+        <ProfileEditSheetRow
+          mode="longtext"
+          label="О себе"
+          value={draft.bio}
+          onApply={(value) => setDraft((prev) => ({ ...prev, bio: value }))}
+          textPlaceholder="Несколько предложений о себе"
+          placeholder="Не указано"
+          ariaLabel="О себе"
+          maxLength={PROFILE_BIO_MAX_LENGTH}
+        />
+
         <ProfileEditSheetRow
           mode="age"
           label="Возраст"
