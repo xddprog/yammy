@@ -54,7 +54,8 @@ class SearchService:
         self,
         search_request: SearchRequest,
         user_vector,
-        exclude_list: list[str]
+        exclude_list: list[str],
+        city: str | None,
     ) -> UserSearchQueryBuilder:
         return (
             UserSearchQueryBuilder()
@@ -62,7 +63,7 @@ class SearchService:
                 gender=search_request.gender,
                 age_min=search_request.age_min,
                 age_max=search_request.age_max,
-                city=search_request.city,
+                city=city,
                 goal=search_request.relationship_goal
             )
             .add_social_filters(
@@ -89,6 +90,45 @@ class SearchService:
         query = builder.build()
         response = await self.elasticsearch_client.search(index="users", query=query)
         return response.get("hits", {}).get("hits", [])
+
+    async def _search_user_hits(
+        self,
+        search_request: SearchRequest,
+        user_vector,
+        exclude_list: list[str],
+        city: str | None,
+    ) -> list[dict]:
+        boosted_hits, regular_hits = await asyncio.gather(
+            self._execute_search(
+                self._create_base_query_builder(search_request, user_vector, exclude_list, city)
+                .set_limit(self.BOOSTED_LIMIT)
+                .only_boosted()
+            ),
+            self._execute_search(
+                self._create_base_query_builder(search_request, user_vector, exclude_list, city)
+                .set_limit(self.REGULAR_LIMIT)
+                .exclude_boosted()
+            ),
+        )
+        return boosted_hits + regular_hits
+
+    def _search_results_from_hits(
+        self,
+        all_hits: list[dict],
+        user_vector,
+        my_specs: list[str],
+        viewer: User,
+    ) -> list[UserSearchResponseSchema]:
+        results: list[UserSearchResponseSchema] = []
+        for hit in all_hits:
+            source = hit["_source"]
+            match_percentage = self._match_percentage_for_candidate(
+                source, user_vector, my_specs, viewer
+            )
+            if match_percentage >= self.MIN_MATCH_PERCENTAGE:
+                source["match_percentage"] = match_percentage
+                results.append(UserSearchResponseSchema.model_validate(source))
+        return results
     
     def _extract_user_specs(self, user: User) -> list[str]:
         if not user or not hasattr(user, "filters") or not user.filters:
@@ -185,34 +225,23 @@ class SearchService:
         
         current_user_with_filters = await self.user_repository.get_user_with_filters(current_user.id)
         my_specs = self._extract_user_specs(current_user_with_filters)
-        
-        boosted_hits, regular_hits = await asyncio.gather(
-            self._execute_search(
-                self._create_base_query_builder(search_request, user_vector, exclude_list)
-                .set_limit(self.BOOSTED_LIMIT)
-                .only_boosted()
-            ),
-            self._execute_search(
-                self._create_base_query_builder(search_request, user_vector, exclude_list)
-                .set_limit(self.REGULAR_LIMIT)
-                .exclude_boosted()
-            )
+
+        filter_city = (search_request.city or "").strip()
+        profile_city = (current_user_with_filters.city or "").strip()
+        es_city = filter_city or profile_city or None
+        tried_profile_city_only = not filter_city and bool(profile_city)
+
+        all_hits = await self._search_user_hits(search_request, user_vector, exclude_list, es_city)
+        results = self._search_results_from_hits(
+            all_hits, user_vector, my_specs, current_user_with_filters
         )
-        
-        all_hits = boosted_hits + regular_hits
-
-        results = []
-        for hit in all_hits:
-            source = hit["_source"]
-            match_percentage = self._match_percentage_for_candidate(
-                source, user_vector, my_specs, current_user_with_filters
+        if tried_profile_city_only and es_city and not results:
+            all_hits = await self._search_user_hits(search_request, user_vector, exclude_list, None)
+            results = self._search_results_from_hits(
+                all_hits, user_vector, my_specs, current_user_with_filters
             )
 
-            if match_percentage >= self.MIN_MATCH_PERCENTAGE:
-                source["match_percentage"] = match_percentage
-                results.append(UserSearchResponseSchema.model_validate(source))
-
-        return results[:self.FINAL_LIMIT]
+        return results[: self.FINAL_LIMIT]
 
     async def get_received_likes(self, current_user: User) -> list[UserSearchResponseSchema]:
         liker_ids = await self.like_repository.get_received_like_sender_ids(current_user.id)
