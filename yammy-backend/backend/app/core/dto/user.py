@@ -1,7 +1,7 @@
 
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator, model_validator
 from app.utils.helpers.url_helper import get_absolute_url
 from app.infrastructure.database.models.filter import FilterOption
 from app.utils.constants.enums import (
@@ -14,6 +14,7 @@ from app.utils.constants.enums import (
 )
 
 from app.utils.constants.response_examples import USER_PROFILE_RESPONSE, USER_SEARCH_RESPONSE
+from app.infrastructure.config.config import TELEGRAM_CONFIG
 
 
 class BaseUserSchema(BaseModel):
@@ -86,7 +87,15 @@ class UserProfileSchema(BaseUserSchema):
     subscription_expires_at: datetime | None = None
     adequacy_score: float = 10.0
     referrals_count: int = 0
+    referral_code: str = ""
     filter_option_ids: list[UUID] = Field(default_factory=list, validation_alias="filters")
+
+    @field_serializer("referral_code")
+    def serialize_referral_code(self, value: str) -> str:
+        bot = TELEGRAM_CONFIG.BOT_USERNAME.strip().lstrip("@")
+        if bot and value:
+            return f"https://t.me/{bot}?start={value}"
+        return ""
 
     @field_validator("filter_option_ids", mode="before")
     @classmethod

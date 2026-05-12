@@ -1,6 +1,14 @@
 import type { JSX } from 'react'
 
+import type { UserLanguage } from '@/entities/user/types/types'
+
 import { ProfileMainRow } from './profileMainRow'
+import {
+  ProfileAdequacySheetRow,
+  ProfileLanguageSheetRow,
+  ProfileNotificationsSheetRow,
+  ProfileReferralSheetRow,
+} from './profileViewSettingsSheets'
 import { SettingsRow } from './settingsRow'
 import { SubscriptionCard } from './subscriptionCard'
 
@@ -11,11 +19,14 @@ interface ProfileViewProps {
   superlikesCount: number
   boostsCount: number
   notificationsEnabled: boolean
+  language: UserLanguage
+  referralCode: string
   adequacyScore: number
   referralsCount: number
+  onNotificationsChange: (enabled: boolean) => void
+  onLanguageChange: (lang: UserLanguage) => void
+  settingsUpdating?: boolean
 }
-
-const formatNotifications = (enabled: boolean): string => (enabled ? 'Вкл.' : 'Выкл.')
 
 export const ProfileView = ({
   avatarUrl,
@@ -24,8 +35,13 @@ export const ProfileView = ({
   superlikesCount,
   boostsCount,
   notificationsEnabled,
+  language,
+  referralCode,
   adequacyScore,
   referralsCount,
+  onNotificationsChange,
+  onLanguageChange,
+  settingsUpdating,
 }: ProfileViewProps): JSX.Element => (
   <>
     <ProfileMainRow avatarUrl={avatarUrl} title={profileTitle} onOpenEdit={onOpenEdit} />
@@ -37,10 +53,18 @@ export const ProfileView = ({
     <section className="mt-5 flex flex-col gap-1.5">
       <SettingsRow label="Суперлайки" value={String(superlikesCount)} />
       <SettingsRow label="Бусты" value={String(boostsCount)} />
-      <SettingsRow label="Уведомления" value={formatNotifications(notificationsEnabled)} />
-      <SettingsRow label="Язык" value="Русский" />
-      <SettingsRow label="Рефералы" value={String(referralsCount)} />
-      <SettingsRow label="Рейтинг адекватности" value={adequacyScore?.toFixed(1)} />
+      <ProfileNotificationsSheetRow
+        enabled={notificationsEnabled}
+        onApply={onNotificationsChange}
+        disabled={settingsUpdating}
+      />
+      <ProfileLanguageSheetRow
+        language={language}
+        onApply={onLanguageChange}
+        disabled={settingsUpdating}
+      />
+      <ProfileReferralSheetRow referralsCount={referralsCount} referralCode={referralCode} />
+      <ProfileAdequacySheetRow adequacyScore={adequacyScore} />
     </section>
   </>
 )

@@ -77,6 +77,7 @@ USER_PROFILE_RESPONSE = {
         "language": "ru",
         "adequacy_score": 9.8,
         "referrals_count": 3,
+        "referral_code": "https://t.me/yammy_bot?start=REFABCDEF12",
         "last_seen": "2023-11-20T15:30:00Z",
         "boost_expires_at": "2023-11-20T18:30:00Z"
     }

@@ -103,6 +103,8 @@ export interface UserProfileDto {
   subscription_expires_at: string | null
   adequacy_score: number
   referrals_count: number
+  /** Реферальная ссылка (Telegram deep link); ключ API — `referral_code`. */
+  referral_code: string
   /** UUID выбранных `FilterOption` (как в PUT `filters`). */
   filter_option_ids: string[]
 }

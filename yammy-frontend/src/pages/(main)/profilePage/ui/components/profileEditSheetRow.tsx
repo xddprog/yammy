@@ -253,18 +253,24 @@ function SuggestPanel({
     <SheetChrome title={label} close={close}>
       {options.length > 0 ? (
         <ul className="mb-3 max-h-44 overflow-y-auto rounded-2xl bg-card/80 py-1 no-scrollbar">
-          {options.map((item) => (
-            <li key={item}>
-              <button
-                type="button"
-                className="w-full cursor-pointer px-4 py-2.5 text-left text-[14px] font-[200] text-foreground transition-colors hover:bg-background/60 active:bg-background/40"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => pickOption(item)}
-              >
-                {item}
-              </button>
-            </li>
-          ))}
+          {options.map((item) => {
+            const selected = item === text.trim()
+            return (
+              <li key={item}>
+                <button
+                  type="button"
+                  className={cn(
+                    'w-full cursor-pointer px-4 py-2.5 text-left text-[14px] font-[200] transition-colors hover:bg-background/60 active:bg-background/40',
+                    selected ? 'text-[#FF6BA4]' : 'text-foreground',
+                  )}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => pickOption(item)}
+                >
+                  {item}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       ) : null}
 
@@ -305,32 +311,41 @@ function SuggestPanel({
 function PickPanel({
   label,
   options,
+  selectedLabel,
   onPick,
   close,
 }: {
   label: string
   options: readonly string[]
+  /** Текущее значение (подсветка розовым, как в настройках). */
+  selectedLabel: string
   onPick: (optionLabel: string) => void
   close: () => void
 }): JSX.Element {
   return (
     <SheetChrome title={label} close={close}>
       <ul className="max-h-[min(60vh,320px)] overflow-y-auto rounded-2xl bg-card/80 py-1 no-scrollbar">
-        {options.map((item) => (
-          <li key={item}>
-            <button
-              type="button"
-              className="w-full cursor-pointer px-4 py-3 text-left text-[14px] font-[200] text-foreground transition-colors hover:bg-background/60 active:bg-background/40"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => {
-                onPick(item)
-                close()
-              }}
-            >
-              {item}
-            </button>
-          </li>
-        ))}
+        {options.map((item) => {
+          const selected = item === selectedLabel.trim()
+          return (
+            <li key={item}>
+              <button
+                type="button"
+                className={cn(
+                  'w-full cursor-pointer px-4 py-3 text-left text-[14px] font-[200] transition-colors hover:bg-background/60',
+                  selected ? 'text-[#FF6BA4]' : 'text-foreground',
+                )}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  onPick(item)
+                  close()
+                }}
+              >
+                {item}
+              </button>
+            </li>
+          )
+        })}
       </ul>
     </SheetChrome>
   )
@@ -391,6 +406,7 @@ function ProfileEditSheetRowComponent(props: ProfileEditSheetRowProps): JSX.Elem
               <PickPanel
                 label={props.label}
                 options={props.options}
+                selectedLabel={props.displayValue}
                 onPick={props.onPick}
                 close={close}
               />

@@ -94,6 +94,9 @@ class TelegramConfig(Config):
     model_config = _settings_config(env_prefix="TELEGRAM_CONFIG__")
     BOT_TOKEN: str = Field(default="")
     ADMIN_CHAT_ID: str = Field(default="", description="ID чата для уведомлений администратора")
+    BOT_USERNAME: str = Field(
+        default="yammy_bot",
+    )
 
 
 class ElasticsearchConfig(Config):

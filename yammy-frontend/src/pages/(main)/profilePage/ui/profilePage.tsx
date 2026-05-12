@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import { useUpdateUserProfile } from '@/entities/user/hooks/useUpdateUserProfile'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
-import type { ProfilePhotoItem } from '@/entities/user/types/types'
+import type { ProfilePhotoItem, UserLanguage } from '@/entities/user/types/types'
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { useFiltersState } from '@/features/matches-filter/model/useFiltersState'
 import { showErrorToast } from '@/shared'
@@ -105,8 +105,17 @@ const ProfilePage = (): JSX.Element => {
                     superlikesCount={profile.superlikes_balance}
                     boostsCount={profile.boosts_balance}
                     notificationsEnabled={profile.notifications_enabled}
+                    language={profile.language}
+                    referralCode={profile.referral_code ?? ''}
                     adequacyScore={profile.adequacy_score}
                     referralsCount={profile.referrals_count}
+                    onNotificationsChange={(enabled) => {
+                      void updateUserProfileMutation.mutateAsync({ notifications_enabled: enabled })
+                    }}
+                    onLanguageChange={(lang: UserLanguage) => {
+                      void updateUserProfileMutation.mutateAsync({ language: lang })
+                    }}
+                    settingsUpdating={updateUserProfileMutation.isPending}
                   />
                 ) : (
                   <ProfilePageSkeleton />

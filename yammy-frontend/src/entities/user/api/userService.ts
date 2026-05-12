@@ -48,7 +48,11 @@ export class UserService {
     }
 
     const data = (await response.json()) as UserProfileDto
-    return { ...data, filter_option_ids: data.filter_option_ids ?? [] }
+    return {
+      ...data,
+      filter_option_ids: data.filter_option_ids ?? [],
+      referral_code: data.referral_code ?? '',
+    }
   }
 
   public async updateUserProfile(body: UserUpdateRequestDto): Promise<void> {
