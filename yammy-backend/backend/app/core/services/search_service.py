@@ -165,7 +165,7 @@ class SearchService:
         blended = (forward_match + backward_match) / 2.0
         blended = min(100.0, blended + self._demographic_bonus(viewer, source))
         raw = self._spread_from_midpoint(blended, self.MATCH_PERCENT_SPREAD_FACTOR)
-        return min(raw, 99)
+        return min(raw, 94)
 
     async def search_users(self, search_request: SearchRequest, current_user: User) -> list[UserSearchResponseSchema]:
         seen_key = UserCacheKeys.SEEN_USERS.format(user_id=current_user.id)
