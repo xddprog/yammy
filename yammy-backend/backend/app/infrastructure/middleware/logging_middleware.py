@@ -4,7 +4,7 @@ from typing import Callable
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Receive, Scope, Send
 import structlog
 
 from app.infrastructure.logging.logger import get_logger
@@ -19,7 +19,13 @@ logger = get_logger(__name__)
 class LoggingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-    
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "websocket":
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         request_id = str(uuid.uuid4())
         structlog.contextvars.clear_contextvars()

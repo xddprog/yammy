@@ -21,6 +21,6 @@ api_v1_routers.include_router(users_router, prefix="/users", tags=["users"], dep
 api_v1_routers.include_router(universities_router, prefix="/universities", tags=["universities"], dependencies=[PROTECTED])
 api_v1_routers.include_router(like_router, prefix="/likes", tags=["likes"], dependencies=[PROTECTED])
 api_v1_routers.include_router(appearance_rating_router, prefix="/appearance-ratings", tags=["appearance-ratings"], dependencies=[PROTECTED])
-api_v1_routers.include_router(chat_router, prefix="/chats", tags=["chats"], dependencies=[PROTECTED])
+api_v1_routers.include_router(chat_router, prefix="/chats", tags=["chats"])
 api_v1_routers.include_router(cities_router, prefix="/cities", tags=["cities"], dependencies=[PROTECTED])
 api_v1_routers.include_router(filters_router, prefix="/filters", tags=["filters"], dependencies=[PROTECTED])

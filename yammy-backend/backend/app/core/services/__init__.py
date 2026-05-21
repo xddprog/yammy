@@ -9,8 +9,10 @@ from app.core.services.ml_service import MLService
 from app.core.services.moderation_service import ModerationService
 from app.core.services.websocket_service import WebSocketService
 from app.core.services.chat_service import ChatService
+from app.core.services.message_service import MessageService
 from app.core.services.user_service import UserService
 from app.core.services.city_service import CityService
+from app.core.services.notification_service import NotificationService
 
 __all__ = [
     "AuthService",
@@ -24,6 +26,8 @@ __all__ = [
     "ModerationService",
     "WebSocketService",
     "ChatService",
+    "MessageService",
     "UserService",
     "CityService",
+    "NotificationService",
 ]

@@ -1,29 +1,30 @@
+from uuid import UUID
+
 from fastapi.websockets import WebSocket
 from pydantic import BaseModel
 
 
 class WebSocketService:
     def __init__(self):
-        self.active_connections = {}
+        self.active_connections: dict[UUID, WebSocket] = {}
 
-    async def connect(self, chat_id: int, websocket: WebSocket):
+    async def connect(self, match_id: UUID, websocket: WebSocket) -> None:
         await websocket.accept()
-        self.active_connections[chat_id] = websocket
+        self.active_connections[match_id] = websocket
 
-    async def disconnect(self, chat_id: str):
-        con: WebSocket = self.active_connections.get(chat_id)
-        if con:
-            try:
-                await con.close()
-            except:
-                pass
-            del self.active_connections[chat_id]
+    async def disconnect(self, match_id: UUID) -> None:
+        connection = self.active_connections.pop(match_id, None)
+        if connection is None:
+            return
+        try:
+            await connection.close()
+        except Exception:
+            pass
 
-    async def broadcast(self, chat_id: str, message: BaseModel, event: str):
-        conn = self.active_connections.get(chat_id)
-
-        if conn:
-            await conn.send_json({
-                "data": message.model_dump(),
-                "event": event
+    async def broadcast(self, match_id: UUID, message: BaseModel, event: str) -> None:
+        connection = self.active_connections.get(match_id)
+        if connection:
+            await connection.send_json({
+                "data": message.model_dump(mode="json"),
+                "event": event,
             })

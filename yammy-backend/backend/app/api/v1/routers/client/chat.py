@@ -1,14 +1,20 @@
+from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, HTTPException
-from app.utils.helpers.rate_limit import RateLimited
-from pyrate_limiter import Duration
-from app.core.services import AuthService, ChatService, WebSocketService
-from dishka.integrations.fastapi import FromDishka, inject
-from fastapi import WebSocket
 
+from dishka.integrations.fastapi import FromDishka, inject
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket
+from pyrate_limiter import Duration
+from starlette.websockets import WebSocketDisconnect
+
+from app.api.v1.dependency.providers.request import get_current_user
+from app.core.dto.chat import ChatErrorResponseSchema, ChatListItemSchema
+from app.core.dto.pagination import PaginationRequestModel, PaginationResponseModel
+from app.core.services import AuthService, ChatService, WebSocketService
+from app.infrastructure.database.models.user import User
+from app.infrastructure.errors.base import BaseAPIException
+from app.utils.helpers.rate_limit import RateLimited
 from app.utils.constants.enums import ChatEvents
 from app.infrastructure.logging import get_logger
-from app.core.dto.chat import ChatErrorResponseSchema
 from app.core.dto.message import MessageCreateRequest, MessageEditRequest
 from app.core.services.message_service import MessageService
 
@@ -16,6 +22,21 @@ from app.core.services.message_service import MessageService
 router = APIRouter()
 
 logger = get_logger(__name__)
+
+
+@router.get(
+    "/",
+    dependencies=[
+        Depends(RateLimited(30, Duration.MINUTE)),
+    ],
+)
+@inject
+async def list_chats(
+    chat_service: FromDishka[ChatService],
+    current_user: Annotated[User, Depends(get_current_user)],
+    pagination: Annotated[PaginationRequestModel, Query()],
+) -> PaginationResponseModel[ChatListItemSchema]:
+    return await chat_service.list_user_chats(current_user.id, pagination)
 
 
 @router.websocket("/{match_id}")
@@ -27,51 +48,65 @@ async def chat_websocket(
     message_service: FromDishka[MessageService],
     auth_service: FromDishka[AuthService],
     ws_service: FromDishka[WebSocketService],
-    access_token: str | None = None,
+    access_token: Annotated[str | None, Query()] = None,
 ) -> None:
     await ws_service.connect(match_id, websocket)
     try:
+        if not access_token:
+            raise HTTPException(status_code=401, detail="Неверные учетные данные")
         user = await auth_service.verify_user_token(access_token)
-        ratelimit = RateLimited(5, Duration.SECOND, is_websocket=True)
+        ratelimit = RateLimited(10, Duration.SECOND, is_websocket=True)
 
         while True:
             user_input = await websocket.receive_json()
             await ratelimit.ws(websocket)
-            event = user_input.get("event")
+            incoming_event = user_input.get("event")
+            payload = {key: value for key, value in user_input.items() if key != "event"}
 
             response = None
-            event = None
-            if event == ChatEvents.OPEN_CHAT:
+            outgoing_event = None
+            if incoming_event == ChatEvents.OPEN_CHAT:
                 response = await chat_service.get_chat_by_match_id(match_id, user.id)
-                event = ChatEvents.OPEN_CHAT
-            elif event == ChatEvents.MESSAGE:
-                form = MessageCreateRequest(**user_input)
+                outgoing_event = ChatEvents.OPEN_CHAT
+            elif incoming_event == ChatEvents.MESSAGE:
+                form = MessageCreateRequest(**payload)
                 response = await message_service.create_message(form)
-                event = ChatEvents.MESSAGE
-            elif event == ChatEvents.READ:
-                message_id = user_input.get("message_id")
+                outgoing_event = ChatEvents.MESSAGE
+            elif incoming_event == ChatEvents.READ:
+                message_id = payload.get("message_id")
                 response = await message_service.read_message(message_id, user.id)
-                event = ChatEvents.READ
-            elif event == ChatEvents.DELETE:
-                message_id = user_input.get("message_id")
+                outgoing_event = ChatEvents.READ
+            elif incoming_event == ChatEvents.DELETE:
+                message_id = payload.get("message_id")
                 response = await message_service.delete_message(message_id, user.id)
-                event = ChatEvents.DELETE
-            elif event == ChatEvents.EDIT:
-                message_id = user_input.get("message_id")
-                form = MessageEditRequest(**user_input)
+                outgoing_event = ChatEvents.DELETE
+            elif incoming_event == ChatEvents.EDIT:
+                message_id = payload.get("message_id")
+                form = MessageEditRequest(**payload)
                 response = await message_service.edit_message(message_id, user.id, form)
-                event = ChatEvents.EDIT
+                outgoing_event = ChatEvents.EDIT
 
-            if response:
-                await ws_service.broadcast(match_id, response, event)
+            if response is not None and outgoing_event is not None:
+                await ws_service.broadcast(match_id, response, outgoing_event)
+    except WebSocketDisconnect:
+        pass
     except HTTPException as e:
         await ws_service.broadcast(
             match_id,
             ChatErrorResponseSchema(
                 status_code=e.status_code,
                 detail=e.detail,
-            ), 
-            ChatEvents.ERROR
+            ),
+            ChatEvents.ERROR,
+        )
+    except BaseAPIException as e:
+        await ws_service.broadcast(
+            match_id,
+            ChatErrorResponseSchema(
+                status_code=e.status_code,
+                detail=e.detail,
+            ),
+            ChatEvents.ERROR,
         )
     except Exception as e:
         logger.error("Error in chat websocket", match_id=match_id, error=e)
@@ -80,8 +115,8 @@ async def chat_websocket(
             ChatErrorResponseSchema(
                 status_code=500,
                 detail="Ошибка при обработке сообщения",
-            ), 
-            ChatEvents.ERROR
+            ),
+            ChatEvents.ERROR,
         )
     finally:
-        await websocket.close()
+        await ws_service.disconnect(match_id)

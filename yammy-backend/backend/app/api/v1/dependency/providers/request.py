@@ -12,6 +12,7 @@ from app.core.dto.admin import BaseAdminSchema
 from app.infrastructure.database.adapters.pg_connection import DatabaseConnection
 from app.infrastructure.database.models.user import User
 from app.core.clients.elasticsearch_client import ElasticsearchClient
+from app.core.clients.telegram_client import TelegramClient
 from app.core.services.ml_service import MLService
 
 security = HTTPBearer()
@@ -58,10 +59,21 @@ class RequestProvider(Provider):
         )
             
     @provide(scope=Scope.REQUEST)
-    def get_like_service(self, session: AsyncSession, redis_client: RedisClient) -> services.LikeService:
+    def get_notification_service(self, telegram_client: TelegramClient) -> services.NotificationService:
+        return services.NotificationService(telegram_client=telegram_client)
+
+    @provide(scope=Scope.REQUEST)
+    def get_like_service(
+        self,
+        session: AsyncSession,
+        redis_client: RedisClient,
+        notification_service: services.NotificationService,
+    ) -> services.LikeService:
         return services.LikeService(
             like_repository=repositories.LikeRepository(session=session),
-            redis_client=redis_client
+            user_repository=repositories.UserRepository(session=session),
+            redis_client=redis_client,
+            notification_service=notification_service,
         )
     
     @provide(scope=Scope.REQUEST)
@@ -84,7 +96,7 @@ class RequestProvider(Provider):
     @provide(scope=Scope.REQUEST)
     def get_chat_service(self, session: AsyncSession) -> services.ChatService:
         return services.ChatService(
-            chat_repository=repositories.ChatRepository(session=session)
+            chat_repository=repositories.ChatRepository(session=session),
         )
 
     @provide(scope=Scope.REQUEST)

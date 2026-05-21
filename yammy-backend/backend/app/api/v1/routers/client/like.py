@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, Depends
+from starlette.responses import Response
 from app.utils.helpers.rate_limit import RateLimited
 from pyrate_limiter import Duration
 
@@ -22,9 +23,9 @@ router = APIRouter()
 async def like_user(
     user_to_id: UUID,
     like_service: FromDishka[LikeService],
-    current_user: Annotated[User, Depends(get_current_user)]
-) -> None:
-    await like_service.add_like(current_user.id, user_to_id)
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> Response:
+    return await like_service.add_like(current_user.id, user_to_id)
 
 
 @router.post("/dislike",

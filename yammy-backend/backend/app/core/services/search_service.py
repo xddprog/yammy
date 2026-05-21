@@ -6,6 +6,7 @@ from app.core.repositories.appearance_rating_repository import AppearanceRatingR
 from app.core.clients.elasticsearch_client import ElasticsearchClient
 from app.core.services.ml_service import MLService
 from app.core.clients.redis_client import RedisClient
+from app.core.dto.pagination import PaginationRequestModel, PaginationResponseModel
 from app.core.dto.search import SearchRequest
 from app.core.dto.user import UserSearchResponseSchema
 from app.core.dto.appearance_rating import AppearanceRatingSchema
@@ -231,10 +232,19 @@ class SearchService:
         
         return results[:self.FINAL_LIMIT]
 
-    async def get_received_likes(self, current_user: User) -> list[UserSearchResponseSchema]:
-        liker_ids = await self.like_repository.get_received_like_sender_ids(current_user.id)
+    async def get_received_likes(
+        self,
+        current_user: User,
+        pagination: PaginationRequestModel,
+    ) -> PaginationResponseModel[UserSearchResponseSchema]:
+        total, liker_ids = await self.like_repository.get_received_like_sender_ids(current_user.id, pagination)
         if not liker_ids:
-            return []
+            return PaginationResponseModel(
+                total=0,
+                page=pagination.page,
+                size=pagination.size,
+                items=[],
+            )
 
         id_strs = [str(uid) for uid in liker_ids]
 
@@ -263,7 +273,12 @@ class SearchService:
             results.append(UserSearchResponseSchema.model_validate(source))
 
         results.sort(key=lambda u: u.match_percentage or 0, reverse=True)
-        return results
+        return PaginationResponseModel(
+            total=total,
+            page=pagination.page,
+            size=pagination.size,
+            items=results,
+        )
     
     async def get_users_for_appearance_rating(self, current_user_id: UUID, limit: int = 20) -> list[AppearanceRatingSchema]:
         rated_key = AppearanceRatingCacheKeys.APPEARANCE_RATED_USERS.format(user_id=current_user_id)

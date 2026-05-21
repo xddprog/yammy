@@ -1,6 +1,7 @@
 import base64
+import io
 import uuid
-from tempfile import SpooledTemporaryFile
+from uuid import UUID
 
 from fastapi import UploadFile
 from app.core.repositories.message_repository import MessageRepository
@@ -22,20 +23,27 @@ class MessageService:
 
         for image in images:
             image_data = base64.b64decode(image.file.split(",")[1])
+            content_type = image.content_type.split(";")[0].strip().lower()
+            ext = {
+                "image/jpeg": ".jpg",
+                "image/jpg": ".jpg",
+                "image/png": ".png",
+                "image/webp": ".webp",
+                "image/gif": ".gif",
+                "image/bmp": ".bmp",
+            }.get(content_type, ".jpg")
 
-            with SpooledTemporaryFile() as temp_file:
-                temp_file.write(image_data)
-                temp_file.seek(0)
-
-                upload_file = UploadFile(
+            temp_file = io.BytesIO(image_data)
+            files.append(
+                UploadFile(
                     file=temp_file,
-                    filename=f"{uuid.uuid4()}",
-                    headers={"content-type": image.content_type},
+                    filename=f"{uuid.uuid4()}{ext}",
+                    headers={"content-type": content_type},
                 )
-                files.append(upload_file)
+            )
         return await self.image_service.upload_multiple(files, "messages")
     
-    async def create_message(self, form: MessageCreateRequest):
+    async def create_message(self, form: MessageCreateRequest) -> MessageSchema:
         if len(form.images) > MAX_IMAGES_COUNT:
             raise BadRequestException("Вы не можете отправить больше 5 изображений за один раз")
 

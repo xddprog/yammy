@@ -10,6 +10,9 @@ from passlib.context import CryptContext
 from dishka import AsyncContainer
 
 from app.infrastructure.database.models.admin import Admin
+from app.infrastructure.database.models.chat import Chat
+from app.infrastructure.database.models.match import Match
+from app.infrastructure.database.models.message import Message
 from app.infrastructure.database.models.user import User, UserPhoto
 from app.infrastructure.database.models.filter import FilterCategory, FilterSubcategory, FilterOption, UserFilterAssociation
 from app.utils.constants.enums import (
@@ -308,6 +311,65 @@ async def seed_match_calibration_users(session: AsyncSession) -> None:
     )
 
 
+def _ordered_pair(user_a: uuid.UUID, user_b: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
+    return (user_a, user_b) if user_a < user_b else (user_b, user_a)
+
+
+async def seed_test_matches(session: AsyncSession) -> int:
+    """Метч и чат для каждой пары тестовых пользователей (для списка чатов)."""
+    user_ids = list((await session.execute(select(User.id).order_by(User.id))).scalars().all())
+    if len(user_ids) < 2:
+        logger.info("test_matches_skip_few_users", user_count=len(user_ids))
+        return 0
+
+    existing_pairs: set[tuple[uuid.UUID, uuid.UUID]] = set()
+    rows = await session.execute(select(Match.user1_id, Match.user2_id))
+    for user1_id, user2_id in rows.all():
+        existing_pairs.add(_ordered_pair(user1_id, user2_id))
+
+    new_matches: list[Match] = []
+    for i in range(len(user_ids)):
+        for j in range(i + 1, len(user_ids)):
+            pair = _ordered_pair(user_ids[i], user_ids[j])
+            if pair in existing_pairs:
+                continue
+            user1_id, user2_id = pair
+            match = Match(user1_id=user1_id, user2_id=user2_id)
+            session.add(match)
+            new_matches.append(match)
+
+    if not new_matches:
+        logger.info("test_matches_already_seeded", user_count=len(user_ids))
+        return 0
+
+    await session.flush()
+
+    new_chats: list[Chat] = []
+    for match in new_matches:
+        chat = Chat(match_id=match.id)
+        session.add(chat)
+        new_chats.append(chat)
+    await session.flush()
+
+    for chat, match in zip(new_chats, new_matches, strict=True):
+        session.add(
+            Message(
+                chat_id=chat.id,
+                sender_id=match.user1_id,
+                content=fake.sentence(nb_words=6),
+            )
+        )
+
+    created = len(new_matches)
+    logger.info(
+        "test_matches_seeded",
+        matches_created=created,
+        user_count=len(user_ids),
+        messages_created=created,
+    )
+    return created
+
+
 async def clear_elasticsearch_users_index(es_client: ElasticsearchClient) -> None:
     if not await es_client.index_exists("users"):
         logger.info("elasticsearch_users_index_absent_skip_clear")
@@ -354,6 +416,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
                 existing_users=existing_users,
                 target_count=count,
             )
+            await seed_test_matches(session)
             await session.commit()
             return False
 
@@ -426,6 +489,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
             await session.flush()
 
         await seed_match_calibration_users(session)
+        await seed_test_matches(session)
 
         await session.commit()
         logger.info(f"Successfully seeded {count} users")

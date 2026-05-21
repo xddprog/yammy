@@ -35,8 +35,8 @@ class CurrentUserSessionSchema(BaseModel):
     id: UUID
     language: UserLanguageEnum
     is_banned: bool
-    subscription_tier: SubscriptionTierEnum = Field(exclude=True)
-    subscription_expires_at: datetime | None = Field(exclude=True)
+    subscription_tier: SubscriptionTierEnum
+    subscription_expires_at: datetime | None = None
     superlikes_balance: int
     boosts_balance: int
     has_active_subscription: bool
@@ -56,7 +56,7 @@ class CurrentUserSessionSchema(BaseModel):
             language=user.language,
             is_banned=user.is_banned,
             subscription_tier=user.subscription_tier,
-            subscription_expires_at=exp,
+            subscription_expires_at=user.subscription_expires_at,
             superlikes_balance=user.superlikes_balance,
             boosts_balance=user.boosts_balance,
             has_active_subscription=sub_active,

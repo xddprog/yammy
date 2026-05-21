@@ -1,7 +1,10 @@
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime
+
+from app.infrastructure.database.models.user import UserPhoto
+from app.utils.helpers.url_helper import get_absolute_url
 
 
 class MessagePhotoUploadSchema(BaseModel):
@@ -10,10 +13,10 @@ class MessagePhotoUploadSchema(BaseModel):
 
 
 class MessageCreateRequest(BaseModel):
+    chat_id: UUID
     content: str
     reply_to_id: UUID | None = None
     sender_id: UUID
-    receiver_id: UUID
     images: list[MessagePhotoUploadSchema] = []
 
 
@@ -26,6 +29,12 @@ class MessageSenderSchema(BaseModel):
     id: UUID
     name: str
     main_photo: str | None = None
+
+    @field_validator("main_photo", mode="before")
+    @classmethod
+    def validate_main_photo(cls, main_photo: UserPhoto | None) -> str | None:
+        photo = main_photo.file_path if main_photo else None
+        return get_absolute_url(photo) if photo else None
 
 
 class MessagePhotoSchema(BaseModel):

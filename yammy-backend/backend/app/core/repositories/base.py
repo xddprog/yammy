@@ -1,8 +1,12 @@
 from typing import Any
+
 from pydantic import UUID4
-from sqlalchemy import Result, select, update
+from sqlalchemy import Result, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import MappedColumn
+from sqlalchemy.sql import Select
+
+from app.core.dto.pagination import PaginationRequestModel
 from app.infrastructure.interfaces.repository import RepositoryInterface
 
 
@@ -10,6 +14,11 @@ class SqlAlchemyRepository[ModelType](RepositoryInterface[ModelType]):
     def __init__(self, session: AsyncSession, model: type[ModelType]):
         self.session = session
         self.model = model
+
+    async def get_total(self, query: Select[Any]) -> int:
+        query = select(func.count()).select_from(query.limit(None).offset(None).subquery())
+        total = await self.session.scalar(query)
+        return int(total or 0)
 
     async def get_by_ids(self, ids: list[str]) -> list[ModelType]:
         query = select(self.model).where(self.model.id.in_(ids))

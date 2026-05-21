@@ -6,8 +6,6 @@ from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
-
-
 class TelegramClient:
     def __init__(self):
         self.bot_token = TELEGRAM_CONFIG.BOT_TOKEN

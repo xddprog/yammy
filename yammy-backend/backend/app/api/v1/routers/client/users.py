@@ -2,10 +2,11 @@ from uuid import UUID
 
 from dishka.integrations.fastapi import FromDishka, inject
 from typing import Annotated
-from fastapi import APIRouter, Depends, UploadFile, File, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from app.utils.helpers.rate_limit import RateLimited
 from pyrate_limiter import Duration
 
+from app.core.dto.pagination import PaginationRequestModel, PaginationResponseModel
 from app.core.dto.search import SearchRequest
 from app.core.services import ModerationService, SearchService, UserService
 from app.core.dto.user import (
@@ -39,7 +40,6 @@ async def get_user_profile(
 
 @router.get(
     "/likes",
-    response_model=list[UserSearchResponseSchema],
     dependencies=[
         Depends(RateLimited(30, Duration.MINUTE)),
     ],
@@ -48,8 +48,9 @@ async def get_user_profile(
 async def get_received_likes(
     search_service: FromDishka[SearchService],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> list[UserSearchResponseSchema]:
-    return await search_service.get_received_likes(current_user)
+    pagination: Annotated[PaginationRequestModel, Query()],
+) -> PaginationResponseModel[UserSearchResponseSchema]:
+    return await search_service.get_received_likes(current_user, pagination)
 
 
 @router.post(
