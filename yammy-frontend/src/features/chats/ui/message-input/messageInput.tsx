@@ -6,7 +6,7 @@ import { Button, cn, Image, useOverlay } from '@/shared'
 interface MessageInputProps {
   onSend: (
     text?: string,
-    images?: string[],
+    files?: File[],
     replyTo?: { id: string; text: string; name: string },
   ) => void
   replyTo?: { id: string; text: string; name: string } | null
@@ -15,6 +15,7 @@ interface MessageInputProps {
 
 export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputProps) => {
   const [value, setValue] = useState('')
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -39,13 +40,10 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
     const hasImages = imagePreviews.length > 0
 
     if (hasText || hasImages) {
-      if (hasText) {
-        onSend(trimmed, undefined, replyTo || undefined)
-      }
-      if (hasImages) {
-        onSend(undefined, imagePreviews, hasText ? undefined : (replyTo ?? undefined))
-      }
+      onSend(hasText ? trimmed : undefined, hasImages ? selectedFiles : undefined, replyTo || undefined)
       setValue('')
+      setSelectedFiles([])
+      imagePreviews.forEach((url) => URL.revokeObjectURL(url))
       setImagePreviews([])
       onCancelReply?.()
       requestAnimationFrame(autosizeTextarea)
@@ -55,10 +53,11 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (files.length > 0) {
-      const remainingSlots = Math.max(0, 2 - imagePreviews.length)
-      const selected = files.slice(0, remainingSlots).map((file) => URL.createObjectURL(file))
-      if (selected.length > 0) {
-        setImagePreviews((prev) => [...prev, ...selected])
+      const remainingSlots = Math.max(0, 2 - selectedFiles.length)
+      const picked = files.slice(0, remainingSlots)
+      if (picked.length > 0) {
+        setSelectedFiles((prev) => [...prev, ...picked])
+        setImagePreviews((prev) => [...prev, ...picked.map((file) => URL.createObjectURL(file))])
       }
     }
     // Reset input so the same file can be picked again
@@ -125,7 +124,11 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
                 <img src={preview} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
               </button>
               <button
-                onClick={() => setImagePreviews((prev) => prev.filter((_, i) => i !== index))}
+                onClick={() => {
+                  URL.revokeObjectURL(imagePreviews[index])
+                  setImagePreviews((prev) => prev.filter((_, i) => i !== index))
+                  setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+                }}
                 className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition-all hover:bg-black"
                 aria-label="Удалить фото"
               >

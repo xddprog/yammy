@@ -1,25 +1,46 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Search, X } from 'lucide-react'
 import type { JSX } from 'react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { AppLogoLoader } from '@/app/ui/AppLogoLoader'
+import { flattenChatsPages, useChatsList } from '@/entities/chat'
 import { ChatItem, ChatsSearchField, ChatsStoriesRow } from '@/features/chats'
+import { FeedLoading } from '@/features/matches-feed/ui/feed-loading'
 import { cn } from '@/shared'
+import { useInfiniteScrollLoadMore } from '@/shared/hooks/useInfiniteScrollLoadMore'
+import { formatUserErrorMessage } from '@/shared/lib/formatUserErrorMessage'
+import { ERouteNames } from '@/shared/lib/routeVariables'
 import { stickyTopHeaderClassNames } from '@/widgets'
-
-import { MOCK_CHATS } from '../lib/mockChats'
 
 const headerEase = [0.22, 0.61, 0.36, 1] as const
 
 const ChatsPage = (): JSX.Element => {
   const navigate = useNavigate()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const loadMoreRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const chatsQuery = useChatsList()
+
+  const chats = useMemo(() => flattenChatsPages(chatsQuery.data), [chatsQuery.data])
+
+  useInfiniteScrollLoadMore({
+    scrollRootRef: scrollRef,
+    sentinelRef: loadMoreRef,
+    hasNextPage: chatsQuery.hasNextPage,
+    isFetchingNextPage: chatsQuery.isFetchingNextPage,
+    fetchNextPage: () => void chatsQuery.fetchNextPage(),
+  })
 
   const filteredChats = useMemo(() => {
-    return MOCK_CHATS.filter((chat) => chat.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [searchQuery])
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) {
+      return chats
+    }
+    return chats.filter((chat) => chat.name.toLowerCase().includes(q))
+  }, [chats, searchQuery])
 
   const closeSearch = () => {
     setSearchOpen(false)
@@ -33,7 +54,10 @@ const ChatsPage = (): JSX.Element => {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden overflow-x-hidden bg-background px-4 text-foreground">
-      <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none no-scrollbar scroll-pb-[calc(5.25rem+2.25rem+3.5rem+env(safe-area-inset-bottom,0px))]">
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none no-scrollbar scroll-pb-[calc(5.25rem+2.25rem+3.5rem+env(safe-area-inset-bottom,0px))]"
+      >
         <div className="flex flex-col gap-4 pb-[calc(5.25rem+2.25rem+3.5rem+env(safe-area-inset-bottom,0px))]">
           <header
             className={cn(
@@ -113,18 +137,65 @@ const ChatsPage = (): JSX.Element => {
               </AnimatePresence>
             </motion.button>
           </header>
-          <ChatsStoriesRow chats={MOCK_CHATS} onStoryClick={(id) => navigate(`/chats/${id}`)} />
-          <div className="flex flex-col gap-1.5">
-            {filteredChats.length > 0 ? (
-              filteredChats.map((chat) => (
-                <ChatItem key={chat.id} chat={chat} onClick={() => navigate(`/chats/${chat.id}`)} />
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center pt-8 text-center">
-                <p className="text-[15px] font-medium text-muted-foreground">Ничего не найдено</p>
+
+          {chatsQuery.isPending ? (
+            <div className="flex min-h-[min(420px,70vh)] items-center justify-center">
+              <FeedLoading />
+            </div>
+          ) : chatsQuery.isError ? (
+            <div className="flex min-h-[min(420px,70vh)] flex-col items-center justify-center gap-3 text-center">
+              <p className="text-[15px] font-medium text-muted-foreground">
+                {formatUserErrorMessage(chatsQuery.error)}
+              </p>
+              <button
+                type="button"
+                onClick={() => void chatsQuery.refetch()}
+                className="rounded-full bg-card px-4 py-2 text-sm font-medium text-foreground"
+              >
+                Повторить
+              </button>
+            </div>
+          ) : chats.length === 0 ? (
+            <div className="flex min-h-[min(420px,70vh)] flex-col items-center justify-center text-center">
+              <p className="text-[15px] font-medium text-muted-foreground">Пока нет чатов</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">Метч появится после взаимного лайка</p>
+            </div>
+          ) : (
+            <>
+              <ChatsStoriesRow
+                chats={chats}
+                onStoryClick={(id) => navigate(`/${ERouteNames.CHATS_ROUTE}/${id}`)}
+              />
+              <div className="flex flex-col gap-1.5">
+                {filteredChats.length > 0 ? (
+                  filteredChats.map((chat) => (
+                    <ChatItem
+                      key={chat.id}
+                      chat={chat}
+                      onClick={() => navigate(`/${ERouteNames.CHATS_ROUTE}/${chat.id}`)}
+                    />
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center pt-8 text-center">
+                    <p className="text-[15px] font-medium text-muted-foreground">Ничего не найдено</p>
+                  </div>
+                )}
+                {(chatsQuery.hasNextPage || chatsQuery.isFetchingNextPage) && (
+                  <div
+                    ref={loadMoreRef}
+                    className={cn(
+                      'flex shrink-0 items-center justify-center',
+                      chatsQuery.isFetchingNextPage ? 'py-1.5' : 'h-px',
+                    )}
+                    aria-busy={chatsQuery.isFetchingNextPage}
+                    aria-label={chatsQuery.isFetchingNextPage ? 'Подгрузка чатов' : undefined}
+                  >
+                    {chatsQuery.isFetchingNextPage && <AppLogoLoader size="small" />}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

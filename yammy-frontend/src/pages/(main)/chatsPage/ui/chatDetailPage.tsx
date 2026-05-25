@@ -1,15 +1,19 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCheck, Edit2, Reply, Trash2 } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 
-import { USERS_SEARCH_FALLBACK_MOCK } from '@/entities/user/mock/apiFallbackMocks'
+import { ERouteNames } from '@/shared/lib/routeVariables'
+
+import { useChatWebSocket } from '@/entities/chat'
+import type { ChatMessage } from '@/entities/chat'
+import { useCurrentUser } from '@/entities/auth/hooks/useCurrentUser'
 import type { UserSearchApiUser } from '@/entities/user/types/types'
 import { ChatHeader, MessageInput, MessageList } from '@/features/chats'
+import { FeedLoading } from '@/features/matches-feed/ui/feed-loading'
 import { useMatchesOverlay } from '@/features/matches-feed/ui/matches-card/matchesOverlay'
 
-import { MOCK_CHATS } from '../lib/mockChats'
-import { MOCK_MESSAGES, type MockMessage } from '../lib/mockMessages'
+const CHAT_AVATAR_FALLBACK = '/images/i.webp'
 
 const getStartOfWeek = (date: Date): Date => {
   const result = new Date(date)
@@ -51,35 +55,46 @@ const formatReadAt = (readAt: Date): string => {
 
 const ChatDetailPage = () => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { id } = useParams<{ id: string }>()
-  const chatInfo = useMemo(() => MOCK_CHATS.find((c) => c.id === id), [id])
-  const [messages, setMessages] = useState<MockMessage[]>(id ? MOCK_MESSAGES[id] || [] : [])
+  const navigate = useNavigate()
+  const { id: matchId } = useParams<{ id: string }>()
+  const { data: currentUser } = useCurrentUser()
+  const { messages, peer, status, sendTextMessage, deleteMessage } = useChatWebSocket(matchId)
+
+  useEffect(() => {
+    if (status === 'error') {
+      navigate(`/${ERouteNames.CHATS_ROUTE}`)
+    }
+  }, [status, navigate])
   const [replyTo, setReplyTo] = useState<{ id: string; text: string; name: string } | null>(null)
-  const [menuMessage, setMenuMessage] = useState<MockMessage | null>(null)
+  const [menuMessage, setMenuMessage] = useState<ChatMessage | null>(null)
   const [menuRect, setMenuRect] = useState<DOMRect | null>(null)
   const { openProfileDetails } = useMatchesOverlay()
   const lastReadAt = useMemo(() => new Date(), [])
   const readAtLabel = useMemo(() => formatReadAt(lastReadAt), [lastReadAt])
+
   const chatUserProfile = useMemo<UserSearchApiUser | null>(() => {
-    if (!chatInfo) return null
-
-    const fromMock =
-      USERS_SEARCH_FALLBACK_MOCK.find(
-        (user) =>
-          user.name.toLowerCase() === chatInfo.name.toLowerCase() ||
-          (chatInfo.age != null && user.age === chatInfo.age),
-      ) ?? USERS_SEARCH_FALLBACK_MOCK[0]
-
-    if (!fromMock) return null
+    if (!peer || !currentUser) {
+      return null
+    }
 
     return {
-      ...fromMock,
-      name: chatInfo.name,
-      username: chatInfo.name.toLowerCase().replace(/\s+/g, '_'),
-      age: chatInfo.age ?? fromMock.age,
-      photos: fromMock.photos.length > 0 ? fromMock.photos : [chatInfo.avatar],
+      user_id: peer.id,
+      name: peer.name,
+      username: peer.name.toLowerCase().replace(/\s+/g, '_'),
+      age: peer.age,
+      gender: '',
+      relationship_goal: '',
+      bio: '',
+      city: '',
+      job: '',
+      job_sphere: '',
+      education_level: '',
+      education_details: '',
+      photos: peer.main_photo ? [peer.main_photo] : [CHAT_AVATAR_FALLBACK],
+      filter_option_ids: [],
+      match_percentage: 0,
     }
-  }, [chatInfo])
+  }, [peer, currentUser])
 
   const handleOpenMenu = (id: string, rect: DOMRect) => {
     const msg = messages.find((m) => m.id === id)
@@ -95,7 +110,7 @@ const ChatDetailPage = () => {
       setReplyTo({
         id: menuMessage.id,
         text: menuMessage.text || (hasPhoto ? 'Фото' : ''),
-        name: menuMessage.senderId === 'me' ? 'Вы' : chatInfo?.name || 'Собеседник',
+        name: menuMessage.senderId === 'me' ? 'Вы' : peer?.name || 'Собеседник',
       })
       setMenuMessage(null)
       setMenuRect(null)
@@ -109,7 +124,7 @@ const ChatDetailPage = () => {
 
   const handleDeleteAction = () => {
     if (menuMessage) {
-      setMessages((prev) => prev.filter((m) => m.id !== menuMessage.id))
+      deleteMessage(menuMessage.id)
       setMenuMessage(null)
       setMenuRect(null)
     }
@@ -122,52 +137,40 @@ const ChatDetailPage = () => {
     setReplyTo({
       id: msg.id,
       text: msg.text || (hasPhoto ? 'Фото' : ''),
-      name: msg.senderId === 'me' ? 'Вы' : chatInfo?.name || 'Собеседник',
+      name: msg.senderId === 'me' ? 'Вы' : peer?.name || 'Собеседник',
     })
   }
 
   const handleSend = (
     text?: string,
-    images?: string[],
+    files?: File[],
     replyData?: { id: string; text: string; name: string },
   ) => {
-    const newMessage: MockMessage = {
-      id: Date.now().toString(),
-      text,
-      images,
-      senderId: 'me',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      replyToId: replyData?.id,
-      replyToText: replyData?.text,
-      replyToName: replyData?.name,
+    const trimmed = text?.trim() ?? ''
+    if (!trimmed && !files?.length) {
+      return
     }
-    setMessages((prev) => [...prev, newMessage])
+    void sendTextMessage(trimmed, replyData ?? null, files)
+    setReplyTo(null)
   }
 
   const menuStyle = useMemo(() => {
     if (!menuRect || !containerRef.current) return {}
     const containerRect = containerRef.current.getBoundingClientRect()
     const isMe = menuMessage?.senderId === 'me'
-    const menuWidth = 180 // Fixed width of the menu
-    const menuHeight = 150 // Approximate height of the menu
+    const menuWidth = 180
+    const menuHeight = 150
 
-    // Calculate top position relative to the container
     let top = menuRect.top - containerRect.top - menuHeight / 2 + menuRect.height / 2
-
-    // Constrain top position within the container
     top = Math.max(10, Math.min(top, containerRect.height - menuHeight - 10))
 
-    // Calculate left position relative to the container
     let left: number
     if (isMe) {
-      // If message is from 'me' (right side), position menu to its left
       left = menuRect.left - containerRect.left - menuWidth - 10
     } else {
-      // If message is from other (left side), position menu to its right
       left = menuRect.left - containerRect.left + menuRect.width + 10
     }
 
-    // Constrain left position within the container
     left = Math.max(10, Math.min(left, containerRect.width - menuWidth - 10))
 
     return {
@@ -176,7 +179,7 @@ const ChatDetailPage = () => {
     }
   }, [menuRect, menuMessage, containerRef])
 
-  if (!chatInfo) {
+  if (!matchId) {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-muted-foreground">Чат не найден</p>
@@ -184,13 +187,20 @@ const ChatDetailPage = () => {
     )
   }
 
+  if (status === 'connecting' || status === 'idle' || status === 'error' || !peer) {
+    return (
+      <div className="flex h-full items-center justify-center bg-background">
+        <FeedLoading />
+      </div>
+    )
+  }
+
   return (
     <div ref={containerRef} className="relative flex h-full flex-col bg-background overflow-hidden pt-[95px]">
       <ChatHeader
-        name={chatInfo.name}
-        age={chatInfo.age}
-        avatar={chatInfo.avatar}
-        online={chatInfo.online}
+        name={peer.name}
+        age={peer.age}
+        avatar={peer.main_photo || CHAT_AVATAR_FALLBACK}
         onAvatarClick={() => {
           if (!chatUserProfile) return
           openProfileDetails({ item: chatUserProfile, fromChat: true })
@@ -210,7 +220,6 @@ const ChatDetailPage = () => {
         />
       </div>
 
-      {/* Context Menu Overlay */}
       <AnimatePresence>
         {menuMessage && menuRect && (
           <motion.div

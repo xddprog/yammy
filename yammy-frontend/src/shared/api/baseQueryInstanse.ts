@@ -1,8 +1,7 @@
 import ky, { type Options } from 'ky'
 
 import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from '@/entities'
-
-const API_BASE_URL = 'http://localhost:8000/'
+import { API_BASE_URL } from '@/shared/config/apiBaseUrl'
 
 /** Таймаут запросов к API (мс). Бэкенд может отвечать долго. */
 const REQUEST_TIMEOUT_MS = 60_000

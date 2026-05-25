@@ -1,5 +1,6 @@
 import { authApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
+import type { PaginatedResponse } from '@/shared/api/pagination'
 
 import type {
   FiltersMetadataResponse,
@@ -32,13 +33,17 @@ export class UserService {
     return response.json() as Promise<UserSearchApiUser[]>
   }
 
-  public async getReceivedLikes(): Promise<UserSearchApiUser[]> {
-    const response = await authApi.get(RECEIVED_LIKES_ENDPOINT)
+  public async getReceivedLikes(
+    page: number,
+    size: number,
+  ): Promise<PaginatedResponse<UserSearchApiUser>> {
+    const response = await authApi.get(RECEIVED_LIKES_ENDPOINT, {
+      searchParams: { page, size },
+    })
     if (!response.ok) {
       await throwApiError(response, 'Ошибка загрузки лайков')
     }
-    const data = (await response.json()) as UserSearchApiUser[]
-    return data
+    return response.json() as Promise<PaginatedResponse<UserSearchApiUser>>
   }
 
   public async getFilters(): Promise<FiltersMetadataResponse> {

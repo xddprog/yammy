@@ -1,13 +1,7 @@
-export interface MockMessage {
-  id: string
-  text?: string
-  images?: string[]
-  senderId: string // 'me' or 'other'
-  timestamp: string
-  replyToId?: string
-  replyToText?: string
-  replyToName?: string
-}
+import type { ChatMessage } from '@/entities/chat'
+
+/** @deprecated Используйте `ChatMessage` из `@/entities/chat`. */
+export type MockMessage = ChatMessage
 
 export const MOCK_MESSAGES: Record<string, MockMessage[]> = {
   '1': [

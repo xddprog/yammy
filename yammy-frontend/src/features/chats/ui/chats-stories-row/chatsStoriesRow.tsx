@@ -1,13 +1,13 @@
 import { Plus } from 'lucide-react'
 import type { JSX } from 'react'
 
-import type { MockChat } from '@/pages/(main)/chatsPage/lib/mockChats'
+import type { ChatListItem } from '@/entities/chat'
 
 /** Без ring-offset — offset рисуется снаружи кнопки и даёт лишнюю ширину / дёрганье по X у всей страницы */
 const STORY_RING = 'ring-2 ring-[#FF6BA4] ring-inset'
 
 interface ChatsStoriesRowProps {
-  chats: MockChat[]
+  chats: ChatListItem[]
   onStoryClick?: (chatId: string) => void
 }
 

@@ -1,27 +1,26 @@
-import type { UseQueryOptions } from '@tanstack/react-query'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
+
+import { DEFAULT_PAGE_SIZE, getNextPageParam } from '@/shared/api/pagination'
 
 import { getReceivedLikes } from '../api/userService'
 import { usersQueryKeys } from '../lib/usersQueryKeys'
 import type { UserSearchApiUser } from '../types/types'
 
-export function useReceivedLikes(
-  options?: Omit<
-    UseQueryOptions<
-      UserSearchApiUser[],
-      Error,
-      UserSearchApiUser[],
-      ReturnType<typeof usersQueryKeys.receivedLikes>
-    >,
-    'queryKey' | 'queryFn'
-  >,
-) {
-  const query = useQuery({
-    queryKey: usersQueryKeys.receivedLikes(),
-    queryFn: () => getReceivedLikes(),
+export function useReceivedLikes(pageSize: number = DEFAULT_PAGE_SIZE) {
+  return useInfiniteQuery({
+    queryKey: usersQueryKeys.receivedLikes(pageSize),
+    queryFn: ({ pageParam }) => getReceivedLikes(pageParam, pageSize),
+    initialPageParam: 1,
+    getNextPageParam,
     staleTime: 60 * 1000,
-    ...options,
   })
+}
 
-  return query
+export function flattenLikesPages(
+  data: { pages: Array<{ items: UserSearchApiUser[] }> } | undefined,
+): UserSearchApiUser[] {
+  if (!data) {
+    return []
+  }
+  return data.pages.flatMap((page) => page.items)
 }

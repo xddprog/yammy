@@ -102,6 +102,9 @@ const ProfilePage = (): JSX.Element => {
                     avatarUrl={profile.photos.find((p) => p.is_main)!.file_path}
                     profileTitle={profileTitle}
                     onOpenEdit={openEdit}
+                    hasActiveSubscription={profile.has_active_subscription}
+                    subscriptionTier={profile.subscription_tier}
+                    subscriptionExpiresAt={profile.subscription_expires_at}
                     superlikesCount={profile.superlikes_balance}
                     boostsCount={profile.boosts_balance}
                     notificationsEnabled={profile.notifications_enabled}

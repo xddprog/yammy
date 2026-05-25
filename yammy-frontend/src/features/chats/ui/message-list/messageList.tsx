@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
 
-import type { MockMessage } from '@/pages/(main)/chatsPage/lib/mockMessages'
+import type { ChatMessage } from '@/entities/chat'
 
 import { MessageBubble } from '../message-bubble/messageBubble'
 
 interface MessageListProps {
-  messages: MockMessage[]
+  messages: ChatMessage[]
   onOpenMenu: (id: string, rect: DOMRect) => void
   onReplyMessage: (id: string) => void
 }

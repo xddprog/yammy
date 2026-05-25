@@ -36,25 +36,28 @@ TEXT_MODERATION_PATTERNS = {
     "escort": [
         "проститутка эскорт выезд",
         "интим выезд платно",
-        "интим услуги за деньги",
-        "секс за деньги выезд",
-        "индивидуалка час отель",
-        "эскорт сопровождение интим",
-        "ню в личку за оплату",
-        "голые фото в лс только платно",
+        "продам голые обнаженные",
+        "продаю ню сисек обнаженные",
+        "обнаженка сиськи продажа",
+        "голая фотосессия продам",
+        "эротические обнаженные продам",
+        "продам в лс голые личку",
         "пишите в лс сисек обнаженка",
         "дм лс интим обнаженка",
         "пиши лс голые обнаженные",
-        "проститутка вызов на дом",
-        "интим от часа отель",
-        "эскорт девушка ночь",
+        "продаю голые фотки",
+        "ню фотосет продам",
+        "куплю интимные обнаженные",
         "escort services paid intimacy",
         "prostitution paid sex massage",
         "escort companionship intimate",
-        "paid sex work escort outcall",
-        "book escort incall hotel",
-        "dm for nudes payment",
-        "explicit nude content onlyfans style",
+        "sell nude photos videos",
+        "selling nude pictures",
+        "buy nude content",
+        "selling nudes boobs",
+        "nude photoshoot sale",
+        "dm me for nudes",
+        "message me nude content",
     ],
     "spam": [
         "подписывайся переходи по ссылке",
@@ -74,8 +77,6 @@ TEXT_MODERATION_ERROR_MESSAGES = {
     "escort": "обнаружены упоминания интим-услуг",
     "spam": "обнаружены признаки рекламы или спама",
 }
-
-TEXT_MODERATION_DEFAULT_THRESHOLD: float = 0.85
 
 IMAGE_MODERATION_SAFE_ANCHOR = (
     "dating app profile photo, fully clothed everyday person, "

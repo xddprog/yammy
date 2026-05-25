@@ -16,6 +16,9 @@ interface ProfileViewProps {
   avatarUrl: string
   profileTitle: string
   onOpenEdit: () => void
+  hasActiveSubscription: boolean
+  subscriptionTier: string
+  subscriptionExpiresAt: string | null
   superlikesCount: number
   boostsCount: number
   notificationsEnabled: boolean
@@ -32,6 +35,9 @@ export const ProfileView = ({
   avatarUrl,
   profileTitle,
   onOpenEdit,
+  hasActiveSubscription,
+  subscriptionTier,
+  subscriptionExpiresAt,
   superlikesCount,
   boostsCount,
   notificationsEnabled,
@@ -47,7 +53,11 @@ export const ProfileView = ({
     <ProfileMainRow avatarUrl={avatarUrl} title={profileTitle} onOpenEdit={onOpenEdit} />
 
     <section className="mt-5 flex flex-col gap-1.5">
-      <SubscriptionCard />
+      <SubscriptionCard
+        hasActiveSubscription={hasActiveSubscription}
+        subscriptionTier={subscriptionTier}
+        subscriptionExpiresAt={subscriptionExpiresAt}
+      />
     </section>
 
     <section className="mt-5 flex flex-col gap-1.5">

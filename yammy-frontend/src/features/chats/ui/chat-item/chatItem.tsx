@@ -1,14 +1,16 @@
 import { memo } from 'react'
 
-import type { MockChat } from '@/pages/(main)/chatsPage/lib/mockChats'
+import type { ChatListItem } from '@/entities/chat'
 
 interface ChatItemProps {
-  chat: MockChat
+  chat: ChatListItem
+  /** Позже — из WS (inbox), не из GET /chats/ */
+  isTyping?: boolean
   onClick?: () => void
 }
 
-const ChatItemComponent = ({ chat, onClick }: ChatItemProps) => {
-  const { name, age, lastMessage, avatar, timestamp, unreadCount, online, isTyping } = chat
+const ChatItemComponent = ({ chat, isTyping = false, onClick }: ChatItemProps) => {
+  const { name, age, lastMessage, avatar, timestamp, unreadCount } = chat
 
   const title = age !== undefined ? `${name}, ${age}` : name
   const previewText = isTyping ? 'печатает…' : lastMessage
@@ -23,12 +25,6 @@ const ChatItemComponent = ({ chat, onClick }: ChatItemProps) => {
         <div className="h-full w-full overflow-hidden rounded-full bg-muted">
           <img src={avatar} alt="" className="h-full w-full object-cover" />
         </div>
-        {online && (
-          <div
-            className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-card bg-[#FF6BA4]"
-            aria-hidden
-          />
-        )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">

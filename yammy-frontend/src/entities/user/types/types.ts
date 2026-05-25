@@ -98,6 +98,8 @@ export interface UserProfileDto {
   education_level: string | null
   education_details: string | null
   subscription_tier: string
+  subscription_expires_at: string | null
+  has_active_subscription: boolean
   boost_expires_at: string | null
   last_seen: string
   is_banned: boolean
@@ -106,7 +108,6 @@ export interface UserProfileDto {
   notifications_enabled: boolean
   language: UserLanguage
   photos: UserProfilePhotoDto[]
-  subscription_expires_at: string | null
   adequacy_score: number
   referrals_count: number
   /** Реферальная ссылка (Telegram deep link); ключ API — `referral_code`. */

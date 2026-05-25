@@ -29,7 +29,9 @@ export const ChatHeader = ({ name, age, avatar, online, onAvatarClick }: ChatHea
       <div className="min-w-0 flex-1 flex justify-center px-1">
         <div className="inline-flex min-w-0 max-w-full h-11 items-center rounded-full bg-card px-7">
           <div className="min-w-0 text-center">
-            <div className="truncate text-[15px] font-[400] leading-tight text-foreground">{`${name}, ${age}`}</div>
+            <div className="truncate text-[15px] font-[400] leading-tight text-foreground">
+              {age !== undefined ? `${name}, ${age}` : name}
+            </div>
             <div
               className={cn(
                 'truncate text-[11px] font-[100] leading-tight',

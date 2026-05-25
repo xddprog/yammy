@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { sendUserDislike, sendUserLike } from '@/entities/like/api/likeService'
+import { showErrorToast } from '@/shared'
 import { sendAppearanceRating } from '@/entities/user/api/appearanceRatingService'
 import { useAppearanceRatingUsers } from '@/entities/user/hooks/useAppearanceRatingUsers'
 import { useUsersSearch } from '@/entities/user/hooks/useUsersSearch'
@@ -61,9 +62,13 @@ const DashboardPage = (): JSX.Element => {
   }, [feedResetKey])
 
   const onLike = useCallback((item: FeedStackCardUser) => {
-    void sendUserLike(item.user_id).catch(() => {
-      /* throwApiError уже показал тост */
-    })
+    void sendUserLike(item.user_id)
+      .then((message) => {
+        if (message) showErrorToast(message)
+      })
+      .catch(() => {
+        /* throwApiError уже показал тост */
+      })
   }, [])
 
   const onDislike = useCallback((item: FeedStackCardUser) => {
