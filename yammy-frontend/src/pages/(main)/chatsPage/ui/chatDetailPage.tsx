@@ -3,17 +3,18 @@ import { CheckCheck, Edit2, Reply, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import { cn } from '@/shared'
 import { ERouteNames } from '@/shared/lib/routeVariables'
 
 import { useChatWebSocket } from '@/entities/chat'
 import type { ChatMessage } from '@/entities/chat'
-import { useCurrentUser } from '@/entities/auth/hooks/useCurrentUser'
-import type { UserSearchApiUser } from '@/entities/user/types/types'
 import { ChatHeader, MessageInput, MessageList } from '@/features/chats'
-import { FeedLoading } from '@/features/matches-feed/ui/feed-loading'
+import { AppPageLoader } from '@/app/ui/AppPageLoader'
 import { useMatchesOverlay } from '@/features/matches-feed/ui/matches-card/matchesOverlay'
 
 const CHAT_AVATAR_FALLBACK = '/images/i.webp'
+
+const pageEase = [0.22, 0.61, 0.36, 1] as const
 
 const getStartOfWeek = (date: Date): Date => {
   const result = new Date(date)
@@ -29,36 +30,60 @@ const isSameDay = (left: Date, right: Date): boolean =>
   left.getMonth() === right.getMonth() &&
   left.getDate() === right.getDate()
 
-const formatReadAt = (readAt: Date): string => {
-  const now = new Date()
-  const time = readAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+const getMessageStatusLabel = (message: ChatMessage): string => {
+  if (message.isDeleted) return 'Удалено'
+  if (message.isEdited) return 'Изменено'
+  return 'Отправлено'
+}
 
-  if (isSameDay(readAt, now)) {
-    return `Сегодня ${time}`
+const formatMessageSentAtLine = (sentAt: Date): { stacked: boolean; line: string } => {
+  const now = new Date()
+  const time = sentAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+
+  if (isSameDay(sentAt, now)) {
+    return { stacked: false, line: `Сегодня ${time}` }
+  }
+
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (isSameDay(sentAt, yesterday)) {
+    return { stacked: true, line: `Вчера ${time}` }
   }
 
   const weekStartNow = getStartOfWeek(now).getTime()
-  const weekStartRead = getStartOfWeek(readAt).getTime()
+  const weekStartSent = getStartOfWeek(sentAt).getTime()
 
-  if (weekStartNow === weekStartRead) {
-    const weekday = readAt.toLocaleDateString('ru-RU', { weekday: 'long' })
-    return `${weekday} ${time}`
+  if (weekStartNow === weekStartSent) {
+    const weekday = sentAt.toLocaleDateString('ru-RU', { weekday: 'long' })
+    return { stacked: true, line: `${weekday} ${time}` }
   }
 
-  const date = readAt.toLocaleDateString('ru-RU', {
+  const date = sentAt.toLocaleDateString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   })
-  return `${date} ${time}`
+  return { stacked: true, line: `${date} ${time}` }
 }
 
 const ChatDetailPage = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const { id: matchId } = useParams<{ id: string }>()
-  const { data: currentUser } = useCurrentUser()
-  const { messages, peer, status, sendTextMessage, deleteMessage } = useChatWebSocket(matchId)
+  const {
+    messages,
+    peer,
+    peerProfile,
+    status,
+    hasMoreMessages,
+    isLoadingMessages,
+    scrollToBottomKey,
+    markMessagesAsRead,
+    loadOlderMessages,
+    sendTextMessage,
+    deleteMessage,
+    editMessage,
+  } = useChatWebSocket(matchId)
 
   useEffect(() => {
     if (status === 'error') {
@@ -66,35 +91,48 @@ const ChatDetailPage = () => {
     }
   }, [status, navigate])
   const [replyTo, setReplyTo] = useState<{ id: string; text: string; name: string } | null>(null)
+  const [editingMessage, setEditingMessage] = useState<{
+    id: string
+    text: string
+    originalText: string
+    previewText: string
+  } | null>(null)
   const [menuMessage, setMenuMessage] = useState<ChatMessage | null>(null)
   const [menuRect, setMenuRect] = useState<DOMRect | null>(null)
   const { openProfileDetails } = useMatchesOverlay()
-  const lastReadAt = useMemo(() => new Date(), [])
-  const readAtLabel = useMemo(() => formatReadAt(lastReadAt), [lastReadAt])
 
-  const chatUserProfile = useMemo<UserSearchApiUser | null>(() => {
-    if (!peer || !currentUser) {
+  const messageStatusFooter = useMemo(() => {
+    if (!menuMessage) {
       return null
     }
-
     return {
-      user_id: peer.id,
-      name: peer.name,
-      username: peer.name.toLowerCase().replace(/\s+/g, '_'),
-      age: peer.age,
-      gender: '',
-      relationship_goal: '',
-      bio: '',
-      city: '',
-      job: '',
-      job_sphere: '',
-      education_level: '',
-      education_details: '',
-      photos: peer.main_photo ? [peer.main_photo] : [CHAT_AVATAR_FALLBACK],
-      filter_option_ids: [],
-      match_percentage: 0,
+      label: getMessageStatusLabel(menuMessage),
+      sentAt: formatMessageSentAtLine(new Date(menuMessage.createdAt)),
     }
-  }, [peer, currentUser])
+  }, [menuMessage])
+
+  useEffect(() => {
+    if (!replyTo) {
+      return
+    }
+    const target = messages.find((message) => message.id === replyTo.id)
+    if (!target) {
+      setReplyTo(null)
+    }
+  }, [messages, replyTo])
+
+  const getReplyPreviewText = (message: ChatMessage): string => {
+    if (message.isDeleted) {
+      return 'Удалённое сообщение'
+    }
+    const hasPhoto = Boolean(message.images?.length)
+    return message.text || (hasPhoto ? 'Фото' : '')
+  }
+
+  const closeMessageMenu = () => {
+    setMenuMessage(null)
+    setMenuRect(null)
+  }
 
   const handleOpenMenu = (id: string, rect: DOMRect) => {
     const msg = messages.find((m) => m.id === id)
@@ -106,39 +144,81 @@ const ChatDetailPage = () => {
 
   const handleReplyAction = () => {
     if (menuMessage) {
-      const hasPhoto = Boolean(menuMessage.images?.length)
+      setEditingMessage(null)
       setReplyTo({
         id: menuMessage.id,
-        text: menuMessage.text || (hasPhoto ? 'Фото' : ''),
+        text: getReplyPreviewText(menuMessage),
         name: menuMessage.senderId === 'me' ? 'Вы' : peer?.name || 'Собеседник',
       })
-      setMenuMessage(null)
-      setMenuRect(null)
+      closeMessageMenu()
     }
   }
 
+  const canEditMessage = (message: ChatMessage): boolean =>
+    !message.isDeleted &&
+    message.senderId === 'me' &&
+    (Boolean(message.text?.trim()) || Boolean(message.images?.length))
+
+  const canDeleteMessage = (message: ChatMessage): boolean =>
+    !message.isDeleted && message.senderId === 'me'
+
   const handleEditAction = () => {
-    setMenuMessage(null)
-    setMenuRect(null)
+    if (menuMessage && canEditMessage(menuMessage)) {
+      const hasPhoto = Boolean(menuMessage.images?.length)
+      const text = menuMessage.text ?? ''
+      setReplyTo(null)
+      setEditingMessage({
+        id: menuMessage.id,
+        text,
+        originalText: text,
+        previewText: text || (hasPhoto ? 'Фото' : ''),
+      })
+    }
+    closeMessageMenu()
   }
 
   const handleDeleteAction = () => {
-    if (menuMessage) {
-      deleteMessage(menuMessage.id)
-      setMenuMessage(null)
-      setMenuRect(null)
+    if (!menuMessage || !canDeleteMessage(menuMessage)) {
+      return
     }
+
+    const deletedId = menuMessage.id
+    deleteMessage(deletedId)
+
+    if (replyTo?.id === deletedId) {
+      setReplyTo(null)
+    }
+    if (editingMessage?.id === deletedId) {
+      setEditingMessage(null)
+    }
+    closeMessageMenu()
   }
 
   const handleReplyFromSwipe = (messageId: string) => {
     const msg = messages.find((m) => m.id === messageId)
     if (!msg) return
-    const hasPhoto = Boolean(msg.images?.length)
     setReplyTo({
       id: msg.id,
-      text: msg.text || (hasPhoto ? 'Фото' : ''),
+      text: getReplyPreviewText(msg),
       name: msg.senderId === 'me' ? 'Вы' : peer?.name || 'Собеседник',
     })
+  }
+
+  const handleSaveEdit = (text: string) => {
+    if (!editingMessage) {
+      return
+    }
+
+    const trimmed = text.trim()
+    if (trimmed === editingMessage.originalText.trim()) {
+      setEditingMessage(null)
+      return
+    }
+
+    const sent = editMessage(editingMessage.id, trimmed)
+    if (sent) {
+      setEditingMessage(null)
+    }
   }
 
   const handleSend = (
@@ -187,36 +267,63 @@ const ChatDetailPage = () => {
     )
   }
 
-  if (status === 'connecting' || status === 'idle' || status === 'error' || !peer) {
-    return (
-      <div className="flex h-full items-center justify-center bg-background">
-        <FeedLoading />
-      </div>
-    )
-  }
+  const isChatLoading = status !== 'ready' || !peer
 
   return (
-    <div ref={containerRef} className="relative flex h-full flex-col bg-background overflow-hidden pt-[95px]">
+    <AnimatePresence mode="wait" initial={false}>
+      {isChatLoading ? (
+        <motion.div
+          key="chat-loading"
+          className="h-full"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.24, ease: pageEase }}
+        >
+          <AppPageLoader fullscreen />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="chat-ready"
+          ref={containerRef}
+          className="relative flex h-full flex-col overflow-hidden bg-background pt-[95px]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.24, ease: pageEase }}
+        >
       <ChatHeader
         name={peer.name}
         age={peer.age}
         avatar={peer.main_photo || CHAT_AVATAR_FALLBACK}
         onAvatarClick={() => {
-          if (!chatUserProfile) return
-          openProfileDetails({ item: chatUserProfile, fromChat: true })
+          if (!peerProfile) return
+          openProfileDetails({ item: peerProfile, fromChat: true })
         }}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <MessageList
           messages={messages}
+          isMenuOpen={Boolean(menuMessage && menuRect)}
+          hasMoreMessages={hasMoreMessages}
+          isLoadingMessages={isLoadingMessages}
+          scrollToBottomKey={scrollToBottomKey}
+          onMarkMessagesRead={markMessagesAsRead}
+          onLoadOlderMessages={loadOlderMessages}
           onOpenMenu={handleOpenMenu}
           onReplyMessage={handleReplyFromSwipe}
         />
         <MessageInput
           onSend={handleSend}
+          onSaveEdit={handleSaveEdit}
           replyTo={replyTo}
+          editMessage={editingMessage}
           onCancelReply={() => setReplyTo(null)}
+          onCancelEdit={() => {
+            setEditingMessage(null)
+            setReplyTo(null)
+          }}
         />
       </div>
 
@@ -231,10 +338,7 @@ const ChatDetailPage = () => {
           >
             <div
               className="absolute inset-0 cursor-default bg-black/20"
-              onClick={() => {
-                setMenuMessage(null)
-                setMenuRect(null)
-              }}
+              onClick={closeMessageMenu}
             />
             <motion.div
               style={menuStyle}
@@ -253,33 +357,53 @@ const ChatDetailPage = () => {
                   <span className="text-[13px] font-[200] text-foreground">Ответить</span>
                 </button>
 
-                <button
-                  onClick={handleEditAction}
-                  className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
-                >
-                  <Edit2 size={16} strokeWidth={1.2} className="text-foreground" />
-                  <span className="text-[13px] font-[200] text-foreground">Изменить</span>
-                </button>
+                {menuMessage && canEditMessage(menuMessage) && (
+                  <button
+                    onClick={handleEditAction}
+                    className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
+                  >
+                    <Edit2 size={16} strokeWidth={1.2} className="text-foreground" />
+                    <span className="text-[13px] font-[200] text-foreground">Изменить</span>
+                  </button>
+                )}
 
-                <button
-                  onClick={handleDeleteAction}
-                  className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-red-500/10 active:scale-95"
-                >
-                  <Trash2 size={16} strokeWidth={1.2} className="text-foreground" />
-                  <span className="text-[13px] font-[200] text-foreground">Удалить</span>
-                </button>
+                {menuMessage && canDeleteMessage(menuMessage) && (
+                  <button
+                    onClick={handleDeleteAction}
+                    className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-red-500/10 active:scale-95"
+                  >
+                    <Trash2 size={16} strokeWidth={1.2} className="text-foreground" />
+                    <span className="text-[13px] font-[200] text-foreground">Удалить</span>
+                  </button>
+                )}
 
                 <div className="mx-3 mt-1 h-px bg-card-foreground/15" />
-                <div className="flex items-center gap-1.5 px-3 pt-2 pb-1 text-[12px] font-[200] text-foreground">
-                  <CheckCheck className="size-3.5" strokeWidth={2} />
-                  <span>{readAtLabel}</span>
+                <div
+                  className={cn(
+                    'flex gap-1.5 px-3 pt-2 pb-1 text-[12px] font-[200] text-foreground',
+                    messageStatusFooter?.sentAt.stacked ? 'items-start' : 'items-center',
+                  )}
+                >
+                  <CheckCheck className="size-3.5 shrink-0" strokeWidth={2} />
+                  {messageStatusFooter?.sentAt.stacked ? (
+                    <div className="flex flex-col leading-tight">
+                      <span>{messageStatusFooter.label}</span>
+                      <span>{messageStatusFooter.sentAt.line}</span>
+                    </div>
+                  ) : messageStatusFooter ? (
+                    <span>
+                      {messageStatusFooter.label} {messageStatusFooter.sentAt.line}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

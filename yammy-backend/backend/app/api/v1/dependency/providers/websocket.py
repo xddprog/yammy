@@ -27,6 +27,7 @@ class WebSocketProvider(Provider):
     def get_chat_service(self, session: AsyncSession) -> services.ChatService:
         return services.ChatService(
             chat_repository=repositories.ChatRepository(session=session),
+            message_repository=repositories.MessageRepository(session=session),
         )
 
     @provide(scope=Scope.SESSION)

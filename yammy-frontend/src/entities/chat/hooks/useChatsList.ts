@@ -19,7 +19,8 @@ export function useChatsList(pageSize: number = DEFAULT_PAGE_SIZE) {
     },
     initialPageParam: 1,
     getNextPageParam,
-    staleTime: 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }
 

@@ -34,12 +34,17 @@ export function mapMessageDtoToChatMessage(dto: ChatMessageDto, currentUserId: s
 
   return {
     id: dto.id,
-    text: dto.is_deleted ? undefined : dto.content,
+    text: dto.content,
     images: dto.images.length > 0 ? dto.images.map((image) => image.file_path) : undefined,
     senderId: isMe ? 'me' : 'other',
     timestamp: formatMessageTimestamp(dto.created_at),
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+    isRead: dto.is_read,
+    isEdited: dto.is_edited,
+    isDeleted: Boolean(dto.is_deleted),
     replyToId: dto.reply_to?.id,
-    replyToText: dto.reply_to?.is_deleted ? undefined : dto.reply_to?.content,
+    replyToText: dto.reply_to?.content,
     replyToName: dto.reply_to?.sender?.name,
   }
 }

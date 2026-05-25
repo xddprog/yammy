@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Optional, Self
 from uuid import UUID
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from datetime import datetime
 
 from app.infrastructure.database.models.user import UserPhoto
@@ -42,11 +42,16 @@ class MessagePhotoSchema(BaseModel):
     file_path: str
     order: int
 
+    @field_validator("file_path", mode="before")
+    @classmethod
+    def validate_file_path(cls, file_path: str) -> str:
+        return get_absolute_url(file_path)
+
 
 class MessageSchema(BaseModel):
     id: UUID
     content: str
-    
+
     created_at: datetime
     updated_at: datetime | None = None
 
@@ -58,3 +63,9 @@ class MessageSchema(BaseModel):
     sender: MessageSenderSchema
     
     images: list[MessagePhotoSchema] = []
+
+    @model_validator(mode="after")
+    def validate_content(self) -> Self:
+        if self.is_deleted:
+            self.content = "Сообщение было удалено"
+        return self

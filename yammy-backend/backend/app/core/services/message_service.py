@@ -52,21 +52,26 @@ class MessageService:
         return MessageSchema.model_validate(message, from_attributes=True)
 
     async def delete_message(self, message_id: uuid.UUID, user_id: uuid.UUID):
-        message = await self.message_repository.delete_item(message_id, user_id)
+        message, image_paths = await self.message_repository.delete_item(message_id, user_id)
         if not message:
             raise NotFoundException("Сообщение не найдено")
-        
-        schema = MessageSchema.model_validate(message, from_attributes=True)
-        schema.message = "Сообщение было удалено"
-        return schema
+
+        if image_paths:
+            await self.image_service.delete_multiple(image_paths)
+
+        return MessageSchema.model_validate(message, from_attributes=True)
 
     async def edit_message(self, message_id: uuid.UUID, user_id: uuid.UUID, form: MessageEditRequest):
         message = await self.message_repository.get_item(message_id)
         if not message or message.sender_id != user_id or message.is_deleted:
             raise NotFoundException("Сообщение не найдено")
 
+        update_values = form.model_dump(exclude_none=True)
+        if "content" in update_values:
+            update_values["previous_version"] = message.content
+
         message = await self.message_repository.update_item(
-            message_id, is_edited=True, **form.model_dump(exclude_none=True)
+            message_id, is_edited=True, **update_values
         )
         
         return MessageSchema.model_validate(message, from_attributes=True)

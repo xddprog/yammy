@@ -1,0 +1,8 @@
+.venv/
+.venv_docs/
+
+*.tsbuildinfo
+
+test_convert.*
+
+yammy-backend/backend/test_moderation/

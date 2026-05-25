@@ -9,7 +9,8 @@ import { sendAppearanceRating } from '@/entities/user/api/appearanceRatingServic
 import { useAppearanceRatingUsers } from '@/entities/user/hooks/useAppearanceRatingUsers'
 import { useUsersSearch } from '@/entities/user/hooks/useUsersSearch'
 import type { AppearanceRatingUserDto, FeedStackCardUser, UserSearchApiUser } from '@/entities/user/types/types'
-import { FeedLoading, RateFeed, SwipeFeed } from '@/features'
+import { AppPageLoader } from '@/app/ui/AppPageLoader'
+import { RateFeed, SwipeFeed } from '@/features'
 import type { MatchFeedAppendHandle } from '@/features/matches-feed/model/matchFeedAppendHandle'
 import { useFiltersSearchParams } from '@/features/matches-filter/model/useFiltersSearchParams'
 import { cn } from '@/shared'
@@ -106,7 +107,7 @@ const DashboardPage = (): JSX.Element => {
       <div className={dashboardColumnClassName}>
         <Header />
         <div className="isolate min-h-0 flex-1 overflow-x-hidden">
-          <FeedLoading />
+          <AppPageLoader />
         </div>
       </div>
     )
@@ -166,12 +167,12 @@ const DashboardPage = (): JSX.Element => {
 
         {feedMoreLoading && (
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-5 top-0 z-20 flex items-center justify-center rounded-[48px] bg-background/85"
+            className="pointer-events-none absolute inset-x-0 bottom-5 top-0 z-20 flex items-center justify-center rounded-[48px] bg-black/85"
             aria-busy
             aria-label="Подгрузка анкет"
           >
             <div className="h-full max-h-[min(520px,70dvh)] w-full min-h-0 px-2">
-              <FeedLoading />
+              <AppPageLoader />
             </div>
           </div>
         )}

@@ -33,6 +33,7 @@ class EducationLevelEnum(str,Enum):
 class ChatEvents(str, Enum):
     ERROR = "error"
     OPEN_CHAT = "open_chat"
+    MESSAGES = "messages"
     MESSAGE = "message"
     READ = "read"
     DELETE = "delete"

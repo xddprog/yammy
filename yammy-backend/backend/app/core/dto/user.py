@@ -130,7 +130,10 @@ class UserSearchResponseSchema(BaseModel):
     education_level: EducationLevelEnum | None = None
     education_details: str | None = None
     photos: list[str] = []
-    filter_option_ids: list[UUID] = []
+    filter_option_ids: list[UUID] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("filters", "filter_option_ids"),
+    )
     match_percentage: int | None = None
 
     @field_validator("filter_option_ids", mode="before")

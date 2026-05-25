@@ -7,12 +7,13 @@ import { useNavigate } from 'react-router-dom'
 import { AppLogoLoader } from '@/app/ui/AppLogoLoader'
 import { flattenChatsPages, useChatsList } from '@/entities/chat'
 import { ChatItem, ChatsSearchField, ChatsStoriesRow } from '@/features/chats'
-import { FeedLoading } from '@/features/matches-feed/ui/feed-loading'
 import { cn } from '@/shared'
 import { useInfiniteScrollLoadMore } from '@/shared/hooks/useInfiniteScrollLoadMore'
 import { formatUserErrorMessage } from '@/shared/lib/formatUserErrorMessage'
 import { ERouteNames } from '@/shared/lib/routeVariables'
 import { stickyTopHeaderClassNames } from '@/widgets'
+
+import { ChatsPageSkeleton } from './components/chatsPageSkeleton'
 
 const headerEase = [0.22, 0.61, 0.36, 1] as const
 
@@ -139,9 +140,7 @@ const ChatsPage = (): JSX.Element => {
           </header>
 
           {chatsQuery.isPending ? (
-            <div className="flex min-h-[min(420px,70vh)] items-center justify-center">
-              <FeedLoading />
-            </div>
+            <ChatsPageSkeleton />
           ) : chatsQuery.isError ? (
             <div className="flex min-h-[min(420px,70vh)] flex-col items-center justify-center gap-3 text-center">
               <p className="text-[15px] font-medium text-muted-foreground">

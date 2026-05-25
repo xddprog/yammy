@@ -1,4 +1,11 @@
+import type { PaginatedResponse } from '@/shared/api/pagination'
+import type { UserSearchApiUser } from '@/entities/user/types/types'
+
 import type { ChatWsEvent } from '../lib/chatWsEvents'
+
+export type ChatPeerDetailDto = UserSearchApiUser & {
+  last_seen: string
+}
 
 export type ChatWsEnvelope<T = unknown> = {
   event: ChatWsEvent
@@ -43,6 +50,8 @@ export type ChatOpenData = {
   id: string
   match_id: string
   created_at: string
-  user_to: ChatWsPeer
-  messages: ChatMessageDto[]
+  user_to: ChatPeerDetailDto
+  messages?: ChatMessageDto[]
 }
+
+export type ChatMessagesPageData = PaginatedResponse<ChatMessageDto>

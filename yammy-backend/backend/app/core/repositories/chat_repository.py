@@ -3,11 +3,12 @@ from uuid import UUID
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased, joinedload, load_only, noload, selectinload
+from sqlalchemy.orm import aliased, joinedload, noload, selectinload
 
 from app.core.repositories.base import SqlAlchemyRepository
 from app.infrastructure.database.models.chat import Chat
 from app.infrastructure.database.models import Match, Message, User
+from app.infrastructure.database.models.filter import FilterOption, FilterSubcategory
 from app.core.dto.pagination import PaginationRequestModel
 
 
@@ -35,21 +36,11 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
             )
             .options(
                 joinedload(Peer.main_photo),
-                selectinload(Chat.messages).options(
-                    selectinload(Message.sender).options(
-                        joinedload(User.main_photo),
-                        load_only(User.id, User.name, User.last_seen),
-                    ),
-                    selectinload(Message.images),
-                    selectinload(Message.reply_to).options(
-                        selectinload(Message.sender).options(
-                            joinedload(User.main_photo),
-                            load_only(User.id, User.name, User.last_seen),
-                        ),
-                        selectinload(Message.images),
-                        noload(Message.reply_to),
-                    ),
-                ),
+                selectinload(Peer.photos),
+                selectinload(Peer.filters)
+                .selectinload(FilterOption.subcategory)
+                .selectinload(FilterSubcategory.category),
+                noload(Chat.messages),
             )
         )
         result = await self.session.execute(query)
@@ -58,7 +49,6 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
             return None
         chat, peer = row
         chat.user_to = peer
-        chat.messages = [message for message in chat.messages if not message.is_deleted]
         return chat
 
     async def list_for_user(self, user_id: UUID, pagination: PaginationRequestModel) -> tuple[int, list[Any]]:
@@ -71,12 +61,18 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
         last_message_ranked = (
             select(
                 Message.chat_id,
-                Message.content,
+                case(
+                    (Message.is_deleted.is_(True), "Сообщение было удалено"),
+                    else_=Message.content,
+                ).label("content"),
+                Message.created_at,
                 func.row_number()
-                .over(partition_by=Message.chat_id, order_by=Message.id.desc())
+                .over(
+                    partition_by=Message.chat_id,
+                    order_by=(Message.created_at.desc(), Message.id.desc()),
+                )
                 .label("rn"),
             )
-            .where(Message.is_deleted.is_(False))
             .subquery()
         )
 
@@ -84,6 +80,7 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
             select(
                 last_message_ranked.c.chat_id,
                 last_message_ranked.c.content,
+                last_message_ranked.c.created_at,
             )
             .where(last_message_ranked.c.rn == 1)
             .subquery()
@@ -95,17 +92,11 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
                 func.count().label("unread_count"),
             )
             .where(
-                Message.is_deleted.is_(False),
                 Message.is_read.is_(False),
                 Message.sender_id != user_id,
             )
             .group_by(Message.chat_id)
             .subquery()
-        )
-
-        last_message_at = case(
-            (last_message.c.content.isnot(None), func.coalesce(Chat.updated_at, Match.updated_at)),
-            else_=None,
         )
 
         query = (
@@ -114,7 +105,7 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
                 Chat.id.label("chat_id"),
                 Peer,
                 last_message.c.content.label("last_message_content"),
-                last_message_at.label("last_message_at"),
+                last_message.c.created_at.label("last_message_at"),
                 func.coalesce(unread_counts.c.unread_count, 0).label("unread_count"),
             )
             .select_from(Match)
@@ -124,7 +115,7 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
             .outerjoin(unread_counts, unread_counts.c.chat_id == Chat.id)
             .where(or_(Match.user1_id == user_id, Match.user2_id == user_id))
             .options(joinedload(Peer.main_photo))
-            .order_by(func.coalesce(last_message_at, Match.updated_at).desc())
+            .order_by(func.coalesce(last_message.c.created_at, Match.updated_at).desc())
             .offset(pagination.offset)
             .limit(pagination.size)
         )

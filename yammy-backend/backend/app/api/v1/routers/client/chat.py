@@ -50,6 +50,7 @@ async def chat_websocket(
     ws_service: FromDishka[WebSocketService],
     access_token: Annotated[str | None, Query()] = None,
 ) -> None:
+    await websocket.accept()
     await ws_service.connect(match_id, websocket)
     try:
         if not access_token:
@@ -68,6 +69,10 @@ async def chat_websocket(
             if incoming_event == ChatEvents.OPEN_CHAT:
                 response = await chat_service.get_chat_by_match_id(match_id, user.id)
                 outgoing_event = ChatEvents.OPEN_CHAT
+            elif incoming_event == ChatEvents.MESSAGES:
+                pagination = PaginationRequestModel(**payload)
+                response = await chat_service.list_messages(match_id, user.id, pagination)
+                outgoing_event = ChatEvents.MESSAGES
             elif incoming_event == ChatEvents.MESSAGE:
                 form = MessageCreateRequest(**payload)
                 response = await message_service.create_message(form)
@@ -109,7 +114,7 @@ async def chat_websocket(
             ChatEvents.ERROR,
         )
     except Exception as e:
-        logger.error("Error in chat websocket", match_id=match_id, error=e)
+        logger.error("Error in chat websocket", match_id=match_id, error=e, exc_info=True)
         await ws_service.broadcast(
             match_id,
             ChatErrorResponseSchema(
@@ -119,4 +124,4 @@ async def chat_websocket(
             ChatEvents.ERROR,
         )
     finally:
-        await ws_service.disconnect(match_id)
+        await ws_service.disconnect(match_id, websocket)

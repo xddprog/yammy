@@ -1,5 +1,5 @@
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
-import { Reply } from 'lucide-react'
+import { Check, CheckCheck, Reply } from 'lucide-react'
 import { useRef } from 'react'
 
 import { cn, Image, useOverlay } from '@/shared'
@@ -11,6 +11,9 @@ interface MessageBubbleProps {
   images?: string[]
   senderId: string
   timestamp: string
+  isRead?: boolean
+  isEdited?: boolean
+  isDeleted?: boolean
   replyToId?: string
   replyToText?: string
   replyToName?: string
@@ -24,6 +27,9 @@ export const MessageBubble = ({
   images,
   senderId,
   timestamp,
+  isRead,
+  isEdited,
+  isDeleted,
   replyToId,
   replyToText,
   replyToName,
@@ -32,7 +38,11 @@ export const MessageBubble = ({
 }: MessageBubbleProps) => {
   const isMe = senderId === 'me'
   const messageImages = images ?? []
-  const hasPhotoMessage = messageImages.length > 0 && !text
+  const hasImages = messageImages.length > 0
+  const hasPhotoMessage = hasImages && !text
+  const hasTextWithImages = hasImages && !!text
+  const isSingleImage = messageImages.length === 1
+  const statusLabel = isDeleted ? 'Удалено' : isEdited ? 'Изменено' : null
   const { open } = useOverlay()
   const swipeX = useMotionValue(0)
   const longPressTimerRef = useRef<number | null>(null)
@@ -143,7 +153,10 @@ export const MessageBubble = ({
       onTouchCancel={clearLongPress}
     >
       <motion.div
-        className="relative z-10 inline-flex max-w-[80%] flex-col"
+        className={cn(
+          'relative z-10 flex flex-col shrink-0',
+          hasImages ? 'max-w-[70%]' : 'inline-flex max-w-[80%]',
+        )}
         style={{ x: swipeX }}
         drag="x"
         dragConstraints={{ left: -96, right: 0 }}
@@ -202,22 +215,34 @@ export const MessageBubble = ({
           </button>
         )}
 
-        {messageImages.length > 0 && (
-          <div className={cn('py-2.5', hasPhotoMessage && '-mx-4 px-4')}>
+        {hasImages && (
+          <div className={cn(!hasTextWithImages && !hasPhotoMessage && 'py-2.5')}>
             <div
-              className="flex gap-1.5 overflow-x-auto no-scrollbar"
+              className={cn(
+                'flex gap-1.5',
+                isSingleImage ? 'w-full' : 'snap-x snap-mandatory overflow-x-auto no-scrollbar',
+              )}
             >
               {messageImages.map((src, index) => (
                 <button
                   key={`${id}-${index}`}
                   type="button"
                   onClick={() => openImagesPreview(index)}
-                  className="h-24 w-24 shrink-0 overflow-hidden rounded-xl"
+                  className={cn(
+                    'overflow-hidden',
+                    isSingleImage
+                      ? 'aspect-[4/3] w-full max-h-72'
+                      : 'aspect-[4/3] h-auto w-[78%] shrink-0 snap-start',
+                    hasTextWithImages ? 'rounded-none' : 'rounded-xl',
+                  )}
                 >
                   <img
                     src={src}
                     alt={`Sent image ${index + 1}`}
-                    className="h-full w-full rounded-xl object-cover"
+                    className={cn(
+                      'h-full w-full object-cover',
+                      hasTextWithImages ? 'rounded-none' : 'rounded-xl',
+                    )}
                   />
                 </button>
               ))}
@@ -231,14 +256,22 @@ export const MessageBubble = ({
         )}
           </div>
         </div>
-        <span
+        <div
           className={cn(
-            'mt-1 px-1 text-[11px] font-[100] text-card-foreground/50',
+            'mt-1 flex items-start gap-1.5 px-1 text-[11px] font-[100] text-card-foreground/50',
             isMe ? 'self-end text-right' : 'self-start text-left',
           )}
         >
-          {timestamp}
-        </span>
+          {statusLabel && <span>{statusLabel}</span>}
+          <span>{timestamp}</span>
+          {isMe && (
+            isRead ? (
+              <CheckCheck className="size-3.5 shrink-0" strokeWidth={1.9} />
+            ) : (
+              <Check className="size-3.5 shrink-0" strokeWidth={1.9} />
+            )
+          )}
+        </div>
       </motion.div>
     </div>
   )

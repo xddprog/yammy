@@ -8,6 +8,15 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === 'production'
 
   return {
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          ws: true,
+        },
+      },
+    },
     plugins: [
       tailwindcss(),
       react({

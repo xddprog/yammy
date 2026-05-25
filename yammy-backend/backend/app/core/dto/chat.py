@@ -4,23 +4,13 @@ from uuid import UUID
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 from app.core.dto.message import MessageSchema
+from app.core.dto.user import UserSearchResponseSchema
 from app.infrastructure.database.models.user import UserPhoto
 from app.utils.helpers.url_helper import get_absolute_url
 
 
-
-class UserToSchema(BaseModel):
-    id: UUID
-    name: str
-    main_photo: str
+class ChatPeerDetailSchema(UserSearchResponseSchema):
     last_seen: datetime
-    age: int
-
-    @field_validator("main_photo", mode="before")
-    @classmethod
-    def validate_main_photo(cls, main_photo: UserPhoto | None) -> str | None:
-        photo = main_photo.file_path if main_photo else None
-        return get_absolute_url(photo) if photo else None
 
 
 class ChatErrorResponseSchema(BaseModel):
@@ -33,8 +23,7 @@ class ChatSchema(BaseModel):
     match_id: UUID
     created_at: datetime
 
-    user_to: UserToSchema
-    messages: list[MessageSchema] = []
+    user_to: ChatPeerDetailSchema
 
 
 class ChatPeerSchema(BaseModel):
@@ -66,6 +55,8 @@ class ChatListItemSchema(BaseModel):
     
     @computed_field 
     def last_message(self) -> ChatLastMessageSchema | None:
+        if self.last_message_content is None or self.last_message_at is None:
+            return None
         return ChatLastMessageSchema(
             content=self.last_message_content,
             created_at=self.last_message_at,

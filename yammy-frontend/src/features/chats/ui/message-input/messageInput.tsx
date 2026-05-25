@@ -1,19 +1,33 @@
-import { Forward, Plus, X } from 'lucide-react'
+import { Check, Forward, Pencil, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button, cn, Image, useOverlay } from '@/shared'
 
-interface MessageInputProps {
-  onSend: (
-    text?: string,
-    files?: File[],
-    replyTo?: { id: string; text: string; name: string },
-  ) => void
-  replyTo?: { id: string; text: string; name: string } | null
-  onCancelReply?: () => void
+export type MessageReplyTarget = { id: string; text: string; name: string }
+export type MessageEditTarget = {
+  id: string
+  text: string
+  originalText: string
+  previewText: string
 }
 
-export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputProps) => {
+interface MessageInputProps {
+  onSend: (text?: string, files?: File[], replyTo?: MessageReplyTarget) => void
+  onSaveEdit?: (text: string) => void
+  replyTo?: MessageReplyTarget | null
+  editMessage?: MessageEditTarget | null
+  onCancelReply?: () => void
+  onCancelEdit?: () => void
+}
+
+export const MessageInput = ({
+  onSend,
+  onSaveEdit,
+  replyTo,
+  editMessage,
+  onCancelReply,
+  onCancelEdit,
+}: MessageInputProps) => {
   const [value, setValue] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
@@ -34,10 +48,35 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
     autosizeTextarea()
   }, [value])
 
+  useEffect(() => {
+    if (editMessage) {
+      setValue(editMessage.text)
+      setSelectedFiles([])
+      imagePreviews.forEach((url) => URL.revokeObjectURL(url))
+      setImagePreviews([])
+      requestAnimationFrame(() => {
+        autosizeTextarea()
+        textareaRef.current?.focus()
+      })
+    }
+  }, [editMessage?.id])
+
+  const isEditing = Boolean(editMessage)
+
   const handleSend = () => {
     const trimmed = value.trim()
     const hasText = trimmed.length > 0
     const hasImages = imagePreviews.length > 0
+
+    if (isEditing && editMessage) {
+      if (trimmed !== editMessage.originalText.trim()) {
+        onSaveEdit?.(trimmed)
+        setValue('')
+        onCancelEdit?.()
+        requestAnimationFrame(autosizeTextarea)
+      }
+      return
+    }
 
     if (hasText || hasImages) {
       onSend(hasText ? trimmed : undefined, hasImages ? selectedFiles : undefined, replyTo || undefined)
@@ -88,10 +127,38 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
     }
   }
 
+  const canSubmit = isEditing
+    ? editMessage != null && value.trim() !== editMessage.originalText.trim()
+    : value.trim().length > 0 || imagePreviews.length > 0
+
   return (
     <div className="flex flex-col gap-2 p-4 pt-2">
+      {editMessage && (
+        <div className="flex items-center gap-3 rounded-[20px] bg-card px-3 py-2.5">
+          <Pencil className="size-[18px] shrink-0 text-[#FF6BA4]" strokeWidth={2} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="text-[11px] font-[200] uppercase tracking-wider text-[#FF6BA4]">
+              Изменить сообщение
+            </span>
+            <p className="truncate text-[13px] font-[100] text-foreground">{editMessage.previewText}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setValue('')
+              onCancelEdit?.()
+              requestAnimationFrame(autosizeTextarea)
+            }}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground/40 transition-colors hover:text-muted-foreground"
+            aria-label="Отменить редактирование"
+          >
+            <X size={16} strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
+
       {/* Reply Preview Bar */}
-      {replyTo && (
+      {replyTo && !isEditing && (
         <div className="flex items-center gap-3 ml-1 px-3 py-1.5 border-l-2 border-[#FF6BA4]">
           <div className="flex-1 flex flex-col min-w-0">
             <span className="text-[11px] font-[200] text-[#FF6BA4] uppercase tracking-wider">
@@ -108,7 +175,7 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
         </div>
       )}
 
-      {imagePreviews.length > 0 && (
+      {imagePreviews.length > 0 && !isEditing && (
         <div className="flex gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar touch-pan-x" style={{ touchAction: 'pan-x' }}>
           {imagePreviews.map((preview, index) => (
             <div
@@ -148,16 +215,18 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
           ref={fileInputRef}
           onChange={handleFileChange}
         />
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          disabled={imagePreviews.length >= 2}
-          onClick={() => fileInputRef.current?.click()}
-          className="h-12 w-12 shrink-0 rounded-full bg-card text-foreground hover:bg-card/90 active:scale-90 disabled:opacity-40"
-        >
-          <Plus className="size-[22px]" strokeWidth={2} />
-        </Button>
+        {!isEditing && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            disabled={imagePreviews.length >= 2}
+            onClick={() => fileInputRef.current?.click()}
+            className="h-12 w-12 shrink-0 rounded-full bg-card text-foreground hover:bg-card/90 active:scale-90 disabled:opacity-40"
+          >
+            <Plus className="size-[22px]" strokeWidth={2} />
+          </Button>
+        )}
 
         <div className="flex min-h-[48px] flex-1 items-center rounded-[24px] bg-card px-4 py-2 transition-all focus-within:ring-2 focus-within:ring-[#FF6BA4]/50">
           <textarea
@@ -175,16 +244,21 @@ export const MessageInput = ({ onSend, replyTo, onCancelReply }: MessageInputPro
           type="button"
           size="icon"
           variant="ghost"
-          disabled={!value.trim() && imagePreviews.length === 0}
+          disabled={!canSubmit}
           onClick={handleSend}
           className={cn(
             'h-12 w-12 shrink-0 rounded-full !p-0 transition-all active:scale-95',
-            value.trim() || imagePreviews.length > 0
+            canSubmit
               ? 'bg-[#FF6BA4] text-white shadow-lg shadow-[#FF6BA4]/20 hover:bg-[#FF6BA4]/90'
               : 'bg-card text-foreground opacity-100! hover:bg-card/90',
           )}
+          aria-label={isEditing ? 'Сохранить изменения' : 'Отправить сообщение'}
         >
-          <Forward className="size-[22px]" strokeWidth={2} />
+          {isEditing ? (
+            <Check className="size-[22px]" strokeWidth={2.5} />
+          ) : (
+            <Forward className="size-[22px]" strokeWidth={2} />
+          )}
         </Button>
       </div>
     </div>

@@ -7,12 +7,13 @@ import { flattenLikesPages, useReceivedLikes } from '@/entities/user/hooks/useRe
 import { usersQueryKeys } from '@/entities/user/lib/usersQueryKeys'
 import type { UserSearchApiUser } from '@/entities/user/types/types'
 import { LikesCard } from '@/features/likes-feed'
-import { FeedLoading } from '@/features/matches-feed/ui/feed-loading'
 import { useMatchesOverlay } from '@/features/matches-feed/ui/matches-card/matchesOverlay'
 import { useInfiniteScrollLoadMore } from '@/shared/hooks/useInfiniteScrollLoadMore'
 import { formatUserErrorMessage } from '@/shared/lib/formatUserErrorMessage'
 
 import { stickyTopHeaderClassNames } from '@/widgets'
+
+import { LikesPageSkeleton } from './components/likesPageSkeleton'
 
 const LikesPage = (): JSX.Element => {
   const queryClient = useQueryClient()
@@ -63,14 +64,12 @@ const LikesPage = (): JSX.Element => {
             className={stickyTopHeaderClassNames({ variant: 'background' })}
             aria-hidden
           />
-          <div>
+          <div className="flex min-h-[calc(100dvh-11rem-env(safe-area-inset-bottom,0px))] flex-col">
             <h1 className="mb-4 text-[22px] font-bold uppercase leading-none tracking-tight text-white">
               Лайки
             </h1>
             {likesQuery.isPending ? (
-              <div className="flex min-h-[min(420px,70vh)] items-center justify-center">
-                <FeedLoading />
-              </div>
+              <LikesPageSkeleton />
             ) : likesQuery.isError ? (
               <div className="flex min-h-[min(420px,70vh)] flex-col items-center justify-center gap-3 text-center">
                 <p className="text-[15px] font-medium text-muted-foreground">
@@ -85,7 +84,7 @@ const LikesPage = (): JSX.Element => {
                 </button>
               </div>
             ) : items.length === 0 ? (
-              <div className="flex min-h-[min(420px,70vh)] flex-col items-center justify-center text-center">
+              <div className="flex flex-1 flex-col items-center justify-center text-center">
                 <p className="text-[15px] font-medium text-muted-foreground">Пока никто не лайкнул</p>
               </div>
             ) : (
