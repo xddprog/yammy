@@ -145,14 +145,11 @@ const OverlayContent = ({
         ref={contentAreaRef}
         className="relative w-full h-full min-h-0 pointer-events-auto flex justify-center"
       >
+        {/* Карусель на всю ширину оверлея — обрезка по краям экрана, не по узкому pill-контейнеру */}
         <motion.div
-          className="absolute z-20 overflow-hidden origin-top"
+          className="absolute inset-x-0 z-20 overflow-hidden origin-top"
           style={{
             height: containerHeight,
-            width: containerWidth,
-            borderRadius: containerRadius,
-            left: '50%',
-            x: '-50%',
             y: dragY,
           }}
         >
@@ -165,7 +162,20 @@ const OverlayContent = ({
               />
             </div>
           </motion.div>
+        </motion.div>
 
+        {/* Пилюля мэтча — отдельный слой со своей шириной и скруглением */}
+        <motion.div
+          className="absolute z-30 overflow-hidden origin-top pointer-events-none"
+          style={{
+            height: containerHeight,
+            width: containerWidth,
+            borderRadius: containerRadius,
+            left: '50%',
+            x: '-50%',
+            y: dragY,
+          }}
+        >
           <motion.div
             className="absolute inset-0 box-border flex items-center justify-center gap-2"
             style={{
@@ -215,6 +225,7 @@ const OverlayContent = ({
             age={age}
             city={city}
             bio={bio}
+            reportedId={item.user_id}
             relationshipGoal={relationship_goal}
             educationDetails={education_details}
             educationLevel={education_level}

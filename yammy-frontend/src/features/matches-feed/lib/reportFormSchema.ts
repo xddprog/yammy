@@ -1,11 +1,19 @@
 import { z } from 'zod'
 
-export const REPORT_REASONS = ['rude', 'spam', 'adult', 'fake', 'other'] as const
+// Коды должны совпадать с backend enum `ReportReasonEnum`
+export const REPORT_REASONS = [
+  'spam',
+  'inappropriate_content',
+  'harassment',
+  'fake_profile',
+  'other',
+] as const
+
 export const REPORT_REASON_LABELS: Record<(typeof REPORT_REASONS)[number], string> = {
-  rude: 'Грубо',
   spam: 'Спам',
-  adult: 'Контент 18+',
-  fake: 'Фейк',
+  inappropriate_content: 'Контент 18+',
+  harassment: 'Грубо',
+  fake_profile: 'Фейк',
   other: 'Другое',
 }
 

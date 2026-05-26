@@ -5,6 +5,7 @@ from app.core.repositories.like_repository import LikeRepository
 from app.core.repositories.appearance_rating_repository import AppearanceRatingRepository
 from app.core.repositories.chat_repository import ChatRepository
 from app.core.repositories.message_repository import MessageRepository
+from app.core.repositories.report_repository import ReportRepository
 
 __all__ = [
     "AdminRepository", 
@@ -14,4 +15,5 @@ __all__ = [
     "AppearanceRatingRepository",
     "ChatRepository",
     "MessageRepository",
+    "ReportRepository",
 ]

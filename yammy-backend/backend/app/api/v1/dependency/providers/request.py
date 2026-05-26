@@ -101,6 +101,13 @@ class RequestProvider(Provider):
         )
 
     @provide(scope=Scope.REQUEST)
+    def get_report_service(self, session: AsyncSession) -> services.ReportService:
+        return services.ReportService(
+            report_repository=repositories.ReportRepository(session=session),
+            user_repository=repositories.UserRepository(session=session),
+        )
+
+    @provide(scope=Scope.REQUEST)
     def get_university_service(self, redis_client: RedisClient) -> services.UniversityService:
         return services.UniversityService(redis_client=redis_client)
 

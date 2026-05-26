@@ -13,9 +13,12 @@ import { SheetCard } from '@/features/matches-feed/ui/sheet-card'
 import { Button, RadioGroup, RadioGroupItem } from '@/shared'
 import { Form, FormControl, FormField, FormItem } from '@/shared/ui/form/form'
 
+import { sendUserReport } from '@/entities/report/api/reportService'
+
 import { REPORT_REASON_LABELS, reportFormSchema } from '../../lib/reportFormSchema'
 
 interface MatchesCardContentProps {
+  reportedId: string
   name: string
   age: number
   city: string
@@ -41,6 +44,7 @@ const contentVariants = {
 }
 
 export const MatchesCardContent = ({
+  reportedId,
   name,
   age,
   city,
@@ -59,6 +63,7 @@ export const MatchesCardContent = ({
 }: MatchesCardContentProps) => {
   const [isReportMode, setIsReportMode] = useState(false)
   const [isReportSubmitted, setIsReportSubmitted] = useState(false)
+  const [isReportSubmitting, setIsReportSubmitting] = useState(false)
   const [isBlockMode, setIsBlockMode] = useState(false)
   const [isBlockSubmitted, setIsBlockSubmitted] = useState(false)
 
@@ -70,6 +75,7 @@ export const MatchesCardContent = ({
   const handleCloseReport = useCallback(() => {
     setIsReportMode(false)
     setIsReportSubmitted(false)
+    setIsReportSubmitting(false)
     form.reset()
   }, [form])
 
@@ -86,12 +92,27 @@ export const MatchesCardContent = ({
     setIsBlockSubmitted(true)
   }, [])
 
-  const handleSubmitReport = useCallback((values: z.infer<typeof reportFormSchema>) => {
-    if (values.reason) {
-      console.log('Жалоба отправлена:', values.reason)
-    }
-    setIsReportSubmitted(true)
-  }, [])
+  const handleSubmitReport = useCallback(
+    async (values: z.infer<typeof reportFormSchema>) => {
+      if (!values.reason) {
+        return
+      }
+
+      setIsReportSubmitting(true)
+      try {
+        await sendUserReport({
+          reportedId,
+          reason: values.reason,
+        })
+        setIsReportSubmitted(true)
+      } catch {
+        // throwApiError уже показал toast, тут просто не переводим UI в success.
+      } finally {
+        setIsReportSubmitting(false)
+      }
+    },
+    [reportedId],
+  )
 
   const handleFlagClick = useCallback(() => {
     setIsReportMode(true)
@@ -254,7 +275,7 @@ export const MatchesCardContent = ({
                     form="report-form"
                     size="lg"
                     className="rounded-full w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!form.formState.isDirty}
+                    disabled={!form.formState.isDirty || isReportSubmitting}
                   >
                     Отправить
                   </Button>

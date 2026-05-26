@@ -1,4 +1,5 @@
 import random
+import shutil
 import uuid
 from datetime import datetime, timedelta
 from faker import Faker
@@ -11,6 +12,7 @@ from dishka import AsyncContainer
 
 from app.infrastructure.database.models.admin import Admin
 from app.infrastructure.database.models.chat import Chat
+from app.infrastructure.database.models.like import Like
 from app.infrastructure.database.models.match import Match
 from app.infrastructure.database.models.message import Message
 from app.infrastructure.database.models.user import User, UserPhoto
@@ -22,7 +24,9 @@ from app.utils.constants.enums import (
     EducationLevelEnum,
     SubscriptionTierEnum,
     UserLanguageEnum,
+    LikeTypeEnum,
 )
+from app.infrastructure.config.config import BASE_DIR
 from app.infrastructure.logging.logger import get_logger
 from app.core.services.ml_service import MLService
 from app.core.clients.elasticsearch_client import ElasticsearchClient
@@ -32,6 +36,62 @@ from app.core.dto.filter import FilterCategorySchema
 
 logger = get_logger(__name__)
 fake = Faker(['ru_RU'])
+
+TEST_MODERATION_NORMAL_DIR = BASE_DIR / "test_moderation" / "normal"
+# Как у ImageService: файлы в static/images/, в БД — относительный путь (get_absolute_url → STATIC_URL).
+TEST_SEED_PHOTOS_DIR = BASE_DIR / "static" / "images" / "test_photos"
+
+TEST_SEED_PHOTO_FILENAMES: tuple[str, ...] = (
+    "photo_2026-05-11_13-17-12.jpg",
+    "photo_2026-05-11_13-17-25.jpg",
+    "photo_2026-05-11_13-17-49.jpg",
+    "photo_2026-05-11_13-18-23.jpg",
+    "photo_2026-05-11_13-18-36.jpg",
+    "photo_2026-05-11_13-18-46.jpg",
+    "photo_2026-05-11_13-31-27.jpg",
+    "photo_2026-05-11_13-31-38.jpg",
+    "photo_2026-05-11_13-31-56.jpg",
+    "photo_2026-05-11_13-31-58.jpg",
+    "photo_2026-05-11_13-32-03.jpg",
+)
+
+
+def ensure_test_profile_photos_synced() -> list[str]:
+    """Копирует фиксированный набор фото в static/images/test_photos для сида."""
+    TEST_SEED_PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+    db_paths: list[str] = []
+    missing: list[str] = []
+
+    for name in TEST_SEED_PHOTO_FILENAMES:
+        src = TEST_MODERATION_NORMAL_DIR / name
+        if not src.is_file():
+            missing.append(name)
+            continue
+        dest = TEST_SEED_PHOTOS_DIR / name
+        if not dest.exists() or dest.stat().st_mtime < src.stat().st_mtime:
+            shutil.copy2(src, dest)
+        db_paths.append(f"test_photos/{name}")
+
+    if missing:
+        raise RuntimeError(
+            f"Missing test seed photos in {TEST_MODERATION_NORMAL_DIR}: {', '.join(missing)}"
+        )
+    if not db_paths:
+        raise RuntimeError("Test seed photo list is empty")
+
+    logger.info(
+        "test_profile_photos_synced",
+        photo_count=len(db_paths),
+        static_dir=str(TEST_SEED_PHOTOS_DIR),
+    )
+    return db_paths
+
+
+def pick_test_photo_paths(pool: list[str], count: int) -> list[str]:
+    if not pool or count <= 0:
+        return []
+    k = min(count, len(pool))
+    return random.sample(pool, k=k)
 
 COMMON_BIO_TEMPLATES = {
     GenderEnum.FEMALE: [
@@ -71,6 +131,7 @@ COMMON_BIO_TEMPLATES = {
 }
 
 HIGH_MATCH_SHARE = 0.35
+LIKES_SEED_COUNT_PER_USER = 12
 
 INITIAL_FILTERS = [
     {
@@ -214,7 +275,11 @@ async def _filter_option_map_by_triple(session: AsyncSession) -> dict[tuple[str,
     return out
 
 
-async def seed_match_calibration_users(session: AsyncSession) -> None:
+async def seed_match_calibration_users(
+    session: AsyncSession,
+    *,
+    photo_paths: list[str],
+) -> None:
     """Детерминированные анкеты для проверки высокого и низкого match_percentage (см. SearchService)."""
     if await session.scalar(select(User.id).where(User.telegram_id == MATCH_ANCHOR_TELEGRAM_ID)):
         return
@@ -240,6 +305,7 @@ async def seed_match_calibration_users(session: AsyncSession) -> None:
         gender: GenderEnum,
         age: int,
         options: list[FilterOption],
+        photo_paths: list[str],
     ) -> None:
         u = User(
             telegram_id=telegram_id,
@@ -263,14 +329,15 @@ async def seed_match_calibration_users(session: AsyncSession) -> None:
         )
         session.add(u)
         await session.flush()
-        session.add(
-            UserPhoto(
-                user_id=u.id,
-                file_path="/static/test_photos/photo_1.jpg",
-                order=0,
-                is_main=True,
+        for order, file_path in enumerate(pick_test_photo_paths(photo_paths, 1)):
+            session.add(
+                UserPhoto(
+                    user_id=u.id,
+                    file_path=file_path,
+                    order=order,
+                    is_main=(order == 0),
+                )
             )
-        )
         for opt in options:
             session.add(UserFilterAssociation(user_id=u.id, option_id=opt.id))
         await session.flush()
@@ -282,6 +349,7 @@ async def seed_match_calibration_users(session: AsyncSession) -> None:
         gender=GenderEnum.FEMALE,
         age=27,
         options=anchor_options,
+        photo_paths=photo_paths,
     )
 
     for i in range(6):
@@ -292,6 +360,7 @@ async def seed_match_calibration_users(session: AsyncSession) -> None:
             gender=GenderEnum.MALE,
             age=24 + (i % 4),
             options=anchor_options,
+            photo_paths=photo_paths,
         )
 
     for i in range(6):
@@ -302,6 +371,7 @@ async def seed_match_calibration_users(session: AsyncSession) -> None:
             gender=GenderEnum.MALE,
             age=30 + i,
             options=low_options,
+            photo_paths=photo_paths,
         )
 
     logger.info(
@@ -315,8 +385,68 @@ def _ordered_pair(user_a: uuid.UUID, user_b: uuid.UUID) -> tuple[uuid.UUID, uuid
     return (user_a, user_b) if user_a < user_b else (user_b, user_a)
 
 
-async def seed_test_matches(session: AsyncSession) -> int:
-    """Метч и чат для каждой пары тестовых пользователей (для списка чатов)."""
+async def seed_test_received_likes(session: AsyncSession) -> set[tuple[uuid.UUID, uuid.UUID]]:
+    """
+    Входящие лайки без метча: другие пользователи лайкают recipient, пара не матчится
+  (см. get_received_like_sender_ids).
+    """
+    user_ids = list((await session.execute(select(User.id).order_by(User.id))).scalars().all())
+    if len(user_ids) < 2:
+        logger.info("test_likes_skip_few_users", user_count=len(user_ids))
+        return set()
+
+    existing_rows = await session.execute(
+        select(Like.user_from_id, Like.user_to_id).where(
+            Like.like_type.in_((LikeTypeEnum.LIKE, LikeTypeEnum.SUPERLIKE)),
+        )
+    )
+    existing_likes: set[tuple[uuid.UUID, uuid.UUID]] = {
+        (row[0], row[1]) for row in existing_rows.all()
+    }
+
+    skip_match_pairs: set[tuple[uuid.UUID, uuid.UUID]] = set()
+    created = 0
+
+    for recipient_id in user_ids:
+        candidates = [uid for uid in user_ids if uid != recipient_id]
+        random.shuffle(candidates)
+        added = 0
+        for sender_id in candidates:
+            if added >= LIKES_SEED_COUNT_PER_USER:
+                break
+            if (sender_id, recipient_id) in existing_likes:
+                continue
+            session.add(
+                Like(
+                    user_from_id=sender_id,
+                    user_to_id=recipient_id,
+                    like_type=LikeTypeEnum.LIKE,
+                )
+            )
+            existing_likes.add((sender_id, recipient_id))
+            skip_match_pairs.add(_ordered_pair(sender_id, recipient_id))
+            created += 1
+            added += 1
+
+    if created:
+        await session.flush()
+
+    logger.info(
+        "test_received_likes_seeded",
+        likes_created=created,
+        user_count=len(user_ids),
+        per_user_target=LIKES_SEED_COUNT_PER_USER,
+    )
+    return skip_match_pairs
+
+
+async def seed_test_matches(
+    session: AsyncSession,
+    *,
+    skip_pairs: set[tuple[uuid.UUID, uuid.UUID]] | None = None,
+) -> int:
+    """Метч и чат для пар тестовых пользователей (для списка чатов)."""
+    skip_pairs = skip_pairs or set()
     user_ids = list((await session.execute(select(User.id).order_by(User.id))).scalars().all())
     if len(user_ids) < 2:
         logger.info("test_matches_skip_few_users", user_count=len(user_ids))
@@ -331,7 +461,7 @@ async def seed_test_matches(session: AsyncSession) -> int:
     for i in range(len(user_ids)):
         for j in range(i + 1, len(user_ids)):
             pair = _ordered_pair(user_ids[i], user_ids[j])
-            if pair in existing_pairs:
+            if pair in existing_pairs or pair in skip_pairs:
                 continue
             user1_id, user2_id = pair
             match = Match(user1_id=user1_id, user2_id=user2_id)
@@ -408,6 +538,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
             logger.info("Filters seeded")
 
         all_options = (await session.execute(select(FilterOption))).scalars().all()
+        test_photo_paths = ensure_test_profile_photos_synced()
 
         existing_users = await session.scalar(select(func.count()).select_from(User)) or 0
         if existing_users >= count:
@@ -468,14 +599,17 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
             session.add(user)
             await session.flush()
 
-            for order in range(random.randint(1, 3)):
-                photo = UserPhoto(
-                    user_id=user.id,
-                    file_path=f"/static/test_photos/photo_{random.randint(1, 10)}.jpg",
-                    order=order,
-                    is_main=(order == 0),
+            for order, file_path in enumerate(
+                pick_test_photo_paths(test_photo_paths, random.randint(1, 3))
+            ):
+                session.add(
+                    UserPhoto(
+                        user_id=user.id,
+                        file_path=file_path,
+                        order=order,
+                        is_main=(order == 0),
+                    )
                 )
-                session.add(photo)
 
             # Увеличиваем количество характеристик для лучшего matching
             num_traits = random.randint(8, 15) if is_high_match else random.randint(6, 12)
@@ -488,8 +622,9 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
                 session.add(user_filter)
             await session.flush()
 
-        await seed_match_calibration_users(session)
-        await seed_test_matches(session)
+        await seed_match_calibration_users(session, photo_paths=test_photo_paths)
+        likes_skip_pairs = await seed_test_received_likes(session)
+        await seed_test_matches(session, skip_pairs=likes_skip_pairs)
 
         await session.commit()
         logger.info(f"Successfully seeded {count} users")

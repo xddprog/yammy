@@ -14,6 +14,7 @@ from app.core.services.user_service import UserService
 from app.core.services.city_service import CityService
 from app.core.services.notification_service import NotificationService
 from app.core.services.presence_service import PresenceService
+from app.core.services.report_service import ReportService
 
 __all__ = [
     "AuthService",
@@ -32,4 +33,5 @@ __all__ = [
     "CityService",
     "NotificationService",
     "PresenceService",
+    "ReportService",
 ]
