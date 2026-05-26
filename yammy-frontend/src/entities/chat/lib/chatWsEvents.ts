@@ -6,6 +6,7 @@ export const CHAT_WS_EVENTS = {
   READ: 'read',
   DELETE: 'delete',
   EDIT: 'edit',
+  TYPING: 'typing',
 } as const
 
 export type ChatWsEvent = (typeof CHAT_WS_EVENTS)[keyof typeof CHAT_WS_EVENTS]

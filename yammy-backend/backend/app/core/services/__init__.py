@@ -13,6 +13,7 @@ from app.core.services.message_service import MessageService
 from app.core.services.user_service import UserService
 from app.core.services.city_service import CityService
 from app.core.services.notification_service import NotificationService
+from app.core.services.presence_service import PresenceService
 
 __all__ = [
     "AuthService",
@@ -30,4 +31,5 @@ __all__ = [
     "UserService",
     "CityService",
     "NotificationService",
+    "PresenceService",
 ]

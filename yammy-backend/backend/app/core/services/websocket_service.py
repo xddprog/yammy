@@ -31,15 +31,19 @@ class WebSocketService:
         except Exception:
             pass
 
-    async def broadcast(self, match_id: UUID, message: BaseModel, event: str) -> None:
-        connections = self.active_connections.get(match_id, [])
-        if not connections:
-            return
-
-        payload = {
+    @staticmethod
+    def _build_payload(message: BaseModel, event: str) -> dict:
+        return {
             "data": message.model_dump(mode="json", by_alias=True),
             "event": event,
         }
+
+    async def _send_to_connections(
+        self,
+        match_id: UUID,
+        connections: list[WebSocket],
+        payload: dict,
+    ) -> None:
         stale_connections: list[WebSocket] = []
 
         for connection in list(connections):
@@ -50,3 +54,35 @@ class WebSocketService:
 
         for connection in stale_connections:
             await self.disconnect(match_id, connection)
+
+    async def broadcast(self, match_id: UUID, message: BaseModel, event: str) -> None:
+        connections = self.active_connections.get(match_id, [])
+        if not connections:
+            return
+
+        await self._send_to_connections(
+            match_id,
+            connections,
+            self._build_payload(message, event),
+        )
+
+    async def broadcast_except(
+        self,
+        match_id: UUID,
+        exclude: WebSocket,
+        message: BaseModel,
+        event: str,
+    ) -> None:
+        connections = self.active_connections.get(match_id, [])
+        if not connections:
+            return
+
+        recipients = [connection for connection in connections if connection is not exclude]
+        if not recipients:
+            return
+
+        await self._send_to_connections(
+            match_id,
+            recipients,
+            self._build_payload(message, event),
+        )

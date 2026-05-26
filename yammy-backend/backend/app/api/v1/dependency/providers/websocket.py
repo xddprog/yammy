@@ -42,5 +42,6 @@ class WebSocketProvider(Provider):
     ) -> services.MessageService:
         return services.MessageService(
             message_repository=repositories.MessageRepository(session=session),
+            chat_repository=repositories.ChatRepository(session=session),
             image_service=image_service,
         )

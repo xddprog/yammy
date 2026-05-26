@@ -4,6 +4,7 @@ import uuid
 from uuid import UUID
 
 from fastapi import UploadFile
+from app.core.repositories.chat_repository import ChatRepository
 from app.core.repositories.message_repository import MessageRepository
 from app.core.dto.message import MessageCreateRequest, MessageEditRequest, MessagePhotoUploadSchema, MessageSchema
 from app.core.services.image_service import ImageService
@@ -14,9 +15,32 @@ from app.infrastructure.errors.base import NotFoundException
 MAX_IMAGES_COUNT = 5
 
 class MessageService:
-    def __init__(self, message_repository: MessageRepository, image_service: ImageService):
+    def __init__(
+        self,
+        message_repository: MessageRepository,
+        chat_repository: ChatRepository,
+        image_service: ImageService,
+    ):
         self.message_repository = message_repository
+        self.chat_repository = chat_repository
         self.image_service = image_service
+
+    async def _ensure_can_interact_with_chat_messages(
+        self,
+        chat_id: UUID,
+        user_id: UUID,
+    ) -> None:
+        is_peer_banned = await self.chat_repository.get_peer_ban_status_by_chat_id(
+            chat_id,
+            user_id,
+        )
+        if is_peer_banned is None:
+            raise NotFoundException("Чат не найден")
+        if is_peer_banned:
+            raise BadRequestException(
+                "Нельзя отправлять, изменять, удалять или отвечать на сообщения "
+                "в чате с забаненным пользователем"
+            )
 
     async def upload_images_from_base64(self, images: list[MessagePhotoUploadSchema]) -> list[str]:
         files: list[UploadFile] = []
@@ -47,11 +71,19 @@ class MessageService:
         if len(form.images) > MAX_IMAGES_COUNT:
             raise BadRequestException("Вы не можете отправить больше 5 изображений за один раз")
 
+        await self._ensure_can_interact_with_chat_messages(form.chat_id, form.sender_id)
+
         form.images = await self.upload_images_from_base64(form.images)
         message = await self.message_repository.add_item(**form.model_dump())
         return MessageSchema.model_validate(message, from_attributes=True)
 
     async def delete_message(self, message_id: uuid.UUID, user_id: uuid.UUID):
+        message = await self.message_repository.get_message_short_info(message_id)
+        if not message or message.sender_id != user_id or message.is_deleted:
+            raise NotFoundException("Сообщение не найдено")
+
+        await self._ensure_can_interact_with_chat_messages(message.chat_id, user_id)
+
         message, image_paths = await self.message_repository.delete_item(message_id, user_id)
         if not message:
             raise NotFoundException("Сообщение не найдено")
@@ -65,6 +97,8 @@ class MessageService:
         message = await self.message_repository.get_item(message_id)
         if not message or message.sender_id != user_id or message.is_deleted:
             raise NotFoundException("Сообщение не найдено")
+
+        await self._ensure_can_interact_with_chat_messages(message.chat_id, user_id)
 
         update_values = form.model_dump(exclude_none=True)
         if "content" in update_values:

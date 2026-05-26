@@ -1,4 +1,4 @@
-
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import delete, insert, select, func, update
@@ -17,6 +17,14 @@ class UserRepository(SqlAlchemyRepository[User]):
 
     async def get_by_telegram_id(self, telegram_id: int) -> User | None:
         return await self.get_by_filter(one_or_none=True, telegram_id=telegram_id)
+
+    async def update_last_seen(self, user_id: UUID, last_seen: datetime) -> None:
+        await self.session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(last_seen=last_seen)
+        )
+        await self.session.commit()
     
     async def get_user_with_filters(self, user_id: UUID) -> User | None:
         stmt = (

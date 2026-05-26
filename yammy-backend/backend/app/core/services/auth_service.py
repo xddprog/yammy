@@ -10,13 +10,21 @@ from uuid import UUID
 import jwt
 from passlib.context import CryptContext
 
-from app.core.dto.auth import LoginSchema, TokenSchema, TelegramAuthSchema
+from app.core.dto.auth import (
+    DevAuthSwitchResponseSchema,
+    DevAuthUserItemSchema,
+    DevAuthUsersListSchema,
+    LoginSchema,
+    TokenSchema,
+    TelegramAuthSchema,
+)
 from app.core.dto.admin import BaseAdminSchema
 from app.core.repositories.admin_repository import AdminRepository
 from app.core.repositories.user_repository import UserRepository
 from app.infrastructure.database.models.admin import Admin
 from app.infrastructure.database.models.user import User
 from app.infrastructure.errors.auth_errors import ForbiddenException, InvalidCredentials, InvalidTelegramData
+from app.infrastructure.errors.base import NotFoundException
 from app.infrastructure.config.config import APP_CONFIG, JWT_CONFIG, TELEGRAM_CONFIG
 
 
@@ -183,6 +191,96 @@ class AuthService:
         if APP_CONFIG.ENVIRONMENT == "development":
             return await self._authenticate_telegram_stub()
         return await self._authenticate_telegram_webapp(form)
+
+    async def login_dev_by_user_id(self, user_id: UUID) -> TokenSchema:
+        user = await self.user_repository.get_by_filter(one_or_none=True, id=user_id)
+        if not user:
+            raise NotFoundException(detail="Пользователь не найден")
+        return self._issue_tokens_for_user(user)
+
+    def _issue_tokens_for_user(self, user: User) -> TokenSchema:
+        return TokenSchema(
+            access_token=self._create_access_token(str(user.id)),
+            refresh_token=self._create_refresh_token(str(user.id)),
+        )
+
+    async def _get_sorted_dev_users(self, limit: int = 50) -> list[User]:
+        users = await self.user_repository.get_all_items(limit=limit)
+        return sorted(users, key=lambda user: user.id)
+
+    async def list_dev_users(
+        self,
+        current_user_id: UUID | None = None,
+        limit: int = 50,
+    ) -> DevAuthUsersListSchema:
+        users = await self._get_sorted_dev_users(limit=limit)
+        return DevAuthUsersListSchema(
+            users=[
+                DevAuthUserItemSchema(
+                    id=user.id,
+                    name=user.name,
+                    age=user.age,
+                    is_current=current_user_id is not None and user.id == current_user_id,
+                )
+                for user in users
+            ]
+        )
+
+    async def resolve_dev_switch_user_id(
+        self,
+        current_user_id: UUID | None,
+        requested_user_id: UUID | None,
+    ) -> UUID:
+        users = await self._get_sorted_dev_users()
+        if not users:
+            raise InvalidCredentials(detail="В базе нет пользователей")
+
+        if requested_user_id is not None:
+            if not any(user.id == requested_user_id for user in users):
+                raise NotFoundException(detail="Пользователь не найден")
+            return requested_user_id
+
+        if current_user_id is None:
+            return users[0].id
+
+        for user in users:
+            if user.id != current_user_id:
+                return user.id
+
+        return users[0].id
+
+    async def switch_dev_user(
+        self,
+        current_user_id: UUID | None,
+        requested_user_id: UUID | None,
+    ) -> DevAuthSwitchResponseSchema:
+        target_user_id = await self.resolve_dev_switch_user_id(
+            current_user_id,
+            requested_user_id,
+        )
+        user = await self.user_repository.get_by_filter(one_or_none=True, id=target_user_id)
+        if not user:
+            raise NotFoundException(detail="Пользователь не найден")
+
+        tokens = self._issue_tokens_for_user(user)
+        return DevAuthSwitchResponseSchema(
+            access_token=tokens.access_token,
+            refresh_token=tokens.refresh_token,
+            user=DevAuthUserItemSchema(
+                id=user.id,
+                name=user.name,
+                age=user.age,
+                is_current=True,
+            ),
+        )
+
+    async def try_verify_user_token(self, token: str | None) -> User | None:
+        if not token:
+            return None
+        try:
+            return await self.verify_user_token(token)
+        except InvalidCredentials:
+            return None
 
     async def verify_user_token(self, token: str) -> User:
         try:

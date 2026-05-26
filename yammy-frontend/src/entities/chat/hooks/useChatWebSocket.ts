@@ -12,6 +12,7 @@ import type {
   ChatMessageDto,
   ChatMessagesPageData,
   ChatOpenData,
+  ChatTypingData,
   ChatWsEnvelope,
   ChatWsErrorData,
   ChatWsPeer,
@@ -20,6 +21,8 @@ import type { ChatMessage } from '../types/message'
 import type { UserSearchApiUser } from '@/entities/user/types/types'
 
 const MESSAGES_PAGE_SIZE = 30
+const TYPING_IDLE_MS = 3_000
+const PEER_TYPING_TIMEOUT_MS = 4_000
 
 type ChatSocketStatus = 'idle' | 'connecting' | 'ready' | 'error' | 'closed'
 
@@ -56,6 +59,7 @@ export function useChatWebSocket(matchId: string | undefined) {
   const [hasMoreMessages, setHasMoreMessages] = useState(false)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [scrollToBottomKey, setScrollToBottomKey] = useState(0)
+  const [isPeerTyping, setIsPeerTyping] = useState(false)
 
   const wsRef = useRef<WebSocket | null>(null)
   const peerRef = useRef<ChatWsPeer | null>(null)
@@ -67,6 +71,9 @@ export function useChatWebSocket(matchId: string | undefined) {
   const readQueueRef = useRef<string[]>([])
   const queuedReadIdsRef = useRef<Set<string>>(new Set())
   const readFlushTimerRef = useRef<number | null>(null)
+  const typingIdleTimerRef = useRef<number | null>(null)
+  const isTypingActiveRef = useRef(false)
+  const peerTypingTimerRef = useRef<number | null>(null)
 
   currentUserIdRef.current = currentUserId
 
@@ -77,6 +84,60 @@ export function useChatWebSocket(matchId: string | undefined) {
     wsRef.current.send(JSON.stringify(payload))
     return true
   }, [])
+
+  const clearTypingIdleTimer = useCallback(() => {
+    if (typingIdleTimerRef.current != null) {
+      window.clearTimeout(typingIdleTimerRef.current)
+      typingIdleTimerRef.current = null
+    }
+  }, [])
+
+  const clearPeerTypingTimer = useCallback(() => {
+    if (peerTypingTimerRef.current != null) {
+      window.clearTimeout(peerTypingTimerRef.current)
+      peerTypingTimerRef.current = null
+    }
+  }, [])
+
+  const sendTypingState = useCallback(
+    (isTyping: boolean) => {
+      if (!chatIdRef.current || peerRef.current?.is_banned) {
+        return
+      }
+
+      sendPayload({
+        event: CHAT_WS_EVENTS.TYPING,
+        chat_id: chatIdRef.current,
+        is_typing: isTyping,
+      })
+    },
+    [sendPayload],
+  )
+
+  const stopTyping = useCallback(() => {
+    clearTypingIdleTimer()
+    if (!isTypingActiveRef.current) {
+      return
+    }
+    isTypingActiveRef.current = false
+    sendTypingState(false)
+  }, [clearTypingIdleTimer, sendTypingState])
+
+  const notifyTyping = useCallback(() => {
+    if (!chatIdRef.current || peerRef.current?.is_banned) {
+      return
+    }
+
+    if (!isTypingActiveRef.current) {
+      isTypingActiveRef.current = true
+      sendTypingState(true)
+    }
+
+    clearTypingIdleTimer()
+    typingIdleTimerRef.current = window.setTimeout(() => {
+      stopTyping()
+    }, TYPING_IDLE_MS)
+  }, [clearTypingIdleTimer, sendTypingState, stopTyping])
 
   const flushReadQueue = useCallback(() => {
     if (readFlushTimerRef.current != null) {
@@ -240,6 +301,24 @@ export function useChatWebSocket(matchId: string | undefined) {
           applyMessagesPage(envelope.data as ChatMessagesPageData, userId)
           break
         }
+        case CHAT_WS_EVENTS.TYPING: {
+          const data = envelope.data as ChatTypingData
+          if (data.user_id === currentUserIdRef.current) {
+            break
+          }
+          if (data.is_typing) {
+            setIsPeerTyping(true)
+            clearPeerTypingTimer()
+            peerTypingTimerRef.current = window.setTimeout(() => {
+              setIsPeerTyping(false)
+              peerTypingTimerRef.current = null
+            }, PEER_TYPING_TIMEOUT_MS)
+          } else {
+            setIsPeerTyping(false)
+            clearPeerTypingTimer()
+          }
+          break
+        }
         case CHAT_WS_EVENTS.MESSAGE:
         case CHAT_WS_EVENTS.READ:
         case CHAT_WS_EVENTS.EDIT:
@@ -253,6 +332,10 @@ export function useChatWebSocket(matchId: string | undefined) {
           if (envelope.event === CHAT_WS_EVENTS.READ) {
             queuedReadIdsRef.current.delete(dto.id)
           }
+          if (isNewMessage && dto.sender.id !== userId) {
+            setIsPeerTyping(false)
+            clearPeerTypingTimer()
+          }
           setMessages((prev) =>
             upsertMessage(prev, mapMessageDtoToChatMessage(dto, userId)),
           )
@@ -265,7 +348,7 @@ export function useChatWebSocket(matchId: string | undefined) {
           break
       }
     },
-    [applyOpenChat, applyMessagesPage, reportError],
+    [applyOpenChat, applyMessagesPage, clearPeerTypingTimer, reportError],
   )
 
   const handleEnvelopeRef = useRef(handleEnvelope)
@@ -294,6 +377,7 @@ export function useChatWebSocket(matchId: string | undefined) {
     setStatus('connecting')
     setPeer(null)
     setPeerProfile(null)
+    setIsPeerTyping(false)
     setMessages([])
     messagesPageRef.current = 0
     setHasMoreMessages(false)
@@ -306,6 +390,9 @@ export function useChatWebSocket(matchId: string | undefined) {
       window.clearTimeout(readFlushTimerRef.current)
       readFlushTimerRef.current = null
     }
+    isTypingActiveRef.current = false
+    clearTypingIdleTimer()
+    clearPeerTypingTimer()
 
     const ws = new WebSocket(url)
     wsRef.current = ws
@@ -357,16 +444,18 @@ export function useChatWebSocket(matchId: string | undefined) {
 
     return () => {
       cancelled = true
+      stopTyping()
       ws.close()
       if (readFlushTimerRef.current != null) {
         window.clearTimeout(readFlushTimerRef.current)
         readFlushTimerRef.current = null
       }
+      clearPeerTypingTimer()
       if (wsRef.current === ws) {
         wsRef.current = null
       }
     }
-  }, [matchId, reportError])
+  }, [clearPeerTypingTimer, clearTypingIdleTimer, matchId, reportError, stopTyping])
 
   const loadOlderMessages = useCallback(() => {
     if (!hasMoreMessages || isLoadingMessagesRef.current) {
@@ -381,8 +470,16 @@ export function useChatWebSocket(matchId: string | undefined) {
         showErrorToast('Чат ещё не готов')
         return false
       }
+      if (peerRef.current?.is_banned) {
+        showErrorToast(
+          'Нельзя отправлять, изменять, удалять или отвечать на сообщения в чате с забаненным пользователем',
+        )
+        return false
+      }
 
       const images = files?.length ? await filesToMessageImages(files) : []
+
+      stopTyping()
 
       const sent = sendPayload({
         event: CHAT_WS_EVENTS.MESSAGE,
@@ -397,11 +494,18 @@ export function useChatWebSocket(matchId: string | undefined) {
       }
       return sent
     },
-    [currentUserId, sendPayload],
+    [currentUserId, sendPayload, stopTyping],
   )
 
   const deleteMessage = useCallback(
     (messageId: string) => {
+      if (peerRef.current?.is_banned) {
+        showErrorToast(
+          'Нельзя отправлять, изменять, удалять или отвечать на сообщения в чате с забаненным пользователем',
+        )
+        return false
+      }
+
       return sendPayload({
         event: CHAT_WS_EVENTS.DELETE,
         message_id: messageId,
@@ -412,6 +516,13 @@ export function useChatWebSocket(matchId: string | undefined) {
 
   const editMessage = useCallback(
     (messageId: string, content: string) => {
+      if (peerRef.current?.is_banned) {
+        showErrorToast(
+          'Нельзя отправлять, изменять, удалять или отвечать на сообщения в чате с забаненным пользователем',
+        )
+        return false
+      }
+
       const sent = sendPayload({
         event: CHAT_WS_EVENTS.EDIT,
         message_id: messageId,
@@ -433,10 +544,13 @@ export function useChatWebSocket(matchId: string | undefined) {
     hasMoreMessages,
     isLoadingMessages,
     scrollToBottomKey,
+    isPeerTyping,
     markMessagesAsRead,
     loadOlderMessages,
     sendTextMessage,
     deleteMessage,
     editMessage,
+    notifyTyping,
+    stopTyping,
   }
 }

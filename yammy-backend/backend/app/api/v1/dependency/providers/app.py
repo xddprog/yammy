@@ -5,6 +5,7 @@ from app.core.clients.telegram_client import TelegramClient
 from app.core.services.ml_service import MLService
 from app.core.clients.redis_client import RedisClient
 from app.infrastructure.database.adapters.pg_connection import DatabaseConnection
+from app.core.services.presence_service import PresenceService
 from app.core.services.websocket_service import WebSocketService
 
 
@@ -28,6 +29,17 @@ class AppProvider(Provider):
     @provide(scope=Scope.APP)
     async def get_ws_service(self) -> WebSocketService:
         return WebSocketService()
+
+    @provide(scope=Scope.APP)
+    def get_presence_service(
+        self,
+        redis_client: RedisClient,
+        db_connection: DatabaseConnection,
+    ) -> PresenceService:
+        return PresenceService(
+            redis_client=redis_client,
+            db_connection=db_connection,
+        )
 
     @provide(scope=Scope.APP)
     def get_telegram_client(self) -> TelegramClient:

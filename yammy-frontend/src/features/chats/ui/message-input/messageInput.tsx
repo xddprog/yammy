@@ -18,6 +18,10 @@ interface MessageInputProps {
   editMessage?: MessageEditTarget | null
   onCancelReply?: () => void
   onCancelEdit?: () => void
+  disabled?: boolean
+  disabledPlaceholder?: string
+  onTyping?: () => void
+  onStopTyping?: () => void
 }
 
 export const MessageInput = ({
@@ -27,13 +31,22 @@ export const MessageInput = ({
   editMessage,
   onCancelReply,
   onCancelEdit,
+  disabled = false,
+  disabledPlaceholder = 'Сообщение...',
+  onTyping,
+  onStopTyping,
 }: MessageInputProps) => {
   const [value, setValue] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const onCancelReplyRef = useRef(onCancelReply)
+  const onCancelEditRef = useRef(onCancelEdit)
   const { open } = useOverlay()
+
+  onCancelReplyRef.current = onCancelReply
+  onCancelEditRef.current = onCancelEdit
 
   const autosizeTextarea = () => {
     const el = textareaRef.current
@@ -61,9 +74,32 @@ export const MessageInput = ({
     }
   }, [editMessage?.id])
 
+  useEffect(() => {
+    if (!disabled) {
+      return
+    }
+
+    setValue('')
+    setSelectedFiles([])
+    setImagePreviews((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url))
+      return []
+    })
+    onCancelReplyRef.current?.()
+    onCancelEditRef.current?.()
+    onStopTyping?.()
+    requestAnimationFrame(autosizeTextarea)
+  }, [disabled, onStopTyping])
+
   const isEditing = Boolean(editMessage)
 
   const handleSend = () => {
+    if (disabled) {
+      return
+    }
+
+    onStopTyping?.()
+
     const trimmed = value.trim()
     const hasText = trimmed.length > 0
     const hasImages = imagePreviews.length > 0
@@ -90,6 +126,11 @@ export const MessageInput = ({
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) {
+      e.target.value = ''
+      return
+    }
+
     const files = Array.from(e.target.files ?? [])
     if (files.length > 0) {
       const remainingSlots = Math.max(0, 2 - selectedFiles.length)
@@ -121,15 +162,20 @@ export const MessageInput = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) {
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
     }
   }
 
-  const canSubmit = isEditing
-    ? editMessage != null && value.trim() !== editMessage.originalText.trim()
-    : value.trim().length > 0 || imagePreviews.length > 0
+  const canSubmit =
+    !disabled &&
+    (isEditing
+      ? editMessage != null && value.trim() !== editMessage.originalText.trim()
+      : value.trim().length > 0 || imagePreviews.length > 0)
 
   return (
     <div className="flex flex-col gap-2 p-4 pt-2">
@@ -220,7 +266,7 @@ export const MessageInput = ({
             type="button"
             size="icon"
             variant="ghost"
-            disabled={imagePreviews.length >= 2}
+            disabled={disabled || imagePreviews.length >= 2}
             onClick={() => fileInputRef.current?.click()}
             className="h-12 w-12 shrink-0 rounded-full bg-card text-foreground hover:bg-card/90 active:scale-90 disabled:opacity-40"
           >
@@ -232,9 +278,16 @@ export const MessageInput = ({
           <textarea
             ref={textareaRef}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value)
+              if (!disabled) {
+                onTyping?.()
+              }
+            }}
+            onBlur={() => onStopTyping?.()}
             onKeyDown={handleKeyDown}
-            placeholder="Сообщение..."
+            placeholder={disabled ? disabledPlaceholder : 'Сообщение...'}
+            disabled={disabled}
             className="w-full resize-none border-none bg-transparent py-0 text-[15px] font-[100] leading-snug outline-none no-scrollbar placeholder:font-[100] placeholder:text-muted-foreground"
             rows={1}
             style={{ height: 'auto', maxHeight: 'calc(1.375em * 5)' }}

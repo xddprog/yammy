@@ -24,6 +24,7 @@ export function mapChatPeerDetailDto(dto: ChatPeerDetailDto): {
     username: dto.username ?? '',
     name: dto.name,
     age: dto.age,
+    is_banned: Boolean(dto.is_banned),
     gender: normalizeEnum(dto.gender),
     relationship_goal: normalizeEnum(dto.relationship_goal),
     bio: dto.bio ?? '',
@@ -41,6 +42,7 @@ export function mapChatPeerDetailDto(dto: ChatPeerDetailDto): {
     id: userId,
     name: dto.name,
     age: dto.age,
+    is_banned: Boolean(dto.is_banned),
     main_photo: photos[0] ?? '',
     last_seen: dto.last_seen,
   }

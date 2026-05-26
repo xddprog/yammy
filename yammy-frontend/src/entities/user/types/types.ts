@@ -61,6 +61,7 @@ export interface UserSearchApiUser {
   username: string
   name: string
   age: number
+  is_banned?: boolean
   gender: string
   relationship_goal: string
   bio: string

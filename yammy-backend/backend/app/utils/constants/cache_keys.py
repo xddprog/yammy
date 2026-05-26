@@ -31,3 +31,15 @@ class CityCacheKeys:
 
 class UniversityCacheKeys:
     NAMES = "universities:names"
+
+
+class PresenceKeys:
+    ONLINE_SET = "presence:online"
+
+    @staticmethod
+    def session_key(session_id: str) -> str:
+        return f"presence:session:{session_id}"
+
+    @staticmethod
+    def user_sessions_key(user_id: str) -> str:
+        return f"presence:user:{user_id}:sessions"

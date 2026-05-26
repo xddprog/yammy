@@ -38,6 +38,15 @@ class ChatEvents(str, Enum):
     READ = "read"
     DELETE = "delete"
     EDIT = "edit"
+    TYPING = "typing"
+
+
+class PresenceEvents(str, Enum):
+    ERROR = "error"
+    HEARTBEAT = "heartbeat"
+    SUBSCRIBE_PEERS = "subscribe_peers"
+    PRESENCE_SNAPSHOT = "presence_snapshot"
+    PRESENCE_UPDATE = "presence_update"
 
 
 class LikeTypeEnum(str, Enum):

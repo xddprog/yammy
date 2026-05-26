@@ -5,7 +5,12 @@ import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { AppLogoLoader } from '@/app/ui/AppLogoLoader'
-import { flattenChatsPages, useChatsList } from '@/entities/chat'
+import {
+  flattenChatsPages,
+  useChatsList,
+  usePresence,
+  usePresenceSubscription,
+} from '@/entities/chat'
 import { ChatItem, ChatsSearchField, ChatsStoriesRow } from '@/features/chats'
 import { cn } from '@/shared'
 import { useInfiniteScrollLoadMore } from '@/shared/hooks/useInfiniteScrollLoadMore'
@@ -24,8 +29,12 @@ const ChatsPage = (): JSX.Element => {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const chatsQuery = useChatsList()
+  const { getPeerState } = usePresence()
 
   const chats = useMemo(() => flattenChatsPages(chatsQuery.data), [chatsQuery.data])
+  const subscribedPeerIds = useMemo(() => chats.map((chat) => chat.peerId), [chats])
+
+  usePresenceSubscription(subscribedPeerIds)
 
   useInfiniteScrollLoadMore({
     scrollRootRef: scrollRef,
@@ -157,7 +166,9 @@ const ChatsPage = (): JSX.Element => {
           ) : chats.length === 0 ? (
             <div className="flex min-h-[min(420px,70vh)] flex-col items-center justify-center text-center">
               <p className="text-[15px] font-medium text-muted-foreground">Пока нет чатов</p>
-              <p className="mt-1 text-[13px] text-muted-foreground">Метч появится после взаимного лайка</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Метч появится после взаимного лайка
+              </p>
             </div>
           ) : (
             <>
@@ -167,16 +178,24 @@ const ChatsPage = (): JSX.Element => {
               />
               <div className="flex flex-col gap-1.5">
                 {filteredChats.length > 0 ? (
-                  filteredChats.map((chat) => (
-                    <ChatItem
-                      key={chat.id}
-                      chat={chat}
-                      onClick={() => navigate(`/${ERouteNames.CHATS_ROUTE}/${chat.id}`)}
-                    />
-                  ))
+                  filteredChats.map((chat) => {
+                    const presence = getPeerState(chat.peerId, chat.lastSeen)
+
+                    return (
+                      <ChatItem
+                        key={chat.id}
+                        chat={chat}
+                        online={presence.online}
+                        lastSeen={presence.lastSeenAt}
+                        onClick={() => navigate(`/${ERouteNames.CHATS_ROUTE}/${chat.id}`)}
+                      />
+                    )
+                  })
                 ) : (
                   <div className="flex flex-col items-center justify-center pt-8 text-center">
-                    <p className="text-[15px] font-medium text-muted-foreground">Ничего не найдено</p>
+                    <p className="text-[15px] font-medium text-muted-foreground">
+                      Ничего не найдено
+                    </p>
                   </div>
                 )}
                 {(chatsQuery.hasNextPage || chatsQuery.isFetchingNextPage) && (

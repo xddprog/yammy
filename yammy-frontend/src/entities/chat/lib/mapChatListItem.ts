@@ -10,11 +10,14 @@ export function mapChatListItem(dto: ChatListItemDto): ChatListItem {
 
   return {
     id: dto.match_id,
+    peerId: dto.peer.user_id,
     name: dto.peer.name,
     age: dto.peer.age,
+    isBanned: dto.peer.is_banned,
     lastMessage: dto.last_message?.content ?? '',
     avatar: dto.peer.main_photo ?? CHAT_AVATAR_FALLBACK,
     timestamp,
     unreadCount: dto.unread_count,
+    lastSeen: dto.peer.last_seen,
   }
 }

@@ -129,6 +129,7 @@ class UserSearchResponseSchema(BaseModel):
     job_sphere: JobSphereEnum | None = None
     education_level: EducationLevelEnum | None = None
     education_details: str | None = None
+    is_banned: bool = False
     photos: list[str] = []
     filter_option_ids: list[UUID] = Field(
         default_factory=list,

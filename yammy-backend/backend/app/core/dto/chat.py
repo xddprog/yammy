@@ -18,6 +18,12 @@ class ChatErrorResponseSchema(BaseModel):
     detail: str
 
 
+class ChatTypingSchema(BaseModel):
+    user_id: UUID
+    chat_id: UUID
+    is_typing: bool
+
+
 class ChatSchema(BaseModel):
     id: UUID
     match_id: UUID
@@ -30,6 +36,7 @@ class ChatPeerSchema(BaseModel):
     user_id: UUID = Field(validation_alias="id")
     name: str
     age: int
+    is_banned: bool = False
     main_photo: str | None = None
     last_seen: datetime
 

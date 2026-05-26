@@ -25,6 +25,12 @@ class RedisClient:
     async def delete_by_key(self, key: str) -> None:
         await self.redis.delete(key)
 
+    async def exists(self, key: str) -> bool:
+        return bool(await self.redis.exists(key))
+
+    async def expire(self, key: str, ttl: int) -> bool:
+        return bool(await self.redis.expire(key, ttl))
+
     async def delete_by_prefix(self, prefix: str) -> None:
         keys = await self.redis.keys(prefix)
         if not keys:

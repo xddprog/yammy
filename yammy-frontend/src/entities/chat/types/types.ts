@@ -2,6 +2,7 @@ export type ChatPeerDto = {
   user_id: string
   name: string
   age: number
+  is_banned: boolean
   main_photo: string | null
   last_seen: string
 }
@@ -21,10 +22,13 @@ export type ChatListItemDto = {
 
 export type ChatListItem = {
   id: string
+  peerId: string
   name: string
   age: number
+  isBanned: boolean
   lastMessage: string
   avatar: string
   timestamp: string
   unreadCount: number
+  lastSeen: string
 }

@@ -8,6 +8,7 @@ import { MessageBubble } from '../message-bubble/messageBubble'
 interface MessageListProps {
   messages: ChatMessage[]
   isMenuOpen?: boolean
+  interactionsLocked?: boolean
   hasMoreMessages?: boolean
   isLoadingMessages?: boolean
   scrollToBottomKey?: number
@@ -20,6 +21,7 @@ interface MessageListProps {
 export const MessageList = ({
   messages,
   isMenuOpen = false,
+  interactionsLocked = false,
   hasMoreMessages = false,
   isLoadingMessages = false,
   scrollToBottomKey = 0,
@@ -160,8 +162,10 @@ export const MessageList = ({
             replyToId={msg.replyToId}
             replyToText={msg.replyToText}
             replyToName={msg.replyToName}
-            onOpenMenu={onOpenMenu}
-            onSwipeReply={isMenuOpen ? undefined : () => onReplyMessage(msg.id)}
+            onOpenMenu={interactionsLocked ? undefined : onOpenMenu}
+            onSwipeReply={
+              interactionsLocked || isMenuOpen ? undefined : () => onReplyMessage(msg.id)
+            }
           />
         </div>
       ))}

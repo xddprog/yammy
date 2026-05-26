@@ -27,6 +27,28 @@ class LoginSchema(BaseModel):
     password: str
 
 
+class DevAuthTokenRequestSchema(BaseModel):
+    user_id: UUID
+
+
+class DevAuthUserItemSchema(BaseModel):
+    id: UUID
+    name: str
+    age: int
+    is_current: bool = False
+
+
+class DevAuthUsersListSchema(BaseModel):
+    users: list[DevAuthUserItemSchema] = Field(default_factory=list)
+
+
+class DevAuthSwitchResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: DevAuthUserItemSchema
+
+
 class CurrentUserSessionSchema(BaseModel):
     """Минимальный снимок пользователя для сессии (GET /auth/current_user)."""
 

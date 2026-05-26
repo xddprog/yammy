@@ -4,7 +4,7 @@ from uuid import UUID
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket
 from pyrate_limiter import Duration
-from starlette.websockets import WebSocketDisconnect
+from starlette.websockets import WebSocketDisconnect, WebSocketState
 
 from app.api.v1.dependency.providers.request import get_current_user
 from app.core.dto.chat import ChatErrorResponseSchema, ChatListItemSchema
@@ -22,6 +22,25 @@ from app.core.services.message_service import MessageService
 router = APIRouter()
 
 logger = get_logger(__name__)
+
+
+async def _send_ws_error(
+    websocket: WebSocket,
+    status_code: int,
+    detail: str,
+) -> None:
+    if websocket.application_state == WebSocketState.DISCONNECTED:
+        return
+
+    await websocket.send_json(
+        {
+            "event": ChatEvents.ERROR,
+            "data": ChatErrorResponseSchema(
+                status_code=status_code,
+                detail=detail,
+            ).model_dump(mode="json"),
+        }
+    )
 
 
 @router.get(
@@ -90,38 +109,33 @@ async def chat_websocket(
                 form = MessageEditRequest(**payload)
                 response = await message_service.edit_message(message_id, user.id, form)
                 outgoing_event = ChatEvents.EDIT
+            elif incoming_event == ChatEvents.TYPING:
+                chat_id = UUID(payload["chat_id"])
+                is_typing = bool(payload.get("is_typing", True))
+                response = await chat_service.build_typing_event(
+                    match_id,
+                    chat_id,
+                    user.id,
+                    is_typing,
+                )
+                await ws_service.broadcast_except(
+                    match_id,
+                    websocket,
+                    response,
+                    ChatEvents.TYPING,
+                )
+                continue
 
             if response is not None and outgoing_event is not None:
                 await ws_service.broadcast(match_id, response, outgoing_event)
     except WebSocketDisconnect:
         pass
     except HTTPException as e:
-        await ws_service.broadcast(
-            match_id,
-            ChatErrorResponseSchema(
-                status_code=e.status_code,
-                detail=e.detail,
-            ),
-            ChatEvents.ERROR,
-        )
+        await _send_ws_error(websocket, e.status_code, e.detail)
     except BaseAPIException as e:
-        await ws_service.broadcast(
-            match_id,
-            ChatErrorResponseSchema(
-                status_code=e.status_code,
-                detail=e.detail,
-            ),
-            ChatEvents.ERROR,
-        )
+        await _send_ws_error(websocket, e.status_code, e.detail)
     except Exception as e:
         logger.error("Error in chat websocket", match_id=match_id, error=e, exc_info=True)
-        await ws_service.broadcast(
-            match_id,
-            ChatErrorResponseSchema(
-                status_code=500,
-                detail="Ошибка при обработке сообщения",
-            ),
-            ChatEvents.ERROR,
-        )
+        await _send_ws_error(websocket, 500, "Ошибка при обработке сообщения")
     finally:
         await ws_service.disconnect(match_id, websocket)

@@ -21,6 +21,7 @@ export type ChatWsPeer = {
   id: string
   name: string
   age: number
+  is_banned: boolean
   main_photo: string
   last_seen: string
 }
@@ -55,3 +56,9 @@ export type ChatOpenData = {
 }
 
 export type ChatMessagesPageData = PaginatedResponse<ChatMessageDto>
+
+export type ChatTypingData = {
+  user_id: string
+  chat_id: string
+  is_typing: boolean
+}

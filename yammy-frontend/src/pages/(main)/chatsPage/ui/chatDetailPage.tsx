@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { cn } from '@/shared'
 import { ERouteNames } from '@/shared/lib/routeVariables'
 
-import { useChatWebSocket } from '@/entities/chat'
+import { useChatWebSocket, usePresence, usePresenceSubscription } from '@/entities/chat'
 import type { ChatMessage } from '@/entities/chat'
 import { ChatHeader, MessageInput, MessageList } from '@/features/chats'
 import { AppPageLoader } from '@/app/ui/AppPageLoader'
@@ -78,12 +78,16 @@ const ChatDetailPage = () => {
     hasMoreMessages,
     isLoadingMessages,
     scrollToBottomKey,
+    isPeerTyping,
     markMessagesAsRead,
     loadOlderMessages,
     sendTextMessage,
     deleteMessage,
     editMessage,
+    notifyTyping,
+    stopTyping,
   } = useChatWebSocket(matchId)
+  const { getPeerState } = usePresence()
 
   useEffect(() => {
     if (status === 'error') {
@@ -100,6 +104,13 @@ const ChatDetailPage = () => {
   const [menuMessage, setMenuMessage] = useState<ChatMessage | null>(null)
   const [menuRect, setMenuRect] = useState<DOMRect | null>(null)
   const { openProfileDetails } = useMatchesOverlay()
+  const subscribedPeerIds = useMemo(() => (peer ? [peer.id] : []), [peer])
+
+  usePresenceSubscription(subscribedPeerIds)
+
+  const peerPresence = getPeerState(peer?.id, peer?.last_seen ?? null)
+  const isPeerBanned = Boolean(peer?.is_banned)
+  const canInteractWithMessages = !isPeerBanned
 
   const messageStatusFooter = useMemo(() => {
     if (!menuMessage) {
@@ -135,6 +146,9 @@ const ChatDetailPage = () => {
   }
 
   const handleOpenMenu = (id: string, rect: DOMRect) => {
+    if (!canInteractWithMessages) {
+      return
+    }
     const msg = messages.find((m) => m.id === id)
     if (msg) {
       setMenuMessage(msg)
@@ -143,6 +157,9 @@ const ChatDetailPage = () => {
   }
 
   const handleReplyAction = () => {
+    if (!canInteractWithMessages) {
+      return
+    }
     if (menuMessage) {
       setEditingMessage(null)
       setReplyTo({
@@ -155,14 +172,18 @@ const ChatDetailPage = () => {
   }
 
   const canEditMessage = (message: ChatMessage): boolean =>
+    canInteractWithMessages &&
     !message.isDeleted &&
     message.senderId === 'me' &&
     (Boolean(message.text?.trim()) || Boolean(message.images?.length))
 
   const canDeleteMessage = (message: ChatMessage): boolean =>
-    !message.isDeleted && message.senderId === 'me'
+    canInteractWithMessages && !message.isDeleted && message.senderId === 'me'
 
   const handleEditAction = () => {
+    if (!canInteractWithMessages) {
+      return
+    }
     if (menuMessage && canEditMessage(menuMessage)) {
       const hasPhoto = Boolean(menuMessage.images?.length)
       const text = menuMessage.text ?? ''
@@ -178,7 +199,7 @@ const ChatDetailPage = () => {
   }
 
   const handleDeleteAction = () => {
-    if (!menuMessage || !canDeleteMessage(menuMessage)) {
+    if (!canInteractWithMessages || !menuMessage || !canDeleteMessage(menuMessage)) {
       return
     }
 
@@ -195,6 +216,9 @@ const ChatDetailPage = () => {
   }
 
   const handleReplyFromSwipe = (messageId: string) => {
+    if (!canInteractWithMessages) {
+      return
+    }
     const msg = messages.find((m) => m.id === messageId)
     if (!msg) return
     setReplyTo({
@@ -292,115 +316,127 @@ const ChatDetailPage = () => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.24, ease: pageEase }}
         >
-      <ChatHeader
-        name={peer.name}
-        age={peer.age}
-        avatar={peer.main_photo || CHAT_AVATAR_FALLBACK}
-        onAvatarClick={() => {
-          if (!peerProfile) return
-          openProfileDetails({ item: peerProfile, fromChat: true })
-        }}
-      />
+          <ChatHeader
+            name={peer.name}
+            age={peer.age}
+            avatar={peer.main_photo || CHAT_AVATAR_FALLBACK}
+            online={peerPresence.online}
+            isTyping={isPeerTyping && !isPeerBanned}
+            lastSeen={peerPresence.lastSeenAt}
+            isBanned={isPeerBanned}
+            profileLocked={isPeerBanned}
+            onAvatarClick={() => {
+              if (!peerProfile || isPeerBanned) return
+              openProfileDetails({ item: peerProfile, fromChat: true })
+            }}
+          />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <MessageList
-          messages={messages}
-          isMenuOpen={Boolean(menuMessage && menuRect)}
-          hasMoreMessages={hasMoreMessages}
-          isLoadingMessages={isLoadingMessages}
-          scrollToBottomKey={scrollToBottomKey}
-          onMarkMessagesRead={markMessagesAsRead}
-          onLoadOlderMessages={loadOlderMessages}
-          onOpenMenu={handleOpenMenu}
-          onReplyMessage={handleReplyFromSwipe}
-        />
-        <MessageInput
-          onSend={handleSend}
-          onSaveEdit={handleSaveEdit}
-          replyTo={replyTo}
-          editMessage={editingMessage}
-          onCancelReply={() => setReplyTo(null)}
-          onCancelEdit={() => {
-            setEditingMessage(null)
-            setReplyTo(null)
-          }}
-        />
-      </div>
-
-      <AnimatePresence>
-        {menuMessage && menuRect && (
-          <motion.div
-            className="absolute inset-0 z-[60] flex items-start"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
-          >
-            <div
-              className="absolute inset-0 cursor-default bg-black/20"
-              onClick={closeMessageMenu}
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <MessageList
+              messages={messages}
+              isMenuOpen={Boolean(menuMessage && menuRect)}
+              interactionsLocked={isPeerBanned}
+              hasMoreMessages={hasMoreMessages}
+              isLoadingMessages={isLoadingMessages}
+              scrollToBottomKey={scrollToBottomKey}
+              onMarkMessagesRead={markMessagesAsRead}
+              onLoadOlderMessages={loadOlderMessages}
+              onOpenMenu={handleOpenMenu}
+              onReplyMessage={handleReplyFromSwipe}
             />
-            <motion.div
-              style={menuStyle}
-              className="absolute w-[184px] rounded-[24px] bg-card p-1.5 shadow-2xl backdrop-blur-2xl"
-              initial={{ opacity: 0, scale: 0.96, y: 6 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 6 }}
-              transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
-            >
-              <div className="flex flex-col">
-                <button
-                  onClick={handleReplyAction}
-                  className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
-                >
-                  <Reply size={16} strokeWidth={1.2} className="text-foreground" />
-                  <span className="text-[13px] font-[200] text-foreground">Ответить</span>
-                </button>
+            <MessageInput
+              onSend={handleSend}
+              onSaveEdit={handleSaveEdit}
+              replyTo={replyTo}
+              editMessage={editingMessage}
+              disabled={isPeerBanned}
+              disabledPlaceholder="Запрещено писать забаненному пользователю"
+              onTyping={notifyTyping}
+              onStopTyping={stopTyping}
+              onCancelReply={() => setReplyTo(null)}
+              onCancelEdit={() => {
+                setEditingMessage(null)
+                setReplyTo(null)
+              }}
+            />
+          </div>
 
-                {menuMessage && canEditMessage(menuMessage) && (
-                  <button
-                    onClick={handleEditAction}
-                    className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
-                  >
-                    <Edit2 size={16} strokeWidth={1.2} className="text-foreground" />
-                    <span className="text-[13px] font-[200] text-foreground">Изменить</span>
-                  </button>
-                )}
-
-                {menuMessage && canDeleteMessage(menuMessage) && (
-                  <button
-                    onClick={handleDeleteAction}
-                    className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-red-500/10 active:scale-95"
-                  >
-                    <Trash2 size={16} strokeWidth={1.2} className="text-foreground" />
-                    <span className="text-[13px] font-[200] text-foreground">Удалить</span>
-                  </button>
-                )}
-
-                <div className="mx-3 mt-1 h-px bg-card-foreground/15" />
+          <AnimatePresence>
+            {menuMessage && menuRect && (
+              <motion.div
+                className="absolute inset-0 z-[60] flex items-start"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
+              >
                 <div
-                  className={cn(
-                    'flex gap-1.5 px-3 pt-2 pb-1 text-[12px] font-[200] text-foreground',
-                    messageStatusFooter?.sentAt.stacked ? 'items-start' : 'items-center',
-                  )}
+                  className="absolute inset-0 cursor-default bg-black/20"
+                  onClick={closeMessageMenu}
+                />
+                <motion.div
+                  style={menuStyle}
+                  className="absolute w-[184px] rounded-[24px] bg-card p-1.5 shadow-2xl backdrop-blur-2xl"
+                  initial={{ opacity: 0, scale: 0.96, y: 6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96, y: 6 }}
+                  transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
                 >
-                  <CheckCheck className="size-3.5 shrink-0" strokeWidth={2} />
-                  {messageStatusFooter?.sentAt.stacked ? (
-                    <div className="flex flex-col leading-tight">
-                      <span>{messageStatusFooter.label}</span>
-                      <span>{messageStatusFooter.sentAt.line}</span>
+                  <div className="flex flex-col">
+                    {canInteractWithMessages && (
+                      <button
+                        onClick={handleReplyAction}
+                        className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
+                      >
+                        <Reply size={16} strokeWidth={1.2} className="text-foreground" />
+                        <span className="text-[13px] font-[200] text-foreground">Ответить</span>
+                      </button>
+                    )}
+
+                    {menuMessage && canEditMessage(menuMessage) && (
+                      <button
+                        onClick={handleEditAction}
+                        className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
+                      >
+                        <Edit2 size={16} strokeWidth={1.2} className="text-foreground" />
+                        <span className="text-[13px] font-[200] text-foreground">Изменить</span>
+                      </button>
+                    )}
+
+                    {menuMessage && canDeleteMessage(menuMessage) && (
+                      <button
+                        onClick={handleDeleteAction}
+                        className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-red-500/10 active:scale-95"
+                      >
+                        <Trash2 size={16} strokeWidth={1.2} className="text-foreground" />
+                        <span className="text-[13px] font-[200] text-foreground">Удалить</span>
+                      </button>
+                    )}
+
+                    <div className="mx-3 mt-1 h-px bg-card-foreground/15" />
+                    <div
+                      className={cn(
+                        'flex gap-1.5 px-3 pt-2 pb-1 text-[12px] font-[200] text-foreground',
+                        messageStatusFooter?.sentAt.stacked ? 'items-start' : 'items-center',
+                      )}
+                    >
+                      <CheckCheck className="size-3.5 shrink-0" strokeWidth={2} />
+                      {messageStatusFooter?.sentAt.stacked ? (
+                        <div className="flex flex-col leading-tight">
+                          <span>{messageStatusFooter.label}</span>
+                          <span>{messageStatusFooter.sentAt.line}</span>
+                        </div>
+                      ) : messageStatusFooter ? (
+                        <span>
+                          {messageStatusFooter.label} {messageStatusFooter.sentAt.line}
+                        </span>
+                      ) : null}
                     </div>
-                  ) : messageStatusFooter ? (
-                    <span>
-                      {messageStatusFooter.label} {messageStatusFooter.sentAt.line}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
     </AnimatePresence>

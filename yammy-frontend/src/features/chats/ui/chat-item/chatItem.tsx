@@ -1,19 +1,30 @@
 import { memo } from 'react'
 
-import type { ChatListItem } from '@/entities/chat'
+import { formatLastSeenLabel, type ChatListItem } from '@/entities/chat'
 
 interface ChatItemProps {
   chat: ChatListItem
   /** Позже — из WS (inbox), не из GET /chats/ */
   isTyping?: boolean
+  online?: boolean
+  lastSeen?: string | null
   onClick?: () => void
 }
 
-const ChatItemComponent = ({ chat, isTyping = false, onClick }: ChatItemProps) => {
-  const { name, age, lastMessage, avatar, timestamp, unreadCount } = chat
+const ChatItemComponent = ({
+  chat,
+  isTyping = false,
+  online = false,
+  lastSeen,
+  onClick,
+}: ChatItemProps) => {
+  const { name, age, isBanned, lastMessage, avatar, timestamp, unreadCount } = chat
 
-  const title = age !== undefined ? `${name}, ${age}` : name
-  const previewText = isTyping ? 'печатает…' : lastMessage
+  const displayName = isBanned ? 'Аккаунт забанен' : name
+  const title = !isBanned && age !== undefined ? `${displayName}, ${age}` : displayName
+  const fallbackStatus = online ? 'в сети' : formatLastSeenLabel(lastSeen)
+  const previewText = isTyping ? 'печатает…' : lastMessage || fallbackStatus
+  const showPresencePreview = !isTyping && !lastMessage
 
   return (
     <button
@@ -25,6 +36,9 @@ const ChatItemComponent = ({ chat, isTyping = false, onClick }: ChatItemProps) =
         <div className="h-full w-full overflow-hidden rounded-full bg-muted">
           <img src={avatar} alt="" className="h-full w-full object-cover" />
         </div>
+        {online && (
+          <span className="absolute right-0 bottom-0 size-3 rounded-full border-2 border-[#111111] bg-[#FF6BA4]" />
+        )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -36,7 +50,11 @@ const ChatItemComponent = ({ chat, isTyping = false, onClick }: ChatItemProps) =
         </div>
         <div className="flex w-full items-center justify-between gap-2">
           <p
-            className={`min-w-0 flex-1 truncate text-[13px] font-[100] ${isTyping ? 'text-[#FF6BA4]' : 'text-muted-foreground'}`}
+            className={`min-w-0 flex-1 truncate text-[13px] font-[100] ${
+              isTyping || (showPresencePreview && online)
+                ? 'text-[#FF6BA4]'
+                : 'text-muted-foreground'
+            }`}
           >
             {previewText}
           </p>
