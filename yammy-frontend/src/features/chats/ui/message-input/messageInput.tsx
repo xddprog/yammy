@@ -1,7 +1,12 @@
 import { Check, Forward, Pencil, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import { Button, cn, Image, useOverlay } from '@/shared'
+import {
+  isAllowedMessageImageFile,
+  MESSAGE_IMAGE_ACCEPT,
+  MESSAGE_IMAGE_REJECT_HINT,
+} from '@/entities/chat/lib/allowedMessageImageTypes'
+import { Button, cn, Image, showErrorToast, useOverlay } from '@/shared'
 
 export type MessageReplyTarget = { id: string; text: string; name: string }
 export type MessageEditTarget = {
@@ -131,7 +136,13 @@ export const MessageInput = ({
       return
     }
 
-    const files = Array.from(e.target.files ?? [])
+    const files = Array.from(e.target.files ?? []).filter((file) => {
+      if (isAllowedMessageImageFile(file)) {
+        return true
+      }
+      showErrorToast(MESSAGE_IMAGE_REJECT_HINT)
+      return false
+    })
     if (files.length > 0) {
       const remainingSlots = Math.max(0, 2 - selectedFiles.length)
       const picked = files.slice(0, remainingSlots)
@@ -255,7 +266,7 @@ export const MessageInput = ({
       <div className="flex items-end gap-2">
         <input
           type="file"
-          accept="image/*"
+          accept={MESSAGE_IMAGE_ACCEPT}
           multiple
           className="hidden"
           ref={fileInputRef}
