@@ -1,4 +1,4 @@
-import { memo, useCallback, useImperativeHandle, useRef, forwardRef } from 'react'
+import { memo, useCallback, useEffect, useImperativeHandle, useRef, forwardRef } from 'react'
 
 import { useSwipeFeed } from '@/features/matches-feed/hooks/useSwipeFeed'
 import type { MatchFeedAppendHandle } from '@/features/matches-feed/model/matchFeedAppendHandle'
@@ -22,6 +22,8 @@ export interface SwipeFeedProps {
   className?: string
   aspectRatio?: number
   fillHeight?: boolean
+  /** Верхняя карточка в стеке сменилась (для AI highlight и т.п.). */
+  onTopUserChange?: (userId: string | null) => void
 }
 
 const SwipeFeedComponent = forwardRef<MatchFeedAppendHandle, SwipeFeedProps>(function SwipeFeed(
@@ -36,6 +38,7 @@ const SwipeFeedComponent = forwardRef<MatchFeedAppendHandle, SwipeFeedProps>(fun
     className,
     aspectRatio = 3 / 4,
     fillHeight = false,
+    onTopUserChange,
   },
   ref,
 ): React.JSX.Element {
@@ -62,6 +65,11 @@ const SwipeFeedComponent = forwardRef<MatchFeedAppendHandle, SwipeFeedProps>(fun
 
   const topItemRef = useRef(visibleItems[0])
   topItemRef.current = visibleItems[0]
+
+  const topUserId = visibleItems[0]?.user_id ?? null
+  useEffect(() => {
+    onTopUserChange?.(topUserId)
+  }, [onTopUserChange, topUserId])
 
   const handleOpenDetails = useCallback(() => {
     const item = topItemRef.current

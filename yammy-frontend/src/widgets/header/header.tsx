@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { useCallback } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Bot } from 'lucide-react'
 
 import { FiltersOverlayContentMemo } from '@/features/matches-filter'
 import { Button, cn, ERouteNames, useOverlay } from '@/shared'
@@ -12,6 +13,7 @@ const Header = (): JSX.Element => {
   const [searchParams] = useSearchParams()
   const [activeRoute] = location.pathname.split('/').filter(Boolean)
   const isFeedPage = activeRoute === ERouteNames.DASHBOARD_ROUTE
+  const isSwipeMode = searchParams.get('mode') !== 'rate'
 
   const handleFiltersClick = useCallback(() => {
     open({
@@ -41,7 +43,21 @@ const Header = (): JSX.Element => {
         <div />
       )}
 
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
+        {isFeedPage && isSwipeMode && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className={cn(
+              'rounded-full p-0 transition-transform duration-200 active:scale-95 hover:bg-transparent',
+            )}
+            aria-label="AI поиск"
+            onClick={() => navigate(`/${ERouteNames.AI_SEARCH_ROUTE}`)}
+          >
+            <Bot className="size-7" strokeWidth={2  } />
+          </Button>
+        )}
         {isFeedPage && (
           <Button
             type="button"

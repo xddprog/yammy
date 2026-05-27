@@ -11,6 +11,8 @@ const DashboardPage = lazy(() => import('@/pages/(main)/dashboardPage'))
 const ChatsPage = lazy(() => import('@/pages/(main)/chatsPage'))
 const LikesPage = lazy(() => import('@/pages/(main)/likesPage'))
 const ProfilePage = lazy(() => import('@/pages/(main)/profilePage'))
+const AiSearchPage = lazy(() => import('@/pages/(main)/aiSearchPage'))
+const AiSearchResultsPage = lazy(() => import('@/pages/(main)/aiSearchResultsPage'))
 const ChatDetailPage = lazy(() => import('@/pages/(main)/chatsPage/ui/chatDetailPage'))
 const LoginPage = lazy(() => import('@/pages/(auth)/loginPage'))
 const RegisterPage = lazy(() => import('@/pages/(auth)/registerPage'))
@@ -44,6 +46,14 @@ export const routes = createBrowserRouter([
       {
         path: ERouteNames.PROFILE_ROUTE,
         element: <ProfilePage />,
+      },
+      {
+        path: ERouteNames.AI_SEARCH_ROUTE,
+        element: <AiSearchPage />,
+      },
+      {
+        path: ERouteNames.AI_SEARCH_RESULTS_ROUTE,
+        element: <AiSearchResultsPage />,
       },
     ],
   },

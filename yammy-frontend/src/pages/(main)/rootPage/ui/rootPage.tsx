@@ -10,6 +10,9 @@ const RootPage = (): JSX.Element => {
   const location = useLocation()
   const { pathname } = location
   const isChatDetail = pathname.includes('/chats/')
+  const isAiSearch = pathname.includes('/ai-search')
+  const hideNavbar = isChatDetail || isAiSearch
+  const showEdgeGradients = !isChatDetail
 
   return (
     <PresenceProvider>
@@ -24,13 +27,13 @@ const RootPage = (): JSX.Element => {
           >
             <Outlet />
           </motion.main>
-          {!isChatDetail && (
+          {showEdgeGradients && (
             <div className="pointer-events-none fixed -top-1 left-1/2 z-30 h-24 w-full max-w-md -translate-x-1/2 bg-gradient-to-b from-black/55 via-black/25 to-transparent" />
           )}
-          {!isChatDetail && (
+          {showEdgeGradients && !isAiSearch && (
             <div className="pointer-events-none fixed -bottom-2 left-1/2 z-30 h-24 w-full max-w-md -translate-x-1/2 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
           )}
-          {!isChatDetail && (
+          {!hideNavbar && (
             <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[110] flex justify-center px-4 [padding-bottom:calc(2.25rem+env(safe-area-inset-bottom,0px))]">
               <div className="pointer-events-auto relative w-full max-w-md">
                 <Navbar className="relative z-[110] my-0" />
