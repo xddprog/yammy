@@ -134,8 +134,24 @@ export async function getAiSearchJob(id: string): Promise<AiSearchJob | null> {
 export async function getAiSearchFeedUsers(jobId: string): Promise<UserSearchApiUser[]> {
   await delay(80)
   const job = getSnapshot().jobs.find((j) => j.id === jobId)
-  if (!job?.results?.userIds.length) return []
-  return resolveMockAiSearchFeedUsers(job.results.userIds)
+  if (!job) return []
+
+  // Backward compatibility: older stored jobs may not have `results` yet.
+  if (job.status === 'ready' && !job.results?.userIds.length) {
+    const generated = buildMockJobResults(job.id, job.resultCount ?? 8)
+    updateJob(job.id, { results: generated })
+    return resolveMockAiSearchFeedUsers(generated.userIds)
+  }
+
+  if (!job.results?.userIds.length) return []
+
+  const users = resolveMockAiSearchFeedUsers(job.results.userIds)
+  if (users.length > 0) return users
+
+  // Fallback when ids are not found in local mock pool.
+  const generated = buildMockJobResults(job.id, job.resultCount ?? 8)
+  updateJob(job.id, { results: generated })
+  return resolveMockAiSearchFeedUsers(generated.userIds)
 }
 
 export async function createAiSearchJob(query: string): Promise<AiSearchJob> {

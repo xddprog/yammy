@@ -10,7 +10,7 @@ import { Button, cn, ERouteNames } from '@/shared'
 import { stickyTopHeaderClassNames } from '@/widgets'
 
 const pageColumnClassName = cn(
-  'flex h-full min-h-0 flex-col px-4 pt-[95px]',
+  'flex h-full min-h-0 flex-col px-4',
   'pb-[max(1rem,env(safe-area-inset-bottom,0px))]',
 )
 
@@ -100,7 +100,7 @@ const AiSearchResultsPage = (): JSX.Element => {
         <ChevronLeft className="size-5" strokeWidth={2} />
       </button>
 
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1">
         <AiSearchResultsFeedMemo
           items={feedUsers}
           highlights={highlights}

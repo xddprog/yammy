@@ -39,8 +39,7 @@ const AiSearchJobDetailSheetContent = ({
   close,
   onOpenResults,
 }: AiSearchJobDetailSheetContentProps): JSX.Element => {
-  const canOpenResults =
-    job.status === 'ready' && Boolean(job.results?.userIds.length) && Boolean(onOpenResults)
+  const canOpenResults = job.status === 'ready' && Boolean(onOpenResults)
   const isActive = job.status === 'queued' || job.status === 'parsing' || job.status === 'searching'
 
   return (

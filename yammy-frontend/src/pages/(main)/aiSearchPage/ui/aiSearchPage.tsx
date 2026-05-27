@@ -56,7 +56,7 @@ const AiSearchPage = (): JSX.Element => {
             job={job}
             close={close}
             onOpenResults={
-              job.status === 'ready' && job.results?.userIds.length
+              job.status === 'ready'
                 ? () => {
                     close()
                     navigate(aiSearchResultsPath(job.id))

@@ -38,7 +38,7 @@ const AiSearchResultsFeed = ({
   }, [])
 
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col gap-3', className)}>
+    <div className={cn('flex h-full min-h-0 flex-1 flex-col gap-3', className)}>
       <div className="relative min-h-0 flex-1 overflow-x-hidden">
         <SwipeFeed
           items={items}
