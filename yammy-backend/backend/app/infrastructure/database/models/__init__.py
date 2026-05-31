@@ -11,6 +11,7 @@ from .message import Message
 from .payment import Payment
 from .report import Report
 from .rating import Rating
+from .ai_search_history import AiSearchHistory
 
 
 __all__ = [
@@ -29,4 +30,5 @@ __all__ = [
     "Payment",
     "Report",
     "Rating",
+    "AiSearchHistory",
 ]

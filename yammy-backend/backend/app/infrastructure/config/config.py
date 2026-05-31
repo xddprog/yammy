@@ -115,6 +115,25 @@ class GigDataConfig(Config):
     REQUEST_TIMEOUT_SUGGEST_EDUCATIONS: int = Field(default=10)
 
 
+class OpenRouterConfig(Config):
+    model_config = _settings_config(env_prefix="OPENROUTER_CONFIG__")
+    API_URL: str = Field(default="https://openrouter.ai/api/v1")
+    API_KEY: str = Field(default="")
+    MODEL: str = Field(default="openai/gpt-oss-20b:free")
+    REQUEST_TIMEOUT: int = Field(default=90)
+    MAX_RETRIES: int = Field(default=5)
+
+
+class AiSearchConfig(Config):
+    model_config = _settings_config(env_prefix="AI_SEARCH_CONFIG__")
+    MIN_RESULTS: int = Field(default=30)
+    CANDIDATE_BATCH_SIZE: int = Field(default=100)
+    MAX_LLM_CALLS_PER_HISTORY_ITEM: int = Field(default=4)
+    DAILY_LIMIT_FREE: int = Field(default=100)
+    DAILY_LIMIT_VIP: int = Field(default=3)
+    DAILY_LIMIT_PREMIUM: int = Field(default=6)
+
+
 class Settings(Config):
     telegram_config: TelegramConfig = Field(default_factory=TelegramConfig)
     database_config: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -124,6 +143,8 @@ class Settings(Config):
     redis_config: RedisConfig = Field(default_factory=RedisConfig)
     elasticsearch_config: ElasticsearchConfig = Field(default_factory=ElasticsearchConfig)
     gigdata_config: GigDataConfig = Field(default_factory=GigDataConfig)
+    openrouter_config: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
+    ai_search_config: AiSearchConfig = Field(default_factory=AiSearchConfig)
 
 
 settings = Settings()
@@ -137,10 +158,12 @@ YANDEX_PAY_CONFIG = settings.yandex_pay_config
 REDIS_CONFIG = settings.redis_config
 ELASTICSEARCH_CONFIG = settings.elasticsearch_config
 GIGDATA_CONFIG = settings.gigdata_config
+OPENROUTER_CONFIG = settings.openrouter_config
+AI_SEARCH_CONFIG = settings.ai_search_config
 
 
 __all__ = [
     "BASE_DIR", "TELEGRAM_CONFIG", "DB_CONFIG",
     "JWT_CONFIG", "APP_CONFIG", "YANDEX_PAY_CONFIG", "ELASTICSEARCH_CONFIG",
-    "GIGDATA_CONFIG",
+    "GIGDATA_CONFIG", "OPENROUTER_CONFIG", "AI_SEARCH_CONFIG",
 ]

@@ -2,9 +2,14 @@ import { X } from 'lucide-react'
 import type { JSX } from 'react'
 import { memo } from 'react'
 
-import type { AiSearchJob } from '@/entities/ai-search'
+import {
+  canOpenAiSearchResults,
+  shouldShowAiSearchFailure,
+  type AiSearchJob,
+} from '@/entities/ai-search'
 import { Button } from '@/shared'
 
+import { getAiSearchFailureMessage } from '../lib/aiSearchUserMessages'
 import { formatJobDate, formatJobStatus } from '../lib/formatJobStatus'
 
 export interface AiSearchJobDetailSheetContentProps {
@@ -28,9 +33,10 @@ function formatDuration(job: AiSearchJob): string {
 }
 
 function getMatchQuality(job: AiSearchJob): string {
-  if (job.status !== 'ready' || job.resultCount == null) return 'Оцениваем'
-  if (job.resultCount >= 12) return 'Высокое'
-  if (job.resultCount >= 6) return 'Среднее'
+  const count = job.resultCount ?? 0
+  if (count <= 0) return 'Оцениваем'
+  if (count >= 12) return 'Высокое'
+  if (count >= 6) return 'Среднее'
   return 'Точечное'
 }
 
@@ -39,8 +45,9 @@ const AiSearchJobDetailSheetContent = ({
   close,
   onOpenResults,
 }: AiSearchJobDetailSheetContentProps): JSX.Element => {
-  const canOpenResults = job.status === 'ready' && Boolean(onOpenResults)
+  const canOpenResults = canOpenAiSearchResults(job) && Boolean(onOpenResults)
   const isActive = job.status === 'queued' || job.status === 'parsing' || job.status === 'searching'
+  const statusLabel = canOpenAiSearchResults(job) ? 'Готово' : formatJobStatus(job.status)
 
   return (
     <div className="w-full max-w-md rounded-t-[28px] border-t border-border/30 bg-background px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] shadow-[0_-8px_32px_rgba(0,0,0,0.35)]">
@@ -48,7 +55,7 @@ const AiSearchJobDetailSheetContent = ({
         <div className="min-w-0 flex-1">
           <h2 className="text-[15px] font-[200] text-foreground">Детали запуска</h2>
           <p className="mt-1 text-[12px] font-[200] text-muted-foreground">
-            {formatJobStatus(job.status)} · {formatJobDate(job.createdAt)}
+            {statusLabel} · {formatJobDate(job.createdAt)}
           </p>
         </div>
         <button
@@ -61,8 +68,10 @@ const AiSearchJobDetailSheetContent = ({
         </button>
       </div>
 
-      {job.errorMessage && (
-        <p className="mb-3 text-[13px] font-[200] text-red-400">{job.errorMessage}</p>
+      {shouldShowAiSearchFailure(job) && (
+        <p className="mb-3 text-[13px] font-[200] text-red-400">
+          {getAiSearchFailureMessage(job.errorMessage)}
+        </p>
       )}
 
       {isActive && (

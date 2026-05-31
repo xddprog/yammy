@@ -12,6 +12,7 @@ from app.core.dto.admin import BaseAdminSchema
 from app.infrastructure.database.adapters.pg_connection import DatabaseConnection
 from app.infrastructure.database.models.user import User
 from app.core.clients.elasticsearch_client import ElasticsearchClient
+from app.core.clients.openrouter_client import OpenRouterClient
 from app.core.clients.telegram_client import TelegramClient
 from app.core.services.ml_service import MLService
 
@@ -105,6 +106,19 @@ class RequestProvider(Provider):
         return services.ReportService(
             report_repository=repositories.ReportRepository(session=session),
             user_repository=repositories.UserRepository(session=session),
+        )
+
+    @provide(scope=Scope.REQUEST)
+    def get_ai_search_service(
+        self,
+        session: AsyncSession,
+        openrouter_client: OpenRouterClient,
+    ) -> services.AiSearchService:
+        return services.AiSearchService(
+            ai_search_history_repository=repositories.AiSearchHistoryRepository(session=session),
+            user_repository=repositories.UserRepository(session=session),
+            like_repository=repositories.LikeRepository(session=session),
+            openrouter_client=openrouter_client,
         )
 
     @provide(scope=Scope.REQUEST)

@@ -45,3 +45,12 @@ class RateLimitExceededException(BaseAPIException):
     def __init__(self, detail: str = detail) -> None:
         self.detail = detail
         super().__init__(status_code=self.status_code, detail=self.detail)
+
+
+class ConflictException(BaseAPIException):
+    status_code = status.HTTP_409_CONFLICT
+    detail = "Конфликт состояния ресурса"
+
+    def __init__(self, detail: str = detail) -> None:
+        self.detail = detail
+        super().__init__(status_code=self.status_code, detail=self.detail)

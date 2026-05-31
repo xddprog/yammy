@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react'
 import type { JSX } from 'react'
 
-import type { AiSearchJob } from '@/entities/ai-search'
+import { canOpenAiSearchResults, type AiSearchJob } from '@/entities/ai-search'
 import { cn } from '@/shared'
 
 import { formatJobStatus } from '../lib/formatJobStatus'
@@ -13,7 +13,7 @@ interface AiSearchHistoryRowProps {
 
 export const AiSearchHistoryRow = ({ job, onClick }: AiSearchHistoryRowProps): JSX.Element => {
   const prompt = job.queryText.trim() || job.title
-  const statusLabel = formatJobStatus(job.status)
+  const statusLabel = canOpenAiSearchResults(job) ? 'Готово' : formatJobStatus(job.status)
 
   return (
     <button

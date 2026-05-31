@@ -3,10 +3,8 @@ import type { JSX } from 'react'
 
 import { Button } from '@/shared'
 
-import type { AiSearchQuota } from '@/entities/ai-search'
-
 interface AiSearchQuotaCardProps {
-  quota: AiSearchQuota
+  remainingToday: number
   onStart: () => void
   onSubscribe: () => void
   onBuyRuns: () => void
@@ -19,23 +17,13 @@ function formatRunsCount(count: number): string {
 }
 
 export const AiSearchQuotaCard = ({
-  quota,
+  remainingToday,
   onStart,
   onSubscribe,
   onBuyRuns,
 }: AiSearchQuotaCardProps): JSX.Element => {
-  const totalRuns = quota.remainingToday + quota.creditsBalance
-  const isPremiumTier = quota.tier === 'vip' || quota.tier === 'premium'
-
-  const pitch =
-    quota.tier === 'free' && quota.dailyLimit === 0
-      ? 'Умный поиск доступен с подпиской или пакетом запусков'
-      : quota.dailyLimit > 0
-        ? `В подписке ${quota.dailyLimit} запусков в день`
-        : null
-
   const renderCta = (): JSX.Element => {
-    if (totalRuns > 0) {
+    if (remainingToday > 0) {
       return (
         <Button
           type="button"
@@ -49,21 +37,6 @@ export const AiSearchQuotaCard = ({
       )
     }
 
-    if (isPremiumTier) {
-      return (
-        <Button
-          type="button"
-          variant="default"
-          size="default"
-          className="w-full rounded-full"
-          onClick={onBuyRuns}
-        >
-          Купить запуски
-        </Button>
-      )
-    }
-
-    // Free: сначала подписка, затем покупки — немного "подглядывает" вторая кнопка.
     const edgeInsetClass = 'w-3 shrink-0 snap-start'
     const edgeInsetEndClass = 'w-3 shrink-0 snap-end'
     const peekItemClass = 'shrink-0 snap-start min-w-[calc(100%-3.5rem)]'
@@ -106,15 +79,13 @@ export const AiSearchQuotaCard = ({
         <Sparkles className="size-10 shrink-0 text-[#FF6BA4]" strokeWidth={1.5} />
       </div>
 
-      {pitch && (
-        <p className="mb-3 text-[13px] font-[200] leading-snug text-muted-foreground">{pitch}</p>
-      )}
-
       <div className="flex items-end justify-between gap-3">
         <p className="text-[11px] font-[300] uppercase tracking-[0.04em] text-muted-foreground">
-          Осталось
+          Осталось сегодня
         </p>
-        <p className="text-right text-[13px] font-bold leading-none">{formatRunsCount(totalRuns)}</p>
+        <p className="text-right text-[13px] font-bold leading-none">
+          {formatRunsCount(remainingToday)}
+        </p>
       </div>
 
       <div className="mt-4">{renderCta()}</div>

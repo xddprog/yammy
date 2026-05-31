@@ -1,34 +1,22 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 import {
   hasActiveAiSearchJobs,
   listAiSearchJobs,
-  subscribeAiSearchStore,
-} from '../api/mockAiSearchApi'
+} from '../api/aiSearchService'
 import { aiSearchQueryKeys } from '../lib/aiSearchQueryKeys'
 
 export function useAiSearchJobs() {
-  const queryClient = useQueryClient()
-
-  useEffect(() => {
-    return subscribeAiSearchStore(() => {
-      void queryClient.invalidateQueries({ queryKey: aiSearchQueryKeys.all })
-    })
-  }, [queryClient])
-
-  const query = useQuery({
+  return useQuery({
     queryKey: aiSearchQueryKeys.jobs(),
     queryFn: listAiSearchJobs,
     staleTime: 0,
     refetchInterval: (q) => {
-      const jobs = q.state.data
+      const jobs = q.state.data?.jobs
       if (jobs && hasActiveAiSearchJobs(jobs)) {
-        return 2000
+        return 5000
       }
       return false
     },
   })
-
-  return query
 }

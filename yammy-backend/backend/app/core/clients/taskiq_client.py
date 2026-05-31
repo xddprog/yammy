@@ -42,7 +42,9 @@ def _setup_dishka():
     setup_dishka(container, broker)
 
 
+def _register_tasks() -> None:
+    import app.core.tasks  # noqa: F401 — регистрация @broker.task для worker
+
+
 _setup_dishka()
-
-
-from app.core.tasks.flush_dislikes_task import flush_dislikes_to_database
+_register_tasks()

@@ -6,6 +6,7 @@ from app.core.repositories.appearance_rating_repository import AppearanceRatingR
 from app.core.repositories.chat_repository import ChatRepository
 from app.core.repositories.message_repository import MessageRepository
 from app.core.repositories.report_repository import ReportRepository
+from app.core.repositories.ai_search_history_repository import AiSearchHistoryRepository
 
 __all__ = [
     "AdminRepository", 
@@ -16,4 +17,5 @@ __all__ = [
     "ChatRepository",
     "MessageRepository",
     "ReportRepository",
+    "AiSearchHistoryRepository",
 ]

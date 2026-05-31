@@ -208,7 +208,6 @@ class MLService(metaclass=SingletonMeta):
         return result
 
     def clip_moderation_rows_detail(self, image_bytes: bytes) -> list[dict[str, object]]:
-        """Per-flag CLIP unsafe-vs-safe row scores (for benchmarks / diagnostics)."""
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         device = next(self.clip_model.parameters()).device
         img_inputs = self.clip_processor(images=image, return_tensors="pt")

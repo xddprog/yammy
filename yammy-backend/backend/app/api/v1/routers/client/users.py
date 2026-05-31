@@ -7,8 +7,14 @@ from app.utils.helpers.rate_limit import RateLimited
 from pyrate_limiter import Duration
 
 from app.core.dto.pagination import PaginationRequestModel, PaginationResponseModel
+from app.core.dto.ai_search import (
+    AiSearchCreateRequest,
+    AiSearchFeedResponse,
+    AiSearchHistoryItemSchema,
+    AiSearchHistoryListResponse,
+)
 from app.core.dto.search import SearchRequest
-from app.core.services import ModerationService, SearchService, UserService
+from app.core.services import AiSearchService, ModerationService, SearchService, UserService
 from app.core.dto.user import (
     ImageOrderUpdateSchema,
     UserPhoto,
@@ -17,10 +23,13 @@ from app.core.dto.user import (
     UserUpdateRequest,
 )
 from app.infrastructure.database.models.user import User
+from app.infrastructure.logging.logger import get_logger
 from app.api.v1.dependency.providers.request import get_current_user
+from app.core.tasks.process_ai_search_history_task import process_ai_search_history
 
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.get(
@@ -66,6 +75,63 @@ async def search_users(
     current_user: Annotated[User, Depends(get_current_user)]
 ) -> list[UserSearchResponseSchema]:
     return await search_service.search_users(search_request, current_user)
+
+
+@router.post(
+    "/search/ai/history",
+    response_model=AiSearchHistoryItemSchema,
+)
+@inject
+async def create_ai_search_history_item(
+    body: AiSearchCreateRequest,
+    ai_search_service: FromDishka[AiSearchService],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> AiSearchHistoryItemSchema:
+    item = await ai_search_service.create_history_item(current_user, body)
+    try:
+        await process_ai_search_history.kiq(str(item.id))
+    except Exception:
+        logger.exception("ai_search_enqueue_failed", history_id=str(item.id))
+        await ai_search_service.process_history_item(item.id)
+    return item
+
+
+@router.get(
+    "/search/ai/history",
+    response_model=AiSearchHistoryListResponse,
+)
+@inject
+async def list_ai_search_history_items(
+    ai_search_service: FromDishka[AiSearchService],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> AiSearchHistoryListResponse:
+    return await ai_search_service.list_history(current_user)
+
+
+@router.get(
+    "/search/ai/history/{history_id}",
+    response_model=AiSearchHistoryItemSchema,
+)
+@inject
+async def get_ai_search_history_item(
+    history_id: UUID,
+    ai_search_service: FromDishka[AiSearchService],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> AiSearchHistoryItemSchema:
+    return await ai_search_service.get_history_item(current_user, history_id)
+
+
+@router.get(
+    "/search/ai/history/{history_id}/feed",
+    response_model=AiSearchFeedResponse,
+)
+@inject
+async def get_ai_search_history_feed(
+    history_id: UUID,
+    ai_search_service: FromDishka[AiSearchService],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> AiSearchFeedResponse:
+    return await ai_search_service.get_feed(current_user, history_id)
 
 
 @router.put(

@@ -1,14 +1,17 @@
 export type {
   AiSearchJob,
-  AiSearchJobResults,
+  AiSearchFeedData,
+  AiSearchHistoryList,
   AiSearchJobStatus,
-  AiSearchQuota,
-  AiSearchSubscriptionTier,
   ParsedSearchPreview,
 } from './types'
 export { useAiSearchJobs } from './hooks/useAiSearchJobs'
 export { useAiSearchJob, useAiSearchFeed } from './hooks/useAiSearchJob'
-export { useAiSearchQuota } from './hooks/useAiSearchQuota'
 export { useCreateAiSearchJob } from './hooks/useCreateAiSearchJob'
-export { getAiSearchJob, markAiSearchJobApplied } from './api/mockAiSearchApi'
+export { getAiSearchJob } from './api/aiSearchService'
 export { aiSearchResultsPath } from './lib/aiSearchPaths'
+export {
+  canOpenAiSearchResults,
+  hasAiSearchResults,
+  shouldShowAiSearchFailure,
+} from './lib/aiSearchJobStatus'

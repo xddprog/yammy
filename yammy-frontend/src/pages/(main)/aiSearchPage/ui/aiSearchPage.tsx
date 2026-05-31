@@ -4,8 +4,12 @@ import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import type { AiSearchJob } from '@/entities/ai-search'
-import { aiSearchResultsPath, useAiSearchJobs, useAiSearchQuota, useCreateAiSearchJob } from '@/entities/ai-search'
-import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
+import {
+  aiSearchResultsPath,
+  canOpenAiSearchResults,
+  useAiSearchJobs,
+  useCreateAiSearchJob,
+} from '@/entities/ai-search'
 import {
   AI_SEARCH_START_SHEET_PANEL_CLASS,
   AiSearchHistoryRow,
@@ -21,13 +25,11 @@ const STUB_SOON_MESSAGE = 'Скоро будет доступно'
 const AiSearchPage = (): JSX.Element => {
   const navigate = useNavigate()
   const { open } = useOverlay()
-  const { data: profile } = useUserProfile()
-  const quotaQuery = useAiSearchQuota(profile?.subscription_tier, profile?.has_active_subscription)
   const jobsQuery = useAiSearchJobs()
   const createJob = useCreateAiSearchJob()
 
-  const quota = quotaQuery.data
-  const jobs = jobsQuery.data ?? []
+  const jobs = jobsQuery.data?.jobs ?? []
+  const remainingToday = jobsQuery.data?.remainingToday
 
   const openStartSheet = useCallback(() => {
     open({
@@ -56,7 +58,7 @@ const AiSearchPage = (): JSX.Element => {
             job={job}
             close={close}
             onOpenResults={
-              job.status === 'ready'
+              canOpenAiSearchResults(job)
                 ? () => {
                     close()
                     navigate(aiSearchResultsPath(job.id))
@@ -96,9 +98,9 @@ const AiSearchPage = (): JSX.Element => {
             <ChevronLeft className="size-5" strokeWidth={2} />
           </button>
 
-          {quota && (
+          {remainingToday !== undefined && (
             <AiSearchQuotaCard
-              quota={quota}
+              remainingToday={remainingToday}
               onStart={openStartSheet}
               onSubscribe={handleStubSubscribe}
               onBuyRuns={handleStubBuyRuns}

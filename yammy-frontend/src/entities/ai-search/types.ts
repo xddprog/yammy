@@ -1,3 +1,5 @@
+import type { UserSearchApiUser } from '@/entities/user/types/types'
+
 /** Статусы job (контракт для будущего API). */
 export type AiSearchJobStatus =
   | 'queued'
@@ -7,8 +9,6 @@ export type AiSearchJobStatus =
   | 'failed'
   | 'cancelled'
 
-export type AiSearchSubscriptionTier = 'free' | 'vip' | 'premium'
-
 /** Распознанные фильтры после LLM (упрощённый preview / apply). */
 export interface ParsedSearchPreview {
   gender?: 'male' | 'female' | null
@@ -16,12 +16,6 @@ export interface ParsedSearchPreview {
   ageMax?: number | null
   city?: string | null
   relationshipGoal?: string | null
-}
-
-/** Результат AI-поиска: порядок ленты + подписи к анкетам (хранится на бэке). */
-export interface AiSearchJobResults {
-  userIds: string[]
-  highlights: Record<string, string>
 }
 
 export interface AiSearchJob {
@@ -35,12 +29,14 @@ export interface AiSearchJob {
   errorMessage?: string | null
   parsed?: ParsedSearchPreview | null
   resultCount?: number | null
-  results?: AiSearchJobResults | null
 }
 
-export interface AiSearchQuota {
+export interface AiSearchFeedData {
+  users: UserSearchApiUser[]
+  highlights: Record<string, string>
+}
+
+export interface AiSearchHistoryList {
+  jobs: AiSearchJob[]
   remainingToday: number
-  creditsBalance: number
-  tier: AiSearchSubscriptionTier
-  dailyLimit: number
 }

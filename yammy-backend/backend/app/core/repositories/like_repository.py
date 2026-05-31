@@ -75,6 +75,12 @@ class LikeRepository(SqlAlchemyRepository[Like]):
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
+    async def get_outgoing_interaction_user_ids(self, user_id: UUID) -> list[UUID]:
+        result = await self.session.execute(
+            select(Like.user_to_id).where(Like.user_from_id == user_id)
+        )
+        return list(result.scalars().all())
+
     async def get_all_seen_user_ids(self, user_id: UUID) -> list[UUID]:
         query_sent = select(Like.user_to_id).where(Like.user_from_id == user_id)
         query_received = select(Like.user_from_id).where(Like.user_to_id == user_id)

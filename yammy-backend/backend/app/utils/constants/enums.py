@@ -103,3 +103,9 @@ class JobSphereEnum(str, Enum):
     
     AGRICULTURE = "agriculture"
     OTHER = "other"
+
+
+class AiSearchHistoryStatusEnum(str, Enum):
+    SEARCHING = "searching"
+    READY = "ready"
+    FAILED = "failed"

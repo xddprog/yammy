@@ -75,6 +75,21 @@ class UserRepository(SqlAlchemyRepository[User]):
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def get_users_for_search_feed_by_ids(self, user_ids: list[UUID]) -> list[User]:
+        if not user_ids:
+            return []
+        result = await self.session.execute(
+            select(User)
+            .where(User.id.in_(user_ids), User.is_banned == False)
+            .options(
+                selectinload(User.photos),
+                selectinload(User.filters)
+                .selectinload(FilterOption.subcategory)
+                .selectinload(FilterSubcategory.category),
+            )
+        )
+        return list(result.scalars().all())
+
     async def update_filters(self, user_id: UUID, filters_ids: list[UUID]) -> None:
         delete_filters_query = delete(UserFilterAssociation).where(UserFilterAssociation.user_id == user_id)
         insert_query = insert(UserFilterAssociation).values(

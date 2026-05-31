@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     try:
         db_connection = DatabaseConnection()
         es_client = ElasticsearchClient()
-        # taskiq_client = TaskiqClient()
+        taskiq_client = TaskiqClient()
         redis_client = RedisClient()
 
         seeded_new_users = await db_connection.init_test_db(clear_db=False)
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
         if seeded_new_users:
             await clear_elasticsearch_users_index(es_client)
         await es_client.init_indices()
-        # await taskiq_client.startup()
+        await taskiq_client.startup()
 
         async with await db_connection.get_session() as session:
             await sync_test_users_to_es(
@@ -49,6 +49,6 @@ async def lifespan(app: FastAPI):
     # logger.info("taskiq_client_initialized")
     yield
 
-    # await taskiq_client.shutdown()
+    await taskiq_client.shutdown()
     await redis_client.clear()
     logger.info("application_shutdown")

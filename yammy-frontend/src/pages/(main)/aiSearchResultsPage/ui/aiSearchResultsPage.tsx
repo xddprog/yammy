@@ -3,7 +3,7 @@ import type { JSX } from 'react'
 import { useCallback, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { useAiSearchFeed, useAiSearchJob } from '@/entities/ai-search'
+import { canOpenAiSearchResults, useAiSearchFeed, useAiSearchJob } from '@/entities/ai-search'
 import { AppPageLoader } from '@/app/ui/AppPageLoader'
 import { AiSearchResultsFeedMemo } from '@/features/ai-search'
 import { Button, cn, ERouteNames } from '@/shared'
@@ -26,15 +26,15 @@ const AiSearchResultsPage = (): JSX.Element => {
   const [feedEnded, setFeedEnded] = useState(false)
 
   const job = jobQuery.data
-  const feedUsers = feedQuery.data ?? []
-  const highlights = job?.results?.highlights ?? {}
+  const feedUsers = feedQuery.data?.users ?? []
+  const highlights = feedQuery.data?.highlights ?? {}
 
   const goBack = useCallback(() => {
     navigate(`/${ERouteNames.AI_SEARCH_ROUTE}`)
   }, [navigate])
 
   const isLoading = jobQuery.isPending || feedQuery.isPending
-  const isReady = job?.status === 'ready'
+  const isReady = job != null && canOpenAiSearchResults(job)
   const hasFeed = feedUsers.length > 0
 
   if (isLoading) {

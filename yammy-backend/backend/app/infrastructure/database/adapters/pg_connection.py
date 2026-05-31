@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.infrastructure.config.config import DB_CONFIG
 from app.infrastructure.database.models.base import Base
+import app.infrastructure.database.models  # noqa: F401
 from app.utils.loaders.test_db import init_test_db
 from app.infrastructure.logging.logger import get_logger
 

@@ -1,18 +1,9 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
-import { getAiSearchFeedUsers, getAiSearchJob, subscribeAiSearchStore } from '../api/mockAiSearchApi'
+import { getAiSearchFeed, getAiSearchJob } from '../api/aiSearchService'
 import { aiSearchQueryKeys } from '../lib/aiSearchQueryKeys'
 
 export function useAiSearchJob(jobId: string | undefined) {
-  const queryClient = useQueryClient()
-
-  useEffect(() => {
-    return subscribeAiSearchStore(() => {
-      void queryClient.invalidateQueries({ queryKey: aiSearchQueryKeys.all })
-    })
-  }, [queryClient])
-
   return useQuery({
     queryKey: aiSearchQueryKeys.job(jobId ?? ''),
     queryFn: () => getAiSearchJob(jobId!),
@@ -22,17 +13,9 @@ export function useAiSearchJob(jobId: string | undefined) {
 }
 
 export function useAiSearchFeed(jobId: string | undefined) {
-  const queryClient = useQueryClient()
-
-  useEffect(() => {
-    return subscribeAiSearchStore(() => {
-      void queryClient.invalidateQueries({ queryKey: aiSearchQueryKeys.all })
-    })
-  }, [queryClient])
-
   return useQuery({
     queryKey: aiSearchQueryKeys.feed(jobId ?? ''),
-    queryFn: () => getAiSearchFeedUsers(jobId!),
+    queryFn: () => getAiSearchFeed(jobId!),
     enabled: Boolean(jobId),
     staleTime: 0,
   })
