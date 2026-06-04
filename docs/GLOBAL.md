@@ -49,6 +49,16 @@ infrastructure/database/models/  → ORM без логики
 
 `entities/` (API, типы), `features/` (UI), `pages/`, `widgets/`, `shared/`. `ky` + `authApi`, `throwApiError`.
 
+**Старт приложения:** `main.tsx` → `ensureAppAuth()` (`bootstrapTelegramAuth.ts`) до рендера; `TelegramProvider` грузит `telegram-web-app.js` асинхронно (без блокировки белым экраном).
+
+| Режим | Поведение |
+|-------|-----------|
+| **Prod TMA** | `POST /auth/telegram` с `initData`; есть user → access+refresh; нет user → **onboarding JWT** (~2ч, без refresh) |
+| **DEV** | `VITE_DEV_AUTH=onboarding` → `POST /auth/dev/onboarding`; иначе dev token по `DEV_STUB_TELEGRAM_ID` (см. `config.py`) |
+| **DEV без TMA** | `AppAuthGate` пропускает без токена; для API нужен dev-токен |
+
+`AppAuthGate`: onboarding JWT → только `/onboarding`; полная сессия → редирект с `/onboarding` на `/dashboard`; `GET /users/` при бане.
+
 ---
 
 ## Стек и инфраструктура
@@ -76,9 +86,10 @@ infrastructure/database/models/  → ORM без логики
 | Метод | Путь | Назначение |
 |-------|------|------------|
 | POST | `/telegram` | TMA: полная анкета → access + refresh; иначе onboarding access (~2ч, без refresh) |
-| POST | `/onboarding/finish` | multipart: `profile` (JSON `OnboardingFinishRequest` с `photos[{order,is_main}]`), `images[]` (в том же порядке) → user + фото + полные JWT |
+| POST | `/onboarding/finish` | multipart: `profile` (JSON: имя, возраст, пол, город, цель, `education_level`, опц. `education_details`, bio, `filters[]` uuid опций, `notifications_enabled`, `photos[{order,is_main}]`), `images[]` → user + фото + полные JWT |
 | GET | `/onboarding/filters` | Каталог фильтров (onboarding JWT) |
 | GET | `/onboarding/cities` | Подсказки городов (onboarding JWT) |
+| POST | `/auth/dev/onboarding` | Dev-only: onboarding JWT, если telegram_id ещё нет в БД |
 | POST | `/moderate/text` | Проверка текста при онбординге (без сохранения) |
 | POST | `/moderate/image` | Проверка фото при выборе (`?is_main=`, без сохранения) |
 | POST | `/dev/token` | Dev-only: токен по `user_id` |
@@ -108,7 +119,7 @@ infrastructure/database/models/  → ORM без логики
 
 Основная лента на **дашборде** (`?mode=swipe` по умолчанию).
 
-**Тело `SearchRequest`:** пол, возраст, цель, город, сферы работы, образование, **filters** (теги `category:sub:code` или nested dict), веса appearance/social/personality, `only_online`, `only_premium`, `show_seen`.
+**Тело `SearchRequest`:** пол, возраст, цель, город, сферы работы, образование, **filters** (nested `category_slug → sub_slug → option_slug[]`), веса appearance/social/personality, `only_online`, `show_seen` (поле `only_premium` в API есть, в UI фильтра ленты **нет**).
 
 **Логика (`SearchService`):**
 
@@ -118,6 +129,19 @@ infrastructure/database/models/  → ORM без логики
 - Fallback по городу, если мало результатов.
 
 **Фронт:** `useUsersSearch`, `SwipeFeed`, фильтры в оверлее (`features/matches-filter`), `Header` — кнопка фильтров и переключение swipe/rate по клику на лого.
+
+#### Фильтры ленты (фронт) — `features/matches-filter`
+
+| Поведение | Детали |
+|-----------|--------|
+| Черновик vs applied | В оверлее правится `state`; лента и API — только `appliedState` после **«Применить»** |
+| Сохранение | `localStorage` ключ `yammy_feed_filters_v1`: пол, `ageRange`, город, цель, работа, образование, вуз, приоритеты (веса), dynamic `filters` |
+| Загрузка | При старте `FiltersProvider` → `loadAppliedFiltersState()`; парсинг по полям (битый `priorities` не сбрасывает весь объект) |
+| Каталог с бэка | После `GET /filters/` (или onboarding) — `reconcileFeedFiltersWithMetadata`: убрать slug категорий/опций, которых нет в актуальном каталоге (админка) |
+| Закрытие оверлея | **×** и свайп вниз — откат черновика к `appliedState` (**не** `reset`, storage не трогается) |
+| Сброс | Только явный сброс в UI → дефолты + `clearPersistedFeedFilters()` |
+
+Код: `FiltersContext.tsx`, `persistedFeedFilters.ts`, `reconcileFeedFiltersWithMetadata.ts`, `filtersOverlayContent.tsx`, `useFiltersSearchParams` → `mapFiltersToSearchRequest`.
 
 ---
 
@@ -293,9 +317,24 @@ infrastructure/database/models/  → ORM без логики
 | `/profile` | `profilePage` | Просмотр/редактирование анкеты и фото |
 | `/ai-search` | `aiSearchPage` | История AI jobs, запуск нового поиска |
 | `/ai-search/:jobId/results` | `aiSearchResultsPage` | Лента результатов + highlight |
-| `/onboarding` | `onboardingPage` | Первичная регистрация (4 шага, без navbar) |
+| `/onboarding` | `onboardingPage` | Регистрация: 4 шага, без navbar; черновик в `sessionStorage` (`yammy_onboarding_*`) |
 
-**Общие UI:** `widgets/header` (фильтры, AI, swipe↔rate), `features/matches-feed` (карточки, свайп, оверлей, report), `features/matches-filter`, `features/likes-feed`, `features/ai-search`.
+**Онбординг (фронт):**
+
+| Шаг | Содержание |
+|-----|------------|
+| 1 | Имя, возраст, пол |
+| 2 | Фото (`ProfilePhotosEditor`, `storage=local`, файлы в `photoFilesRef`; модерация через `POST /auth/moderate/*`) |
+| 3 | Город, образование, цель; при «Высшее» — поле ВУЗ |
+| 4 | Характеристики (чипы из `GET /auth/onboarding/filters`), bio |
+
+Финиш: `completeOnboarding` → `POST /auth/onboarding/finish` → очистка session storage → **`replace` на `/dashboard`** (экрана «Готово» нет). `notifications_enabled: true` по умолчанию.
+
+**Профиль (`profilePage`):** просмотр / редактирование; `ProfilePhotosEditor` на сервере (upload с rollback при ошибке модерации/API); меню главного фото как в чате (portal, blur). После успешного `PUT /users/` — `filters.persist(draft)` синхронизирует пересекающиеся поля ленты в `yammy_feed_filters_v1`.
+
+**Подсказка заполнить профиль (`features/profile-fill-prompt`):** на дашборде (swipe), если `filter_option_ids.length < 3`; модалка по центру ленты, blur как у оверлея профиля; «Заполнить» → `/profile` с `state.openEdit`; закрытие — до следующего свайпа (временно; задел под «раз в день» — `profileFillPromptStorage.ts`).
+
+**Общие UI:** `widgets/header` (фильтры, AI, swipe↔rate), `features/matches-feed`, `features/matches-filter`, `features/likes-feed`, `features/ai-search`, `features/profile-fill-prompt`.
 
 ---
 
@@ -341,10 +380,18 @@ cd yammy-frontend && npm run dev
 cd yammy-backend/backend && python3 -m compileall app
 ```
 
-Секреты — только `.env`. SQL для `likes.message` при старой БД: добавить колонку вручную, если модель уже с `message`.
+Секреты — только `.env`. Локально для dev-заглушки Telegram: **`APP_CONFIG__ENVIRONMENT=development`** (при `production` stub `initData` даёт 400).
+
+SQL для `likes.message` при старой БД: добавить колонку вручную, если модель уже с `message`.
 
 ---
 
-*Последнее (2026-06-04): финиш онбординга — `OnboardingFinishRequest` + фото в одном `POST /auth/onboarding/finish`.*
+*Последнее (2026-06-04):*
+
+- *Auth:* dev bootstrap без `loginTelegram` в DEV; onboarding JWT; `complete_onboarding` только create user (без update существующего).
+- *Онбординг UI:* 4 шага, ВУЗ при высшем образовании, финиш → `/dashboard`, черновик в sessionStorage.
+- *Фильтры ленты:* `localStorage` + «Применить»; × не сбрасывает; reconcile с `GET /filters/`; без `premiumOnly` в UI.
+- *Профиль/фото:* rollback главного фото при ошибке загрузки; меню главного фото (modal).
+- *Прочее:* `profile-fill-prompt` на ленте; async Telegram SDK.
 
 *В конце файла при крупных изменениях: строка «Последнее (дата): …».*
