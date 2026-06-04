@@ -5,6 +5,7 @@ import { ImagePlus, Loader2, SquarePen, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useQueryClient } from '@tanstack/react-query'
 
+import { moderateImage } from '@/entities/auth/api/moderationApi'
 import {
   deleteUserGalleryPhoto,
   uploadUserGalleryPhoto,
@@ -59,6 +60,9 @@ function PhotoUploadStateOverlay({ visible }: { visible: boolean }): React.JSX.E
 interface ProfilePhotosEditorProps {
   photos: ProfilePhotoItem[]
   setPhotos: React.Dispatch<React.SetStateAction<ProfilePhotoItem[]>>
+  /** Локальные файлы до финального сабмита онбординга (модерация через /auth/moderate/image). */
+  storage?: 'server' | 'local'
+  photoFilesRef?: React.MutableRefObject<Map<string, File>>
 }
 
 /** Номер слота: как лейблы в `ProfileAutocompleteRow`. */
@@ -71,6 +75,9 @@ const INDEX_BADGE_CLASS =
 /** Удаление / эдит: центр круга ближе к визуальному скруглению угла (ниже и левее острого угла). */
 const CORNER_BTN_CLASS =
   'pointer-events-auto absolute right-0 top-0 z-20 flex size-7 translate-x-[34%] -translate-y-[30%] items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/55'
+
+const EMPTY_PHOTO_SLOT_CLASS =
+  'flex size-full min-h-0 items-center justify-center rounded-2xl bg-card text-muted-foreground transition-colors hover:bg-background/75 hover:text-foreground'
 
 /** Hit-test по внешним ячейкам сетки (они не двигаются transform’ом — без ложных переключений). */
 function pickSlotIndexUnderPointStable(
@@ -116,7 +123,12 @@ function usePhotoReorderMode(): 'html5' | 'pointer' {
 export const ProfilePhotosEditor = ({
   photos,
   setPhotos,
+  storage = 'server',
+  photoFilesRef: photoFilesRefProp,
 }: ProfilePhotosEditorProps): React.JSX.Element => {
+  const isLocal = storage === 'local'
+  const internalFilesRef = useRef<Map<string, File>>(new Map())
+  const photoFilesRef = photoFilesRefProp ?? internalFilesRef
   const queryClient = useQueryClient()
   const reorderMode = usePhotoReorderMode()
   const photosRef = useRef(photos)
@@ -193,6 +205,7 @@ export const ProfilePhotosEditor = ({
 
   const persistPhotosOrder = useCallback(
     (snapshot: ProfilePhotoItem[]) => {
+      if (isLocal) return
       const photos = buildPhotosOrderPayload(snapshot)
       if (!photos?.length) return
       const anchorId = photos[0]!.id
@@ -205,15 +218,16 @@ export const ProfilePhotosEditor = ({
         }
       })()
     },
-    [queryClient],
+    [isLocal, queryClient],
   )
 
   const removePhoto = useCallback(
     (id: string): void => {
       const victim = photosRef.current.find((p) => p.id === id)
       revokeIfBlobUrl(victim?.file_path)
+      photoFilesRef.current.delete(id)
 
-      if (!SERVER_PHOTO_ID_RE.test(id)) {
+      if (isLocal || !SERVER_PHOTO_ID_RE.test(id)) {
         setPhotos((prev) => renumberPhotosOrder(prev.filter((p) => p.id !== id)))
         return
       }
@@ -231,7 +245,7 @@ export const ProfilePhotosEditor = ({
         }
       })()
     },
-    [queryClient, revokeIfBlobUrl, setPhotos],
+    [isLocal, photoFilesRef, queryClient, revokeIfBlobUrl, setPhotos],
   )
 
   const clearHoldTimer = () => {
@@ -271,18 +285,39 @@ export const ProfilePhotosEditor = ({
 
       void (async () => {
         try {
-          const created = await uploadUserGalleryPhoto(file)
-          revokeIfBlobUrl(blobUrl)
-          setPhotos((prev) => prev.filter((p) => p.id !== tempId))
-          mergeUploadedGalleryPhotoInCache(queryClient, created)
+          if (isLocal) {
+            await moderateImage(file, false)
+            const id = `local-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+            photoFilesRef.current.set(id, file)
+            revokeIfBlobUrl(blobUrl)
+            setPhotos((prev) => {
+              const rest = prev.filter((p) => p.id !== tempId)
+              return renumberPhotosOrder([
+                ...rest,
+                {
+                  id,
+                  file_path: URL.createObjectURL(file),
+                  is_main: false,
+                  order: rest.length,
+                },
+              ])
+            })
+          } else {
+            const created = await uploadUserGalleryPhoto(file)
+            revokeIfBlobUrl(blobUrl)
+            setPhotos((prev) => prev.filter((p) => p.id !== tempId))
+            mergeUploadedGalleryPhotoInCache(queryClient, created)
+          }
         } catch {
           revokeIfBlobUrl(blobUrl)
           setPhotos((prev) => prev.filter((p) => p.id !== tempId))
-          void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+          if (!isLocal) {
+            void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+          }
         }
       })()
     },
-    [queryClient, revokeIfBlobUrl, setPhotos],
+    [isLocal, photoFilesRef, queryClient, revokeIfBlobUrl, setPhotos],
   )
 
   const onExtrasFiles = (files: FileList | null): void => {
@@ -299,13 +334,12 @@ export const ProfilePhotosEditor = ({
 
   const onMainFile = (file: File | undefined): void => {
     if (!file) return
+    const rollback = photosRef.current.map((p) => ({ ...p }))
     const blobUrl = URL.createObjectURL(file)
     const tempId = `photo-main-upload-${Date.now()}`
 
     flushSync(() => {
       setPhotos((prev) => {
-        const oldMain = prev.find((p) => p.is_main)
-        revokeIfBlobUrl(oldMain?.file_path)
         const rest = prev.filter((p) => !p.is_main)
         return [
           {
@@ -322,14 +356,38 @@ export const ProfilePhotosEditor = ({
 
     void (async () => {
       try {
-        const mainRow = await uploadUserMainPhoto(file)
-        revokeIfBlobUrl(blobUrl)
-        setPhotos((prev) => prev.filter((p) => p.id !== tempId))
-        mergeUploadedMainPhotoInCache(queryClient, mainRow)
+        if (isLocal) {
+          await moderateImage(file, true)
+          const id = `local-main-${Date.now()}`
+          photoFilesRef.current.set(id, file)
+          revokeIfBlobUrl(blobUrl)
+          const replacedMain = rollback.find((p) => p.is_main)
+          revokeIfBlobUrl(replacedMain?.file_path)
+          setPhotos((prev) => {
+            const withoutTemp = prev.filter((p) => p.id !== tempId)
+            const demoted = withoutTemp.map((p) => ({ ...p, is_main: false }))
+            return renumberPhotosOrder([
+              {
+                id,
+                file_path: URL.createObjectURL(file),
+                is_main: true,
+                order: 0,
+              },
+              ...demoted,
+            ])
+          })
+        } else {
+          const mainRow = await uploadUserMainPhoto(file)
+          revokeIfBlobUrl(blobUrl)
+          setPhotos((prev) => prev.filter((p) => p.id !== tempId))
+          mergeUploadedMainPhotoInCache(queryClient, mainRow)
+        }
       } catch {
         revokeIfBlobUrl(blobUrl)
-        setPhotos((prev) => prev.filter((p) => p.id !== tempId))
-        void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+        setPhotos(rollback)
+        if (!isLocal) {
+          void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+        }
       }
     })()
   }
@@ -470,7 +528,7 @@ export const ProfilePhotosEditor = ({
           onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => {
             if (event.pointerType === 'mouse' && event.button !== 0) return
             pointerDownActiveRef.current = true
-            pointerStartRef.current = { x: event.clientX, y: event.clientY }
+            pointerStartRef.current = {  x: event.clientX, y: event.clientY }
             pointerHoldPhotoIdRef.current = photoId
             didTriggerHoldHapticRef.current = false
             clearHoldTimer()
@@ -751,35 +809,127 @@ export const ProfilePhotosEditor = ({
         )}
       >
         {/* Главное фото: 2×2 */}
-        <div className="relative z-0 col-span-2 row-span-2 h-full min-h-0 overflow-visible">
+        <div
+          className={cn(
+            'relative col-span-2 row-span-2 h-full min-h-0 overflow-visible',
+            isMainPhotoMenuOpen ? 'z-[80]' : 'z-0',
+          )}
+        >
           <div className="relative h-full min-h-0 overflow-visible rounded-2xl">
-            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-transparent">
-              {mainPhoto ? (
-                <Image
-                  src={mainPhoto.file_path}
-                  alt="Главное фото"
-                  className="size-full object-cover"
-                />
-              ) : null}
-            </div>
-            <PhotoUploadStateOverlay visible={mainPhoto?.uploadStatus === 'uploading'} />
-            <span className="absolute bottom-2 left-2 z-10 rounded-full bg-black/50 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
-              Главное фото
-            </span>
-            <button
-              type="button"
-              className={CORNER_BTN_CLASS}
-              aria-label="Изменить главное фото"
-              onPointerDown={stopDragFromButton}
-              onMouseDown={stopDragFromButton}
-              onClick={() => {
-                triggerHaptic()
-                setIsMainPhotoMenuOpen(true)
-              }}
-            >
-              <SquarePen className="size-4" strokeWidth={1.35} />
-            </button>
+            {mainPhoto ? (
+              <>
+                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl bg-transparent">
+                  <Image
+                    src={mainPhoto.file_path}
+                    alt="Главное фото"
+                    className="size-full object-cover"
+                  />
+                </div>
+                <PhotoUploadStateOverlay visible={mainPhoto.uploadStatus === 'uploading'} />
+                <span className="absolute bottom-2 left-2 z-10 rounded-full bg-black/50 px-3 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
+                  Главное фото
+                </span>
+                <button
+                  type="button"
+                  className={CORNER_BTN_CLASS}
+                  aria-label="Изменить главное фото"
+                  onPointerDown={stopDragFromButton}
+                  onMouseDown={stopDragFromButton}
+                  onClick={() => {
+                    triggerHaptic()
+                    setIsMainPhotoMenuOpen(true)
+                  }}
+                >
+                  <SquarePen className="size-4" strokeWidth={1.35} />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className={EMPTY_PHOTO_SLOT_CLASS}
+                aria-label="Добавить главное фото"
+                onClick={() => {
+                  triggerHaptic()
+                  mainInputRef.current?.click()
+                }}
+              >
+                <ImagePlus className="size-9" strokeWidth={1.35} />
+              </button>
+            )}
           </div>
+
+          <AnimatePresence>
+            {isMainPhotoMenuOpen && mainPhoto ? (
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-[79] cursor-default bg-black/20"
+                  onClick={() => setIsMainPhotoMenuOpen(false)}
+                  aria-label="Закрыть меню"
+                />
+                <motion.div
+                  className="absolute right-0 top-9 z-[80] w-[min(220px,calc(100%-0.5rem))] rounded-[24px] bg-card p-1.5 shadow-2xl backdrop-blur-2xl"
+                  initial={{ opacity: 0, scale: 0.96, y: -6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96, y: -6 }}
+                  transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
+                >
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      className="w-full rounded-[16px] px-3 py-2.5 text-left text-[13px] font-[200] text-foreground transition-colors hover:bg-background/60"
+                      onClick={() => {
+                        setIsMainPhotoMenuOpen(false)
+                        mainInputRef.current?.click()
+                      }}
+                    >
+                      Загрузить новое фото
+                    </button>
+                    {nonMain
+                      .filter((p) => p.uploadStatus == null)
+                      .map((photo, index) => (
+                        <button
+                          key={photo.id}
+                          type="button"
+                          className="w-full rounded-[16px] px-3 py-2.5 text-left text-[13px] font-[200] text-foreground transition-colors hover:bg-background/60"
+                          onClick={() => {
+                            triggerHaptic()
+                            setIsMainPhotoMenuOpen(false)
+                            void (async () => {
+                              try {
+                                if (isLocal) {
+                                  setPhotos((prev) => {
+                                    const target = prev.find((p) => p.id === photo.id)
+                                    if (!target) return prev
+                                    return renumberPhotosOrder(
+                                      prev.map((p) => ({
+                                        ...p,
+                                        is_main: p.id === photo.id,
+                                      })),
+                                    )
+                                  })
+                                } else {
+                                  const nextPhotos = await setMainFromGalleryPhoto(photo.id)
+                                  patchProfilePhotosInCache(queryClient, nextPhotos)
+                                }
+                              } catch {
+                                if (!isLocal) {
+                                  void queryClient.invalidateQueries({
+                                    queryKey: usersQueryKeys.profile(),
+                                  })
+                                }
+                              }
+                            })()
+                          }}
+                        >
+                          Фото {index + 1}
+                        </button>
+                      ))}
+                  </div>
+                </motion.div>
+              </>
+            ) : null}
+          </AnimatePresence>
         </div>
 
         {slots.slice(0, 2).map((photo, i) => {
@@ -838,7 +988,7 @@ export const ProfilePhotosEditor = ({
                 <button
                   type="button"
                   onClick={() => extrasInputRef.current?.click()}
-                  className="flex size-full min-h-0 items-center justify-center rounded-2xl bg-card text-muted-foreground transition-colors hover:bg-background/75 hover:text-foreground"
+                  className={EMPTY_PHOTO_SLOT_CLASS}
                   aria-label="Добавить фото"
                 >
                   <ImagePlus className="size-7" strokeWidth={1.35} />
@@ -904,7 +1054,7 @@ export const ProfilePhotosEditor = ({
                 <button
                   type="button"
                   onClick={() => extrasInputRef.current?.click()}
-                  className="flex size-full min-h-0 items-center justify-center rounded-2xl bg-card text-muted-foreground transition-colors hover:bg-background/75 hover:text-foreground"
+                  className={EMPTY_PHOTO_SLOT_CLASS}
                   aria-label="Добавить фото"
                 >
                   <ImagePlus className="size-6" strokeWidth={1} />
@@ -914,68 +1064,6 @@ export const ProfilePhotosEditor = ({
           )
         })}
       </div>
-
-      <AnimatePresence>
-        {isMainPhotoMenuOpen && (
-          <motion.div
-            className="fixed inset-0 z-[80] flex items-start justify-end px-4 pt-28"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
-          >
-            <button
-              type="button"
-              className="absolute inset-0 cursor-default bg-black/20"
-              onClick={() => setIsMainPhotoMenuOpen(false)}
-              aria-label="Закрыть меню"
-            />
-            <motion.div
-              className="relative z-10 w-[220px] shrink-0 self-start rounded-[24px] bg-card p-1.5 shadow-2xl backdrop-blur-2xl"
-              initial={{ opacity: 0, scale: 0.96, y: 6 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 6 }}
-              transition={{ duration: 0.18, ease: [0.22, 0.61, 0.36, 1] }}
-            >
-              <div className="flex flex-col gap-1.5">
-                <button
-                  type="button"
-                  className="w-full rounded-[16px] px-3 py-2.5 text-left text-[13px] font-[200] text-foreground transition-colors hover:bg-background/60"
-                  onClick={() => {
-                    setIsMainPhotoMenuOpen(false)
-                    mainInputRef.current?.click()
-                  }}
-                >
-                  Загрузить новое фото
-                </button>
-                {nonMain
-                  .filter((p) => p.uploadStatus == null)
-                  .map((photo, index) => (
-                  <button
-                    key={photo.id}
-                    type="button"
-                    className="w-full rounded-[16px] px-3 py-2.5 text-left text-[13px] font-[200] text-foreground transition-colors hover:bg-background/60"
-                    onClick={() => {
-                      triggerHaptic()
-                      setIsMainPhotoMenuOpen(false)
-                      void (async () => {
-                        try {
-                          const nextPhotos = await setMainFromGalleryPhoto(photo.id)
-                          patchProfilePhotosInCache(queryClient, nextPhotos)
-                        } catch {
-                          void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
-                        }
-                      })()
-                    }}
-                  >
-                    Фото {index + 1}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {pointerFollow != null && reorderMode === 'pointer' && pointerFloatPhoto ? (
         <div

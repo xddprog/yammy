@@ -10,16 +10,12 @@ const TELEGRAM_STUB_LOGIN = 'api/v1/auth/telegram'
 
 type TelegramTokenResponse = {
   access_token: string
-  refresh_token: string
+  refresh_token?: string | null
 }
 
 /**
- * В `development` бэкенд отдаёт JWT через заглушку Telegram (`ENVIRONMENT=development`):
- * берётся **первый пользователь в БД** (минимальный `id`), без реального `init_data`.
- *
- * **После сноса БД:** в `localStorage` часто остаются JWT со `sub` = удалённый `user_id` →
- * все запросы и refresh дают 401. Поэтому в DEV **всегда** заново дергаем stub при старте приложения
- * и подменяем токены; если в БД нет ни одного пользователя — чистим токены и пишем в консоль.
+ * Dev: POST /auth/telegram (заглушка) — нет users с `TELEGRAM_CONFIG__DEV_STUB_TELEGRAM_ID`
+ * → onboarding access без refresh; есть пользователь → полные JWT.
  */
 export async function ensureDevAuthToken(): Promise<void> {
   if (!import.meta.env.DEV) {
@@ -38,13 +34,17 @@ export async function ensureDevAuthToken(): Promise<void> {
         '[dev] stub auth failed',
         response.status,
         text?.slice(0, 200),
-        '— токены очищены. Если БД пустая, создай пользователя (сид/миграции).',
+        '— токены очищены. Нужен APP_CONFIG__ENVIRONMENT=development на бэке (и перезапуск uvicorn). Для онбординга удали user с TELEGRAM_CONFIG__DEV_STUB_TELEGRAM_ID.',
       )
       return
     }
     const data = (await response.json()) as TelegramTokenResponse
     setAccessToken(data.access_token)
-    setRefreshToken(data.refresh_token)
+    if (data.refresh_token) {
+      setRefreshToken(data.refresh_token)
+    } else {
+      deleteRefreshToken()
+    }
   } catch (error) {
     deleteAccessToken()
     deleteRefreshToken()

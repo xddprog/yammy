@@ -24,7 +24,7 @@ from app.core.repositories.user_repository import UserRepository
 from app.infrastructure.database.models.admin import Admin
 from app.infrastructure.database.models.user import User
 from app.infrastructure.errors.auth_errors import ForbiddenException, InvalidCredentials, InvalidTelegramData
-from app.infrastructure.errors.base import NotFoundException
+from app.infrastructure.errors.base import ConflictException, NotFoundException
 from app.infrastructure.config.config import APP_CONFIG, JWT_CONFIG, TELEGRAM_CONFIG
 
 
@@ -40,15 +40,23 @@ class AuthService:
     def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
         return self.pwd_context.verify(plain_password, hashed_password)
 
-    def _create_access_token(self, sub: str) -> str:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_CONFIG.ACCESS_TOKEN_EXPIRE_MINUTES)
-        to_encode = {"sub": sub, "exp": expire}
+    def _encode_token(self, sub: str, expire: datetime, scope: str) -> str:
+        to_encode = {"sub": sub, "exp": expire, "scope": scope}
         return jwt.encode(to_encode, JWT_CONFIG.SECRET_KEY, algorithm=JWT_CONFIG.ALGORITHM)
 
-    def _create_refresh_token(self, sub: str) -> str:
+    def create_access_token(self, sub: str) -> str:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_CONFIG.ACCESS_TOKEN_EXPIRE_MINUTES)
+        return self._encode_token(sub, expire, JWT_CONFIG.SCOPE_USER)
+
+    def create_refresh_token(self, sub: str) -> str:
         expire = datetime.now(timezone.utc) + timedelta(days=JWT_CONFIG.REFRESH_TOKEN_EXPIRE_DAYS)
-        to_encode = {"sub": sub, "exp": expire}
-        return jwt.encode(to_encode, JWT_CONFIG.SECRET_KEY, algorithm=JWT_CONFIG.ALGORITHM)
+        return self._encode_token(sub, expire, JWT_CONFIG.SCOPE_USER)
+
+    def _create_onboarding_access_token(self, telegram_id: int) -> str:
+        expire = datetime.now(timezone.utc) + timedelta(
+            hours=JWT_CONFIG.ONBOARDING_ACCESS_TOKEN_EXPIRE_HOURS
+        )
+        return self._encode_token(str(telegram_id), expire, JWT_CONFIG.SCOPE_ONBOARDING)
 
     async def login_admin(self, form: LoginSchema) -> TokenSchema:
         admin = await self.admin_repository.get_by_filter(one_or_none=True, username=form.username)
@@ -56,8 +64,8 @@ class AuthService:
         if not admin or not self._verify_password(form.password, admin.password_hash):
             raise InvalidCredentials()
 
-        access_token = self._create_access_token(str(admin.id))
-        refresh_token = self._create_refresh_token(str(admin.id))
+        access_token = self.create_access_token(str(admin.id))
+        refresh_token = self.create_refresh_token(str(admin.id))
         return TokenSchema(access_token=access_token, refresh_token=refresh_token)
 
     async def verify_token(self, token: str | None) -> dict:
@@ -91,8 +99,8 @@ class AuthService:
             if not admin:
                 raise InvalidCredentials()
 
-            access_token = self._create_access_token(str(admin.id))
-            new_refresh_token = self._create_refresh_token(str(admin.id))
+            access_token = self.create_access_token(str(admin.id))
+            new_refresh_token = self.create_refresh_token(str(admin.id))
 
             return TokenSchema(access_token=access_token, refresh_token=new_refresh_token)
 
@@ -102,14 +110,16 @@ class AuthService:
     async def refresh_user_token(self, refresh_token: str) -> TokenSchema:
         try:
             payload = await self.verify_token(refresh_token)
+            if (payload.get("scope") or JWT_CONFIG.SCOPE_USER) != JWT_CONFIG.SCOPE_USER:
+                raise InvalidCredentials()
             user_id = UUID(payload.get("sub"))
 
             user = await self.user_repository.get_by_filter(one_or_none=True, id=user_id)
             if not user:
                 raise InvalidCredentials()
 
-            access_token = self._create_access_token(str(user.id))
-            new_refresh = self._create_refresh_token(str(user.id))
+            access_token = self.create_access_token(str(user.id))
+            new_refresh = self.create_refresh_token(str(user.id))
             return TokenSchema(access_token=access_token, refresh_token=new_refresh)
 
         except (ValueError, TypeError):
@@ -161,47 +171,67 @@ class AuthService:
         return telegram_id, username
 
     async def _authenticate_telegram_stub(self) -> TokenSchema:
-        users = await self.user_repository.get_all_items()
-
-        if not users:
-            raise InvalidCredentials(detail="Заглушка Telegram: в базе нет ни одного пользователя")
-
-        user = min(users, key=lambda u: u.id)
-        access_token = self._create_access_token(str(user.id))
-        refresh_token = self._create_refresh_token(str(user.id))
-        return TokenSchema(access_token=access_token, refresh_token=refresh_token)
+        telegram_id = TELEGRAM_CONFIG.DEV_STUB_TELEGRAM_ID
+        user = await self.user_repository.get_by_telegram_id(telegram_id)
+        print(user)
+        if user:
+            return TokenSchema(
+                access_token=self.create_access_token(str(user.id)),
+                refresh_token=self.create_refresh_token(str(user.id)),
+            )
+        return TokenSchema(
+            access_token=self._create_onboarding_access_token(telegram_id),
+            refresh_token=None,
+        )
 
     async def _authenticate_telegram_webapp(self, form: TelegramAuthSchema) -> TokenSchema:
-        telegram_id, username = self._verify_telegram_init_data(form.init_data)
+        telegram_id, _username = self._verify_telegram_init_data(form.init_data)
 
         user = await self.user_repository.get_by_telegram_id(telegram_id)
-
-        if not user:
-            user = await self.user_repository.add_item(
-                telegram_id=telegram_id,
-                username=username
+        if user:
+            return TokenSchema(
+                access_token=self.create_access_token(str(user.id)),
+                refresh_token=self.create_refresh_token(str(user.id)),
             )
 
-        access_token = self._create_access_token(str(user.id))
-        refresh_token = self._create_refresh_token(str(user.id))
+        return TokenSchema(
+            access_token=self._create_onboarding_access_token(telegram_id),
+            refresh_token=None,
+        )
 
-        return TokenSchema(access_token=access_token, refresh_token=refresh_token)
+    async def verify_onboarding_telegram_id(self, token: str) -> int:
+        payload = await self.verify_token(token)
+        if (payload.get("scope") or JWT_CONFIG.SCOPE_USER) != JWT_CONFIG.SCOPE_ONBOARDING:
+            raise InvalidCredentials()
+        try:
+            return int(payload.get("sub"))
+        except (TypeError, ValueError):
+            raise InvalidCredentials()
 
     async def authenticate_telegram(self, form: TelegramAuthSchema) -> TokenSchema:
         if APP_CONFIG.ENVIRONMENT == "development":
             return await self._authenticate_telegram_stub()
         return await self._authenticate_telegram_webapp(form)
 
+    async def login_dev_onboarding(self, telegram_id: int) -> TokenSchema:
+        if APP_CONFIG.ENVIRONMENT != "development":
+            raise NotFoundException(detail="Not found")
+        if await self.user_repository.get_by_telegram_id(telegram_id):
+            raise ConflictException(
+                detail="Пользователь с этим telegram_id уже есть — удали запись или укажи другой id"
+            )
+        return TokenSchema(
+            access_token=self._create_onboarding_access_token(telegram_id),
+            refresh_token=None,
+        )
+
     async def login_dev_by_user_id(self, user_id: UUID) -> TokenSchema:
         user = await self.user_repository.get_by_filter(one_or_none=True, id=user_id)
         if not user:
             raise NotFoundException(detail="Пользователь не найден")
-        return self._issue_tokens_for_user(user)
-
-    def _issue_tokens_for_user(self, user: User) -> TokenSchema:
         return TokenSchema(
-            access_token=self._create_access_token(str(user.id)),
-            refresh_token=self._create_refresh_token(str(user.id)),
+            access_token=self.create_access_token(str(user.id)),
+            refresh_token=self.create_refresh_token(str(user.id)),
         )
 
     async def _get_sorted_dev_users(self, limit: int = 50) -> list[User]:
@@ -262,10 +292,9 @@ class AuthService:
         if not user:
             raise NotFoundException(detail="Пользователь не найден")
 
-        tokens = self._issue_tokens_for_user(user)
         return DevAuthSwitchResponseSchema(
-            access_token=tokens.access_token,
-            refresh_token=tokens.refresh_token,
+            access_token=self.create_access_token(str(user.id)),
+            refresh_token=self.create_refresh_token(str(user.id)),
             user=DevAuthUserItemSchema(
                 id=user.id,
                 name=user.name,
@@ -285,13 +314,15 @@ class AuthService:
     async def verify_user_token(self, token: str) -> User:
         try:
             payload = jwt.decode(token, JWT_CONFIG.SECRET_KEY, algorithms=[JWT_CONFIG.ALGORITHM])
+            if (payload.get("scope") or JWT_CONFIG.SCOPE_USER) != JWT_CONFIG.SCOPE_USER:
+                raise InvalidCredentials()
             user_id = UUID(payload.get("sub"))
             user = await self.user_repository.get_by_filter(one_or_none=True, id=user_id)
             if not user:
                 raise InvalidCredentials()
-            
+
             return user
-            
+
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, ValueError):
             raise InvalidCredentials()
         

@@ -1,11 +1,14 @@
+import uuid
 from uuid import UUID
 
 from fastapi import UploadFile
 from app.core.repositories import UserRepository
+from app.core.dto.auth import OnboardingFinishRequest
 from app.core.dto.user import ImageOrderUpdateSchema, UserPhoto, UserProfileSchema, UserUpdateRequest
 from app.core.services.image_service import ImageService
 from app.core.services.moderation_service import ModerationService
-from app.infrastructure.errors.base import BadRequestException, NotFoundException
+from app.infrastructure.database.models.user import User
+from app.infrastructure.errors.base import BadRequestException, ConflictException, NotFoundException
 from app.utils.helpers.url_helper import get_absolute_url
 
 
@@ -32,6 +35,37 @@ class UserService:
         
         return UserProfileSchema.model_validate(user, from_attributes=True).model_copy(
             update={"referrals_count": referrals_count}
+        )
+
+    async def complete_onboarding(
+        self,
+        telegram_id: int,
+        form: OnboardingFinishRequest,
+        images: list[UploadFile],
+    ) -> User:
+        if form.bio:
+            await self.moderation_service.moderate_text(form.bio)
+
+        if await self.user_repository.get_by_telegram_id(telegram_id):
+            raise ConflictException("Пользователь уже зарегистрирован")
+
+        photos = sorted(form.photos, key=lambda photo: photo.order)
+        user_id = uuid.uuid4()
+
+        persisted_photos: list[tuple[str, int, bool]] = []
+        for i, photo in enumerate(photos):
+            image = images[i]
+            await self.moderation_service.moderate_image(image, is_main=photo.is_main)
+            file_path = await self.image_service.upload_and_convert(image, f"users/{user_id}")
+            persisted_photos.append((file_path, photo.order, photo.is_main))
+
+        return await self.user_repository.add_item(
+            id=user_id,
+            telegram_id=telegram_id,
+            filters_ids=form.filters,
+            photos=persisted_photos,
+            referral_code=f"REF{uuid.uuid4().hex[:12].upper()}",
+            **form.model_dump(exclude={"filters", "photos"}),
         )
 
     async def update_user(self, user_id: UUID, form: UserUpdateRequest) -> None:

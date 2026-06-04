@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import type { JSX } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { sendUserDislike, sendUserLike } from '@/entities/like/api/likeService'
 import { showErrorToast } from '@/shared'
@@ -13,6 +13,8 @@ import { AppPageLoader } from '@/app/ui/AppPageLoader'
 import { RateFeed, SwipeFeed } from '@/features'
 import type { MatchFeedAppendHandle } from '@/features/matches-feed/model/matchFeedAppendHandle'
 import { useFiltersSearchParams } from '@/features/matches-filter/model/useFiltersSearchParams'
+import { ProfileFillPromptBanner, useProfileFillPrompt } from '@/features/profile-fill-prompt'
+import { ERouteNames } from '@/shared/lib/routeVariables'
 import { cn } from '@/shared'
 import { Header } from '@/widgets'
 
@@ -28,9 +30,12 @@ const emptyStateClassName = cn(
 )
 
 const DashboardPage = (): JSX.Element => {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const mode = searchParams.get('mode') || 'swipe'
   const isSwipeMode = mode !== 'rate'
+  const { visible: showFillPrompt, dismiss: dismissFillPrompt, notifyAfterSwipe } =
+    useProfileFillPrompt()
 
   const filterParams = useFiltersSearchParams()
   const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams])
@@ -62,21 +67,29 @@ const DashboardPage = (): JSX.Element => {
     setFeedFullyEnded(false)
   }, [feedResetKey])
 
-  const onLike = useCallback((item: FeedStackCardUser) => {
-    void sendUserLike(item.user_id)
-      .then((message) => {
-        if (message) showErrorToast(message)
-      })
-      .catch(() => {
+  const onLike = useCallback(
+    (item: FeedStackCardUser) => {
+      notifyAfterSwipe()
+      void sendUserLike(item.user_id)
+        .then((message) => {
+          if (message) showErrorToast(message)
+        })
+        .catch(() => {
+          /* throwApiError уже показал тост */
+        })
+    },
+    [notifyAfterSwipe],
+  )
+
+  const onDislike = useCallback(
+    (item: FeedStackCardUser) => {
+      notifyAfterSwipe()
+      void sendUserDislike(item.user_id).catch(() => {
         /* throwApiError уже показал тост */
       })
-  }, [])
-
-  const onDislike = useCallback((item: FeedStackCardUser) => {
-    void sendUserDislike(item.user_id).catch(() => {
-      /* throwApiError уже показал тост */
-    })
-  }, [])
+    },
+    [notifyAfterSwipe],
+  )
 
   const handleFeedEmpty = useCallback(async () => {
     if (emptyRefetchInFlight.current) return
@@ -117,7 +130,7 @@ const DashboardPage = (): JSX.Element => {
     return (
       <div className={dashboardColumnClassName}>
         <Header />
-        <div className="isolate min-h-0 flex-1 overflow-x-hidden">
+        <div className="relative isolate min-h-0 flex-1 overflow-x-hidden">
           <div className={emptyStateClassName}>{FEED_EMPTY_MESSAGE}</div>
         </div>
       </div>
@@ -186,7 +199,17 @@ const DashboardPage = (): JSX.Element => {
             <p className="max-w-[280px] text-center text-sm text-muted-foreground">{FEED_EMPTY_MESSAGE}</p>
           </div>
         )}
+
       </div>
+
+      <ProfileFillPromptBanner
+        open={isSwipeMode && showFillPrompt}
+        onDismiss={dismissFillPrompt}
+        onFill={() => {
+          dismissFillPrompt()
+          navigate(`/${ERouteNames.PROFILE_ROUTE}`, { state: { openEdit: true } })
+        }}
+      />
     </div>
   )
 }

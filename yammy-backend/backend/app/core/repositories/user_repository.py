@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import delete, insert, select, func, update
@@ -14,6 +15,41 @@ from app.infrastructure.database.models.filter import FilterOption, FilterSubcat
 class UserRepository(SqlAlchemyRepository[User]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, User)
+
+    async def add_item(
+        self,
+        *,
+        filters_ids: list[UUID] | None = None,
+        photos: list[tuple[str, int, bool]] | None = None,
+        **kwargs: Any,
+    ) -> User:
+        user = User(**kwargs)
+        self.session.add(user)
+        await self.session.flush()
+
+        if filters_ids:
+            await self.session.execute(
+                insert(UserFilterAssociation).values(
+                    [
+                        {"user_id": user.id, "option_id": option_id}
+                        for option_id in filters_ids
+                    ]
+                )
+            )
+
+        for file_path, order, is_main in photos:
+            self.session.add(
+                UserPhoto(
+                    user_id=user.id,
+                    file_path=file_path,
+                    order=order,
+                    is_main=is_main,
+                )
+            )
+
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
 
     async def get_by_telegram_id(self, telegram_id: int) -> User | None:
         return await self.get_by_filter(one_or_none=True, telegram_id=telegram_id)

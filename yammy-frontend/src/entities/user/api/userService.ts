@@ -1,3 +1,5 @@
+import { isOnboardingSession } from '@/entities/token/lib/isOnboardingSession'
+
 import { authApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
 import type { PaginatedResponse } from '@/shared/api/pagination'
@@ -47,7 +49,10 @@ export class UserService {
   }
 
   public async getFilters(): Promise<FiltersMetadataResponse> {
-    const response = await authApi.get(FILTERS_ENDPOINT)
+    const path = isOnboardingSession()
+      ? 'api/v1/auth/onboarding/filters'
+      : FILTERS_ENDPOINT
+    const response = await authApi.get(path)
 
     if (!response.ok) {
       await throwApiError(response, 'Ошибка загрузки фильтров')

@@ -1,11 +1,17 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing_extensions import Self
 
 from app.infrastructure.database.models.user import User
-from app.utils.constants.enums import SubscriptionTierEnum, UserLanguageEnum
+from app.utils.constants.enums import (
+    EducationLevelEnum,
+    GenderEnum,
+    RelationshipGoalEnum,
+    SubscriptionTierEnum,
+    UserLanguageEnum,
+)
 
 
 class TelegramAuthSchema(BaseModel):
@@ -14,8 +20,37 @@ class TelegramAuthSchema(BaseModel):
 
 class TokenSchema(BaseModel):
     access_token: str
-    refresh_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
+
+
+class OnboardingPhotoMeta(BaseModel):
+    order: int = Field(ge=0)
+    is_main: bool = False
+
+
+class OnboardingFinishRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    age: int = Field(ge=16, le=100)
+    gender: GenderEnum
+    city: str = Field(min_length=1, max_length=256)
+    education_level: EducationLevelEnum
+    relationship_goal: RelationshipGoalEnum
+    filters: list[UUID] = Field(min_length=1)
+    photos: list[OnboardingPhotoMeta] = Field(min_length=1)
+    bio: str | None = None
+    notifications_enabled: bool = True
+    language: UserLanguageEnum | None = None
+
+    @model_validator(mode="after")
+    def validate_photos(self):
+        if sum(photo.is_main for photo in self.photos) != 1:
+            raise ValueError("Укажите одно главное фото")
+        return self
+
+
+class ModerateTextRequest(BaseModel):
+    text: str = Field(..., min_length=1)
 
 
 class RefreshTokenSchema(BaseModel):
@@ -29,6 +64,10 @@ class LoginSchema(BaseModel):
 
 class DevAuthTokenRequestSchema(BaseModel):
     user_id: UUID
+
+
+class DevOnboardingTokenRequestSchema(BaseModel):
+    telegram_id: int = Field(ge=1)
 
 
 class DevAuthUserItemSchema(BaseModel):
@@ -50,8 +89,6 @@ class DevAuthSwitchResponseSchema(BaseModel):
 
 
 class CurrentUserSessionSchema(BaseModel):
-    """Минимальный снимок пользователя для сессии (GET /auth/current_user)."""
-
     model_config = ConfigDict(from_attributes=False)
 
     id: UUID

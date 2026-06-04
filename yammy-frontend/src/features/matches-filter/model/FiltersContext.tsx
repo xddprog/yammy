@@ -1,6 +1,11 @@
 import type React from 'react'
 import { createContext, useCallback, useMemo, useRef, useState } from 'react'
 
+import {
+  clearPersistedFeedFilters,
+  getInitialFiltersState,
+  savePersistedFeedFilters,
+} from '../lib/persistedFeedFilters'
 import type { FiltersState } from './types'
 import { getDefaultFiltersState } from './types'
 
@@ -137,8 +142,8 @@ function useSetters(
 }
 
 export function FiltersProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const [state, setState] = useState<FiltersState>(() => getDefaultFiltersState())
-  const [appliedState, setAppliedState] = useState<FiltersState>(() => getDefaultFiltersState())
+  const [state, setState] = useState<FiltersState>(getInitialFiltersState)
+  const [appliedState, setAppliedState] = useState<FiltersState>(getInitialFiltersState)
 
   const stateRef = useRef(state)
   stateRef.current = state
@@ -148,12 +153,14 @@ export function FiltersProvider({ children }: { children: React.ReactNode }): Re
   const persist = useCallback(() => {
     const latest = stateRef.current
     setAppliedState(latest)
+    savePersistedFeedFilters(latest)
   }, [])
 
   const reset = useCallback(() => {
     const defaults = getDefaultFiltersState()
     setState(defaults)
     setAppliedState(defaults)
+    clearPersistedFeedFilters()
   }, [])
 
   const value = useMemo<FiltersContextValue>(

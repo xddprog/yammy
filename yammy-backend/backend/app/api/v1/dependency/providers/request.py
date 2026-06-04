@@ -159,3 +159,11 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
     return await auth_service.verify_user_token(credentials.credentials)
+
+
+@inject
+async def get_onboarding_telegram_id(
+    auth_service: FromDishka[services.AuthService],
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> int:
+    return await auth_service.verify_onboarding_telegram_id(credentials.credentials)

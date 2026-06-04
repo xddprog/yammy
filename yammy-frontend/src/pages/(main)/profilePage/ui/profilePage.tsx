@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import { useUpdateUserProfile } from '@/entities/user/hooks/useUpdateUserProfile'
@@ -18,6 +19,8 @@ import { ProfileView } from './components/profileView'
 type ProfileScreen = 'view' | 'edit'
 
 const ProfilePage = (): JSX.Element => {
+  const location = useLocation()
+  const navigate = useNavigate()
   const filters = useFiltersState()
   const { data: filtersMetadata } = useFiltersMetadata()
   const updateUserProfileMutation = useUpdateUserProfile()
@@ -26,6 +29,7 @@ const ProfilePage = (): JSX.Element => {
   const [draft, setDraft] = useState<FiltersState>(filters.state)
   const [photos, setPhotos] = useState<ProfilePhotoItem[]>([])
   const profileFiltersHydratedRef = useRef(true)
+  const openEditFromPromptRef = useRef(false)
 
   useEffect(() => {
     if (profile?.photos?.length) {
@@ -77,6 +81,14 @@ const ProfilePage = (): JSX.Element => {
     }
     setScreen('edit')
   }
+
+  useEffect(() => {
+    const wantEdit = (location.state as { openEdit?: boolean } | null)?.openEdit
+    if (!wantEdit || openEditFromPromptRef.current || screen !== 'view' || !profile) return
+    openEditFromPromptRef.current = true
+    openEdit()
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.pathname, location.state, navigate, profile, screen])
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden overflow-x-hidden bg-background px-4 text-foreground">

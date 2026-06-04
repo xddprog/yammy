@@ -1,6 +1,8 @@
-import type { Telegram, WebApp } from '@twa-dev/types'
+import type { WebApp } from '@twa-dev/types'
 import type { ReactNode } from 'react'
-import { createContext, useContext, useEffect, useMemo } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+
+import { loadTelegramWebAppScript } from './loadTelegramWebAppScript'
 
 const TelegramContext = createContext<WebApp | null>(null)
 
@@ -9,35 +11,51 @@ interface TelegramProviderProps {
 }
 
 export const TelegramProvider = ({ children }: TelegramProviderProps) => {
-  const tg = (window as Window & { Telegram?: Telegram }).Telegram?.WebApp ?? null
-
-  const value = useMemo(() => tg, [tg])
+  const [tg, setTg] = useState<WebApp | null>(
+    () => (window as Window & { Telegram?: { WebApp?: WebApp } }).Telegram?.WebApp ?? null,
+  )
 
   useEffect(() => {
-    if (!tg) {
-      console.log('[TelegramProvider] Telegram WebApp is not available')
+    if (tg) {
       return
     }
 
-    console.log('[TelegramProvider] Initializing Telegram WebApp', {
-      version: tg.version,
-      platform: tg.platform,
-      initData: tg.initData,
-      hasDisableVerticalSwipes: tg.disableVerticalSwipes
-    })
+    let cancelled = false
+    void loadTelegramWebAppScript()
+      .then(() => {
+        if (cancelled) {
+          return
+        }
+        const webApp = (window as Window & { Telegram?: { WebApp?: WebApp } }).Telegram?.WebApp
+        if (webApp) {
+          setTg(webApp)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          console.log('[TelegramProvider] Telegram WebApp script unavailable')
+        }
+      })
 
-    tg.ready()
-    tg.expand()
-    console.log('[TelegramProvider] WebApp ready and expanded')
-
-    if (typeof tg.disableVerticalSwipes === 'function') {
-      tg.disableVerticalSwipes()
-      console.log('[TelegramProvider] Vertical swipes disabled')
+    return () => {
+      cancelled = true
     }
   }, [tg])
 
-  return <TelegramContext.Provider value={value}>{children}</TelegramContext.Provider>
+  useEffect(() => {
+    if (!tg) {
+      return
+    }
+
+    tg.ready()
+    tg.expand()
+
+    if (typeof tg.disableVerticalSwipes === 'function') {
+      tg.disableVerticalSwipes()
+    }
+  }, [tg])
+
+  return <TelegramContext.Provider value={tg}>{children}</TelegramContext.Provider>
 }
 
 export const useTelegram = (): WebApp | null => useContext(TelegramContext)
-

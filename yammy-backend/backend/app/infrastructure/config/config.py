@@ -57,6 +57,9 @@ class JWTConfig(Config):
     ALGORITHM: str = Field(default="HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=3)
+    SCOPE_USER: str = Field(default="user")
+    SCOPE_ONBOARDING: str = Field(default="onboarding")
+    ONBOARDING_ACCESS_TOKEN_EXPIRE_HOURS: int = Field(default=2)
 
 
 class YandexPayConfig(Config):
@@ -97,6 +100,7 @@ class TelegramConfig(Config):
     BOT_USERNAME: str = Field(
         default="yammy_bot",
     )
+    DEV_STUB_TELEGRAM_ID: int = Field(default=1212345678)
 
 
 class ElasticsearchConfig(Config):

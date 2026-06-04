@@ -1,11 +1,68 @@
-import { authApi } from '@/shared/api/baseQueryInstanse'
+import { authApi, publicApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
+import {
+  deleteRefreshToken,
+  setAccessToken,
+  setRefreshToken,
+} from '@/entities/token/lib/tokenService'
+
+import type { UserUpdateRequestDto } from '@/entities/user/types/types'
 
 import type { CurrentUser } from '../types/types'
 
 const CURRENT_USER_ENDPOINT = 'api/v1/auth/current_user'
+const TELEGRAM_LOGIN_ENDPOINT = 'api/v1/auth/telegram'
+const ONBOARDING_FINISH_ENDPOINT = 'api/v1/auth/onboarding/finish'
+
+type TokenPair = {
+  access_token: string
+  refresh_token?: string | null
+}
+
+function applyTokenPair(data: TokenPair): void {
+  setAccessToken(data.access_token)
+  if (data.refresh_token) {
+    setRefreshToken(data.refresh_token)
+  } else {
+    deleteRefreshToken()
+  }
+}
 
 export class AuthService {
+  public async loginTelegram(initData: string): Promise<TokenPair> {
+    const response = await publicApi.post(TELEGRAM_LOGIN_ENDPOINT, {
+      json: { init_data: initData },
+    })
+    if (!response.ok) {
+      await throwApiError(response, 'Ошибка входа через Telegram')
+    }
+    const data = (await response.json()) as TokenPair
+    applyTokenPair(data)
+    return data
+  }
+
+  /** Профиль + фото одним запросом, в ответе полные JWT. */
+  public async finishOnboarding(
+    profile: UserUpdateRequestDto & {
+      photos: { order: number; is_main: boolean }[]
+    },
+    images: File[],
+  ): Promise<TokenPair> {
+    const formData = new FormData()
+    formData.append('profile', JSON.stringify(profile))
+    for (const file of images) {
+      formData.append('images', file)
+    }
+
+    const response = await authApi.post(ONBOARDING_FINISH_ENDPOINT, { body: formData })
+    if (!response.ok) {
+      await throwApiError(response, 'Регистрация')
+    }
+    const data = (await response.json()) as TokenPair
+    applyTokenPair(data)
+    return data
+  }
+
   public async getCurrentUser(): Promise<CurrentUser> {
     const response = await authApi.get(CURRENT_USER_ENDPOINT)
 
@@ -18,4 +75,4 @@ export class AuthService {
 }
 
 export const authService = new AuthService()
-export const { getCurrentUser } = authService
+export const { getCurrentUser, loginTelegram, finishOnboarding } = authService

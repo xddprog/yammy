@@ -11,8 +11,8 @@ const DEFAULT_LANGUAGE: UserLanguage = 'ru'
  *
  * Не брать язык из «текущего роута» — URL не является источником правды для локали.
  */
-export function useViewerLanguage(): UserLanguage {
-  const { data } = useCurrentUser()
+export function useViewerLanguage(enabled = true): UserLanguage {
+  const { data } = useCurrentUser({ enabled })
 
   return useMemo(() => {
     const raw = data?.language

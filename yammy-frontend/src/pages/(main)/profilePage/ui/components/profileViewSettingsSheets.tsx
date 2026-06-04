@@ -6,9 +6,7 @@ import { memo, useEffect, useRef, useState } from 'react'
 import type { UserLanguage } from '@/entities/user/types/types'
 import { Button, cn, showErrorToast, useOverlay } from '@/shared'
 import { triggerHaptic } from '@/shared/lib/haptics'
-
-const PANEL_CLASS =
-  '!h-auto max-h-[92vh] mt-auto self-end !bg-transparent shadow-none flex flex-col justify-end pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]'
+import { bottomSheetChromeClassNames, bottomSheetPanelClassNames } from '@/widgets'
 
 function SheetShell({
   title,
@@ -20,7 +18,7 @@ function SheetShell({
   children: ReactNode
 }): JSX.Element {
   return (
-    <div className="w-full max-w-md rounded-t-[28px] border-t border-border/30 bg-background px-4 pt-4 shadow-[0_-8px_32px_rgba(0,0,0,0.35)]">
+    <div className={bottomSheetChromeClassNames}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-[15px] font-[200] text-foreground">{title}</h2>
         <button
@@ -67,7 +65,7 @@ export const ProfileNotificationsSheetRow = memo(function ProfileNotificationsSh
       onClick={() =>
         open({
           backdropClassName: 'bg-black/50 backdrop-blur-sm',
-          panelClassName: PANEL_CLASS,
+          panelClassName: bottomSheetPanelClassNames,
           content: (close) => (
             <SheetShell title="Уведомления" close={close}>
               <ul className="max-h-[min(60vh,280px)] overflow-y-auto rounded-2xl bg-card/80 py-1 no-scrollbar">
@@ -130,7 +128,7 @@ export const ProfileLanguageSheetRow = memo(function ProfileLanguageSheetRow({
       onClick={() =>
         open({
           backdropClassName: 'bg-black/50 backdrop-blur-sm',
-          panelClassName: PANEL_CLASS,
+          panelClassName: bottomSheetPanelClassNames,
           content: (close) => (
             <SheetShell title="Язык" close={close}>
               <ul className="max-h-[min(60vh,280px)] overflow-y-auto rounded-2xl bg-card/80 py-1 no-scrollbar">
@@ -283,7 +281,7 @@ export const ProfileReferralSheetRow = memo(function ProfileReferralSheetRow({
       onClick={() =>
         open({
           backdropClassName: 'bg-black/50 backdrop-blur-sm',
-          panelClassName: PANEL_CLASS,
+          panelClassName: bottomSheetPanelClassNames,
           content: (close) => <ProfileReferralSheetContent referralCode={referralCode} close={close} />,
         })
       }
@@ -344,7 +342,7 @@ export const ProfileAdequacySheetRow = memo(function ProfileAdequacySheetRow({
       onClick={() =>
         open({
           backdropClassName: 'bg-black/50 backdrop-blur-sm',
-          panelClassName: PANEL_CLASS,
+          panelClassName: bottomSheetPanelClassNames,
           content: (close) => <ProfileAdequacySheetContent adequacyScore={adequacyScore} close={close} />,
         })
       }

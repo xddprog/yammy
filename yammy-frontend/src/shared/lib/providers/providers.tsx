@@ -4,6 +4,8 @@ import { useEffect } from 'react'
 import { RouterProvider } from 'react-router-dom'
 
 import { AppBootstrapShell } from '@/app/ui/AppBootstrapShell'
+import { getAccessToken } from '@/entities/token/lib/tokenService'
+import { isOnboardingSession } from '@/entities/token/lib/isOnboardingSession'
 import { FiltersProvider } from '@/features/matches-filter/model/FiltersContext'
 import { routes } from '@/pages/routes'
 import { queryClient } from '@/shared/api/queryClient'
@@ -15,7 +17,8 @@ import { ThemeProvider } from './themeProvider'
 
 /** Держит в кеше `GET .../auth/current_user` и синхронизирует `<html lang>`. */
 function CurrentUserSessionBootstrap(): null {
-  const language = useViewerLanguage()
+  const canLoadSession = Boolean(getAccessToken()) && !isOnboardingSession()
+  const language = useViewerLanguage(canLoadSession)
 
   useEffect(() => {
     document.documentElement.lang = language
