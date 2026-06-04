@@ -1,4 +1,4 @@
-import { AGE_DEFAULT_MAX, AGE_DEFAULT_MIN } from '../lib/constants'
+import { AGE_ABSOLUTE_MAX, AGE_ABSOLUTE_MIN } from '../lib/constants'
 import type { EducationLevel } from '../model/educationLevel'
 import type { FiltersState } from '../model/types'
 import { getDefaultFiltersState } from '../model/types'
@@ -17,7 +17,6 @@ export type PersistedFeedFilters = Pick<
   | 'educationLevel'
   | 'educationInstitution'
   | 'priorities'
-  | 'premiumOnly'
 >
 
 export function extractPersistedFeedFilters(state: FiltersState): PersistedFeedFilters {
@@ -31,7 +30,6 @@ export function extractPersistedFeedFilters(state: FiltersState): PersistedFeedF
     educationLevel: state.educationLevel,
     educationInstitution: state.educationInstitution,
     priorities: state.priorities,
-    premiumOnly: state.premiumOnly,
   }
 }
 
@@ -39,29 +37,32 @@ function isEducationLevel(value: unknown): value is EducationLevel {
   return value === 'school' || value === 'college' || value === 'higher'
 }
 
-function parsePersisted(raw: unknown): PersistedFeedFilters | null {
-  if (raw == null || typeof raw !== 'object') return null
+function parseAgeRange(raw: unknown, fallback: [number, number]): [number, number] {
+  if (!Array.isArray(raw) || raw.length !== 2) return fallback
+  const min = Number(raw[0])
+  const max = Number(raw[1])
+  if (Number.isNaN(min) || Number.isNaN(max)) return fallback
+  const lo = Math.max(AGE_ABSOLUTE_MIN, Math.min(Math.round(min), AGE_ABSOLUTE_MAX))
+  const hi = Math.max(AGE_ABSOLUTE_MIN, Math.min(Math.round(max), AGE_ABSOLUTE_MAX))
+  return lo <= hi ? [lo, hi] : [hi, lo]
+}
+
+function parsePriorities(raw: unknown, fallback: [number, number, number]): [number, number, number] {
+  if (!Array.isArray(raw) || raw.length !== 3) return fallback
+  const nums = raw.map((n) => Math.round(Number(n)))
+  if (nums.some((n) => Number.isNaN(n))) return fallback
+  return nums as [number, number, number]
+}
+
+function isPersistedFeedFiltersBlob(obj: Record<string, unknown>): boolean {
+  return Array.isArray(obj.ageRange)
+}
+
+function parsePersistedFilters(raw: unknown): PersistedFeedFilters {
+  const defaults = extractPersistedFeedFilters(getDefaultFiltersState())
+  if (raw == null || typeof raw !== 'object') return defaults
+
   const data = raw as Record<string, unknown>
-  const defaults = getDefaultFiltersState()
-
-  const ageRange = data.ageRange
-  if (
-    !Array.isArray(ageRange) ||
-    ageRange.length !== 2 ||
-    typeof ageRange[0] !== 'number' ||
-    typeof ageRange[1] !== 'number'
-  ) {
-    return null
-  }
-
-  const priorities = data.priorities
-  if (
-    !Array.isArray(priorities) ||
-    priorities.length !== 3 ||
-    priorities.some((n) => typeof n !== 'number')
-  ) {
-    return null
-  }
 
   const gender = data.gender
   const parsedGender =
@@ -77,37 +78,58 @@ function parsePersisted(raw: unknown): PersistedFeedFilters | null {
 
   return {
     gender: parsedGender,
-    ageRange: [
-      Math.max(AGE_DEFAULT_MIN, Math.min(ageRange[0], AGE_DEFAULT_MAX)),
-      Math.max(AGE_DEFAULT_MIN, Math.min(ageRange[1], AGE_DEFAULT_MAX)),
-    ] as [number, number],
-    city: typeof data.city === 'string' ? data.city : '',
+    ageRange: parseAgeRange(data.ageRange, defaults.ageRange),
+    city: typeof data.city === 'string' ? data.city : defaults.city,
     filters:
       data.filters != null && typeof data.filters === 'object' && !Array.isArray(data.filters)
         ? (data.filters as FiltersState['filters'])
-        : {},
+        : defaults.filters,
     relationshipGoals: Array.isArray(data.relationshipGoals)
       ? data.relationshipGoals.filter((v): v is string => typeof v === 'string')
-      : [],
+      : defaults.relationshipGoals,
     workFields: Array.isArray(data.workFields)
       ? data.workFields.filter((v): v is string => typeof v === 'string')
-      : [],
+      : defaults.workFields,
     educationLevel: parsedEducation,
     educationInstitution:
-      typeof data.educationInstitution === 'string' ? data.educationInstitution : '',
-    priorities: priorities as [number, number, number],
-    premiumOnly: Boolean(data.premiumOnly),
+      typeof data.educationInstitution === 'string'
+        ? data.educationInstitution
+        : defaults.educationInstitution,
+    priorities: parsePriorities(data.priorities, defaults.priorities),
   }
+}
+
+function parseStoredPayload(raw: unknown): PersistedFeedFilters | null {
+  if (raw == null || typeof raw !== 'object') return null
+
+  const data = raw as Record<string, unknown>
+  const nested = data.filters
+
+  if (nested != null && typeof nested === 'object' && !Array.isArray(nested)) {
+    const nestedRecord = nested as Record<string, unknown>
+    if (isPersistedFeedFiltersBlob(nestedRecord)) {
+      return parsePersistedFilters(nestedRecord)
+    }
+  }
+
+  return parsePersistedFilters(raw)
 }
 
 export function loadPersistedFeedFilters(): PersistedFeedFilters | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return parsePersisted(JSON.parse(raw) as unknown)
+    return parseStoredPayload(JSON.parse(raw) as unknown)
   } catch {
     return null
   }
+}
+
+/** Состояние ленты из localStorage (каждый запуск читаем заново). */
+export function loadAppliedFiltersState(): FiltersState {
+  const persisted = loadPersistedFeedFilters()
+  if (!persisted) return getDefaultFiltersState()
+  return { ...getDefaultFiltersState(), ...persisted }
 }
 
 export function savePersistedFeedFilters(state: FiltersState): void {
@@ -124,10 +146,4 @@ export function clearPersistedFeedFilters(): void {
   } catch {
     /* ignore */
   }
-}
-
-export function getInitialFiltersState(): FiltersState {
-  const persisted = loadPersistedFeedFilters()
-  if (!persisted) return getDefaultFiltersState()
-  return { ...getDefaultFiltersState(), ...persisted }
 }

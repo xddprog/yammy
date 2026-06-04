@@ -1,34 +1,35 @@
 import type React from 'react'
-import { createContext, useCallback, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
+
+import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 
 import {
   clearPersistedFeedFilters,
-  getInitialFiltersState,
+  extractPersistedFeedFilters,
+  loadAppliedFiltersState,
   savePersistedFeedFilters,
 } from '../lib/persistedFeedFilters'
+import { reconcileFiltersStateWithMetadata } from '../lib/reconcileFeedFiltersWithMetadata'
 import type { FiltersState } from './types'
 import { getDefaultFiltersState } from './types'
 
 export interface FiltersContextValue {
-  /** Черновик фильтров (редактируется в overlay). */
+  /** Черновик в оверлее (до «Применить»). */
   state: FiltersState
-  /** Применённые фильтры (используются для запроса поиска; обновляются только при «Применить» или «Сбросить»). */
+  /** Применённые фильтры — лента и localStorage. */
   appliedState: FiltersState
   setState: React.Dispatch<React.SetStateAction<FiltersState>>
   setGender: (v: FiltersState['gender']) => void
   setAgeRange: (v: [number, number]) => void
   setCity: (v: string) => void
-  /** Универсальный сеттер для динамических фильтров по slug'ам категории/подкатегории. */
   setFilterValue: (categorySlug: string, subcategorySlug: string, values: string[]) => void
   setRelationshipGoals: (v: FiltersState['relationshipGoals']) => void
   setWorkFields: (v: FiltersState['workFields']) => void
   setEducationLevel: (v: FiltersState['educationLevel']) => void
   setEducationInstitution: (v: string) => void
   setPriorities: (v: [number, number, number]) => void
-  setPremiumOnly: (v: boolean) => void
-  /** Зафиксировать черновик как применённый (для запроса ленты; вызывать при «Применить»). */
-  persist: () => void
-  /** Сбросить к дефолтам в памяти. */
+  /** Черновик → applied + localStorage (кнопка «Применить»). */
+  persist: (snapshot?: FiltersState) => void
   reset: () => void
 }
 
@@ -36,7 +37,7 @@ const FiltersContext = createContext<FiltersContextValue | null>(null)
 
 export { FiltersContext }
 
-function useSetters(
+function useDraftSetters(
   setState: React.Dispatch<React.SetStateAction<FiltersState>>,
 ): Omit<FiltersContextValue, 'state' | 'appliedState' | 'setState' | 'persist' | 'reset'> {
   const setGender = useCallback(
@@ -106,12 +107,6 @@ function useSetters(
     },
     [setState],
   )
-  const setPremiumOnly = useCallback(
-    (v: boolean) => {
-      setState((s) => ({ ...s, premiumOnly: v }))
-    },
-    [setState],
-  )
 
   return useMemo(
     () => ({
@@ -124,7 +119,6 @@ function useSetters(
       setEducationLevel,
       setEducationInstitution,
       setPriorities,
-      setPremiumOnly,
     }),
     [
       setGender,
@@ -136,24 +130,44 @@ function useSetters(
       setEducationLevel,
       setEducationInstitution,
       setPriorities,
-      setPremiumOnly,
     ],
   )
 }
 
 export function FiltersProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const [state, setState] = useState<FiltersState>(getInitialFiltersState)
-  const [appliedState, setAppliedState] = useState<FiltersState>(getInitialFiltersState)
+  const { data: filtersMetadata } = useFiltersMetadata()
 
-  const stateRef = useRef(state)
-  stateRef.current = state
+  const [state, setState] = useState<FiltersState>(() => loadAppliedFiltersState())
+  const [appliedState, setAppliedState] = useState<FiltersState>(() => loadAppliedFiltersState())
 
-  const setters = useSetters(setState)
+  const setters = useDraftSetters(setState)
 
-  const persist = useCallback(() => {
-    const latest = stateRef.current
-    setAppliedState(latest)
-    savePersistedFeedFilters(latest)
+  useEffect(() => {
+    if (!filtersMetadata?.length) return
+
+    setAppliedState((prev) => {
+      const next = reconcileFiltersStateWithMetadata(prev, filtersMetadata)
+      const unchanged =
+        JSON.stringify(extractPersistedFeedFilters(prev)) ===
+        JSON.stringify(extractPersistedFeedFilters(next))
+      if (unchanged) return prev
+      savePersistedFeedFilters(next)
+      return next
+    })
+  }, [filtersMetadata])
+
+  const persist = useCallback((snapshot?: FiltersState) => {
+    if (snapshot != null) {
+      setAppliedState(snapshot)
+      setState(snapshot)
+      savePersistedFeedFilters(snapshot)
+      return
+    }
+    setState((draft) => {
+      setAppliedState(draft)
+      savePersistedFeedFilters(draft)
+      return draft
+    })
   }, [])
 
   const reset = useCallback(() => {

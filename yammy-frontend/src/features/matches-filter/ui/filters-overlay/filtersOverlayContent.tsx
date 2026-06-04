@@ -2,7 +2,7 @@ import type { PanInfo } from 'framer-motion'
 import { animate, motion, useDragControls, useMotionValue } from 'framer-motion'
 import isEqual from 'lodash/isEqual'
 import { ListFilter, X } from 'lucide-react'
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useEffect } from 'react'
 
 import {
   RELATIONSHIP_GOAL_OPTIONS,
@@ -51,6 +51,10 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
   const { data: universityNames = [] } = useUniversityNames(filters.state.educationInstitution, {
     enabled: showUniversityField,
   })
+
+  useEffect(() => {
+    filters.setState(filters.appliedState)
+  }, [])
 
   const handleCancel = useCallback(() => {
     filters.setState(filters.appliedState)
@@ -111,7 +115,7 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                 variant="ghost"
                 size="icon-lg"
                 aria-label="Закрыть"
-                onClick={() => filters.reset()}
+                onClick={handleCancel}
                 className="text-neutral-800"
               >
                 <X className="size-5" />

@@ -41,9 +41,5 @@ export function mapFiltersToSearchRequest(state: FiltersState): SearchUsersReque
   params.weight_social = weightSocial / 100
   params.weight_personality = weightPersonality / 100
 
-  if (state.premiumOnly) {
-    params.only_premium = true
-  }
-
   return params
 }

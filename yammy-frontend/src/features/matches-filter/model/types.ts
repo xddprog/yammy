@@ -27,8 +27,6 @@ export interface FiltersState {
   /** Учебное заведение (название ВУЗа, хранится в users.education_details) */
   educationInstitution: string
   priorities: [number, number, number]
-  /** Только премиум-анкеты */
-  premiumOnly: boolean
 }
 
 /** Начальное состояние фильтров (для сброса и по умолчанию) */
@@ -44,5 +42,4 @@ export const getDefaultFiltersState = (): FiltersState => ({
   educationLevel: null,
   educationInstitution: '',
   priorities: [50, 50, 50],
-  premiumOnly: false,
 })
