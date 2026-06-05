@@ -3,33 +3,40 @@ import { useCallback, useMemo, useState } from 'react'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
 
 import { isProfileThinlyFilled } from '../lib/isProfileThinlyFilled'
+import {
+  markProfileFillPromptHandledToday,
+  wasProfileFillPromptHandledToday,
+} from '../lib/profileFillPromptStorage'
 
-/** Временно: показ после каждого свайпа, без лимита раз в день. */
+/**
+ * Плашка на ленте: профиль слабо заполнен + первый свайп за день + ещё не закрывали сегодня.
+ */
 export function useProfileFillPrompt(): {
   visible: boolean
-  dismiss: () => void
+  dismissForToday: () => void
   notifyAfterSwipe: () => void
 } {
   const { data: profile } = useUserProfile()
-  const [hasSwiped, setHasSwiped] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
+  const [armedAfterSwipe, setArmedAfterSwipe] = useState(false)
 
   const eligible = useMemo(
     () => Boolean(profile && isProfileThinlyFilled(profile)),
     [profile],
   )
 
-  const visible = eligible && hasSwiped && !dismissed
+  const visible =
+    eligible && armedAfterSwipe && !wasProfileFillPromptHandledToday()
 
   const notifyAfterSwipe = useCallback(() => {
     if (!profile || !isProfileThinlyFilled(profile)) return
-    setHasSwiped(true)
-    setDismissed(false)
+    if (wasProfileFillPromptHandledToday()) return
+    setArmedAfterSwipe(true)
   }, [profile])
 
-  const dismiss = useCallback(() => {
-    setDismissed(true)
+  const dismissForToday = useCallback(() => {
+    markProfileFillPromptHandledToday()
+    setArmedAfterSwipe(false)
   }, [])
 
-  return { visible, dismiss, notifyAfterSwipe }
+  return { visible, dismissForToday, notifyAfterSwipe }
 }

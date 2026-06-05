@@ -34,7 +34,7 @@ const DashboardPage = (): JSX.Element => {
   const [searchParams] = useSearchParams()
   const mode = searchParams.get('mode') || 'swipe'
   const isSwipeMode = mode !== 'rate'
-  const { visible: showFillPrompt, dismiss: dismissFillPrompt, notifyAfterSwipe } =
+  const { visible: showFillPrompt, dismissForToday, notifyAfterSwipe } =
     useProfileFillPrompt()
 
   const filterParams = useFiltersSearchParams()
@@ -204,9 +204,9 @@ const DashboardPage = (): JSX.Element => {
 
       <ProfileFillPromptBanner
         open={isSwipeMode && showFillPrompt}
-        onDismiss={dismissFillPrompt}
+        onDismiss={dismissForToday}
         onFill={() => {
-          dismissFillPrompt()
+          dismissForToday()
           navigate(`/${ERouteNames.PROFILE_ROUTE}`, { state: { openEdit: true } })
         }}
       />
