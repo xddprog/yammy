@@ -1,4 +1,11 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://7aee-50-7-125-170.ngrok-free.app'
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? 'https://7aee-50-7-125-170.ngrok-free.app'
+
+export const NGROK_SKIP_BROWSER_WARNING_HEADER = 'ngrok-skip-browser-warning'
+
+export function isNgrokApiBaseUrl(baseUrl: string = API_BASE_URL): boolean {
+  return /ngrok(-free)?\.app/i.test(baseUrl)
+}
 
 /** WebSocket — напрямую на API (Vite proxy для WS часто зависает в pending). */
 export function getWebSocketBaseUrl(): string {

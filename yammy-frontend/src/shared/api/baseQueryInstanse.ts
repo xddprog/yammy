@@ -1,7 +1,11 @@
 import ky, { type Options } from 'ky'
 
 import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from '@/entities'
-import { API_BASE_URL } from '@/shared/config/apiBaseUrl'
+import {
+  API_BASE_URL,
+  isNgrokApiBaseUrl,
+  NGROK_SKIP_BROWSER_WARNING_HEADER,
+} from '@/shared/config/apiBaseUrl'
 
 /** Таймаут запросов к API (мс). Бэкенд может отвечать долго. */
 const REQUEST_TIMEOUT_MS = 60_000
@@ -17,8 +21,15 @@ type KyRetryContext = Options & {
   context?: { authAccessRetry?: boolean }
 }
 
+function applyNgrokBypassHeader(headers: Headers): void {
+  if (isNgrokApiBaseUrl()) {
+    headers.set(NGROK_SKIP_BROWSER_WARNING_HEADER, '1')
+  }
+}
+
 /** Опции повтора без prefixUrl/hooks инстанса authApi — иначе абсолютный request.url снова склеится с базой. */
 function optionsForAbsoluteRetry(base: Options, headers: Headers): Options {
+  applyNgrokBypassHeader(headers)
   const { hooks: _hooks, prefixUrl: _prefixUrl, ...rest } = base as Options & {
     hooks?: unknown
     prefixUrl?: unknown
@@ -36,6 +47,13 @@ export const publicApi = ky.create({
   prefixUrl: API_BASE_URL,
   timeout: REQUEST_TIMEOUT_MS,
   throwHttpErrors: false,
+  hooks: {
+    beforeRequest: [
+      (request): void => {
+        applyNgrokBypassHeader(request.headers)
+      },
+    ],
+  },
   parseJson: (text) => JSON.parse(text),
 })
 
@@ -82,6 +100,7 @@ export const authApi = ky.create({
   hooks: {
     beforeRequest: [
       (request): void => {
+        applyNgrokBypassHeader(request.headers)
         const token = getAccessToken()
         if (token) {
           request.headers.set('Authorization', `Bearer ${token}`)
