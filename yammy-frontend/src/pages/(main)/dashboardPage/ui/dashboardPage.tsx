@@ -144,7 +144,7 @@ const DashboardPage = (): JSX.Element => {
       <div className={dashboardColumnClassName}>
         <Header />
         <div className="isolate min-h-0 flex-1 overflow-x-hidden">
-          <AppPageLoader />
+          <AppPageLoader className="bg-transparent" />
         </div>
       </div>
     )
@@ -204,12 +204,12 @@ const DashboardPage = (): JSX.Element => {
 
         {feedMoreLoading && (
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-5 top-0 z-20 flex items-center justify-center rounded-[48px] bg-black/85"
+            className="pointer-events-none absolute inset-x-0 bottom-5 top-0 z-20 flex items-center justify-center rounded-[48px]"
             aria-busy
             aria-label="Подгрузка анкет"
           >
             <div className="h-full max-h-[min(520px,70dvh)] w-full min-h-0 px-2">
-              <AppPageLoader />
+              <AppPageLoader className="bg-transparent" />
             </div>
           </div>
         )}
