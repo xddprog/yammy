@@ -9,6 +9,7 @@ import { RateCard } from '../rate-card/rateCard'
 
 export interface RateFeedProps {
   items: AppearanceRatingUserDto[]
+  sessionKey?: string
   onSwipeLeft?: (item: AppearanceRatingUserDto) => void
   onSwipeRight?: (item: AppearanceRatingUserDto) => void
   onRate?: (item: AppearanceRatingUserDto, rating: number) => void
@@ -24,6 +25,7 @@ export interface RateFeedProps {
 const RateFeedComponent = forwardRef<MatchFeedAppendHandle, RateFeedProps>(function RateFeed(
   {
     items: initialItems,
+    sessionKey,
     onSwipeLeft,
     onSwipeRight,
     onRate,
@@ -40,6 +42,7 @@ const RateFeedComponent = forwardRef<MatchFeedAppendHandle, RateFeedProps>(funct
   const { visibleItems, stackProgress, handleSwipeLeft, handleSwipeRight, appendItems } =
     useSwipeFeed<AppearanceRatingUserDto>({
     initialItems,
+    sessionKey,
     onSwipeLeft,
     onSwipeRight,
     onEmpty,

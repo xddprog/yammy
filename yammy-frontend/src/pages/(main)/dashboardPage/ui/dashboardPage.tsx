@@ -47,6 +47,7 @@ const DashboardPage = (): JSX.Element => {
   const filterParams = useFiltersSearchParams()
   const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams])
   const feedResetKey = isSwipeMode ? filterKey : 'appearance'
+  const feedSessionKey = isSwipeMode ? `swipe:${feedResetKey}` : `rate:${feedResetKey}`
 
   const swipeSearch = useUsersSearch(filterParams, { enabled: isSwipeMode })
   const appearanceSearch = useAppearanceRatingUsers({ enabled: !isSwipeMode })
@@ -178,6 +179,7 @@ const DashboardPage = (): JSX.Element => {
               <RateFeed
                 ref={feedRef}
                 items={rateUsers}
+                sessionKey={feedSessionKey}
                 fillHeight
                 onSwipeLeft={onDislike}
                 onRate={(item, rating) => {
@@ -192,6 +194,7 @@ const DashboardPage = (): JSX.Element => {
               <SwipeFeed
                 ref={feedRef}
                 items={swipeUsers}
+                sessionKey={feedSessionKey}
                 fillHeight
                 onSwipeLeft={onDislike}
                 onSwipeRight={onLike}

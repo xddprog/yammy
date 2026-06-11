@@ -99,18 +99,21 @@ class UserSearchQueryBuilder:
         vector: list[float], 
         weight_personality: float
     ) -> Self:
-        if len(vector) > 0:
-            self.functions.append({
-                "script_score": {
-                    "script": {
-                        "source": "(cosineSimilarity(params.query_vector, 'personality_vector') + 1.0) * params.weight",
-                        "params": {
-                            "query_vector": vector,
-                            "weight": weight_personality * 5 
-                        }
+        if not vector:
+            return self
+
+        self.must_filters.append({"exists": {"field": "personality_vector"}})
+        self.functions.append({
+            "script_score": {
+                "script": {
+                    "source": "(cosineSimilarity(params.query_vector, 'personality_vector') + 1.0) * params.weight",
+                    "params": {
+                        "query_vector": vector,
+                        "weight": weight_personality * 5 
                     }
                 }
-            })
+            }
+        })
         return self
 
     def add_premium_filter(self, only_premium: bool) -> Self:

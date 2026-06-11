@@ -29,6 +29,10 @@ class RequestProvider(Provider):
             await session.close()
 
     @provide(scope=Scope.REQUEST)
+    def get_user_repository(self, session: AsyncSession) -> repositories.UserRepository:
+        return repositories.UserRepository(session=session)
+
+    @provide(scope=Scope.REQUEST)
     def get_auth_service(self, session: AsyncSession) -> services.AuthService:
         return services.AuthService(
             admin_repository=repositories.AdminRepository(session=session),

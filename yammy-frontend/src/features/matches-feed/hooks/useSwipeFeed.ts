@@ -5,12 +5,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FeedStackCardUser } from '@/entities/user/types/types'
 import { prefetchMediaSrc } from '@/shared/lib/media'
 
+import { readFeedSession, writeFeedSession } from '../lib/feedSessionStorage'
+
 const MAX_VISIBLE_CARDS = 3
 const DEFAULT_NEAR_END_THRESHOLD = 5
 const PREFETCH_AHEAD = 3
 
 export interface UseSwipeFeedOptions<T extends FeedStackCardUser = FeedStackCardUser> {
   initialItems: T[]
+  /** Ключ для восстановления позиции ленты между переходами по вкладкам. */
+  sessionKey?: string
   onSwipeLeft?: (item: T) => void
   onSwipeRight?: (item: T) => void
   onSuperLike?: (item: T, message: string) => void
@@ -53,6 +57,7 @@ function prefetchImages(urls: string[]): void {
  */
 export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
   initialItems,
+  sessionKey,
   onSwipeLeft,
   onSwipeRight,
   onSuperLike,
@@ -60,8 +65,14 @@ export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
   onNearEnd,
   nearEndThreshold = DEFAULT_NEAR_END_THRESHOLD,
 }: UseSwipeFeedOptions<T>): UseSwipeFeedResult<T> {
-  const [items, setItems] = useState<T[]>(initialItems)
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const savedSession = sessionKey ? readFeedSession(sessionKey) : null
+  const [items, setItems] = useState<T[]>(() => {
+    if (savedSession?.items.length) {
+      return savedSession.items as T[]
+    }
+    return initialItems
+  })
+  const [currentIndex, setCurrentIndex] = useState(() => savedSession?.currentIndex ?? 0)
   const stackProgress = useMotionValue(0)
 
   // Ref-ы для стабильных callback-ов — не влияют на зависимости useCallback
@@ -75,6 +86,20 @@ export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
   currentIndexRef.current = currentIndex
 
   const remainingCount = items.length - currentIndex
+
+  useEffect(() => {
+    if (!sessionKey) return
+    writeFeedSession(sessionKey, { currentIndex, items })
+  }, [sessionKey, currentIndex, items])
+
+  // После восстановления сессии: если лента уже была просмотрена до конца — подгрузить ещё
+  useEffect(() => {
+    if (currentIndex >= items.length && items.length > 0) {
+      callbacksRef.current.onEmpty?.()
+    }
+    // только при монтировании / восстановлении сессии
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const visibleItems = useMemo(
     () => items.slice(currentIndex, currentIndex + MAX_VISIBLE_CARDS),

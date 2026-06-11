@@ -53,17 +53,18 @@ class LikeService:
 
         liker = await self.user_repository.get_item(str(user_from_id))
         recipient = await self.user_repository.get_item(str(user_to_id))
+        liker_name = liker.name if liker else ""
 
         if is_match:
             await self.like_repository.create_match(user_from_id, user_to_id)
             if liker:
-                await self._notify_match_async(liker.id, user_from_id, user_to_id)
+                await self._notify_match_async(user_from_id, user_from_id, user_to_id)
             if recipient:
-                await self._notify_match_async(recipient.id, user_from_id, user_to_id)
+                await self._notify_match_async(user_to_id, user_from_id, user_to_id)
             return JSONResponse(content={"message": "У вас новый метч!"})
 
         if liker and recipient:
-            await self._notify_like_async(recipient.id, liker.name, LikeTypeEnum.LIKE.value)
+            await self._notify_like_async(user_to_id, liker_name, LikeTypeEnum.LIKE.value)
 
         return Response(status_code=204)
 
@@ -79,6 +80,9 @@ class LikeService:
 
         liker = await self.user_repository.get_item(str(user_from_id))
         recipient = await self.user_repository.get_item(str(user_to_id))
+        if not liker or not recipient:
+            raise BadRequestException("Пользователь не найден")
+        liker_name = liker.name
 
         existing_like = await self.like_repository.has_liked(user_to_id, user_from_id)
         if not existing_like:
@@ -96,11 +100,11 @@ class LikeService:
 
         if is_match:
             await self.like_repository.create_match(user_from_id, user_to_id)
-            await self._notify_match_async(liker.id, user_from_id, user_to_id)
-            await self._notify_match_async(recipient.id, user_from_id, user_to_id)
+            await self._notify_match_async(user_from_id, user_from_id, user_to_id)
+            await self._notify_match_async(user_to_id, user_from_id, user_to_id)
             return JSONResponse(content={"message": "У вас новый метч!"})
 
-        await self._notify_like_async(recipient.id, liker.name, LikeTypeEnum.SUPERLIKE.value)
+        await self._notify_like_async(user_to_id, liker_name, LikeTypeEnum.SUPERLIKE.value)
         return Response(status_code=204)
     
     async def add_dislike(self, user_from_id: UUID, user_to_id: UUID):
@@ -149,13 +153,8 @@ class LikeService:
         await self._add_to_seen(user_from_id, user_to_id)
         await self.like_repository.create_match(user_from_id, user_to_id)
 
-        liker = await self.user_repository.get_item(str(user_from_id))
-        recipient = await self.user_repository.get_item(str(user_to_id))
-        
-        if liker:
-            await self._notify_match_async(liker.id, user_from_id, user_to_id)
-        if recipient:
-            await self._notify_match_async(recipient.id, user_from_id, user_to_id)
+        await self._notify_match_async(user_from_id, user_from_id, user_to_id)
+        await self._notify_match_async(user_to_id, user_from_id, user_to_id)
 
     async def _notify_like_async(self, recipient_id: UUID, liker_name: str, like_type: str) -> None:
         from app.core.tasks.notifications_task import send_like_notification
