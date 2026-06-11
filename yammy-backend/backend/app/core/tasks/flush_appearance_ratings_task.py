@@ -8,7 +8,13 @@ from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
-@broker.task('flush_appearance_ratings_to_database', schedule=[{"cron": "*/15 * * * *"}])
+@broker.task(
+    'flush_appearance_ratings_to_database',
+    schedule=[{"cron": "*/15 * * * *"}],
+    retry_on_error=True,
+    max_retries=3,
+    delay=30,
+)
 @inject(patch_module=True)
 async def flush_appearance_ratings_to_database(appearance_rating_service: FromDishka[AppearanceRatingService]):
     logger.info("Starting appearance ratings flush task...")

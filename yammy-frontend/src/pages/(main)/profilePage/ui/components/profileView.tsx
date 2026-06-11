@@ -5,11 +5,12 @@ import type { UserLanguage } from '@/entities/user/types/types'
 import { ProfileMainRow } from './profileMainRow'
 import {
   ProfileAdequacySheetRow,
+  ProfileBoostsSheetRow,
   ProfileLanguageSheetRow,
   ProfileNotificationsSheetRow,
   ProfileReferralSheetRow,
+  ProfileSuperlikesSheetRow,
 } from './profileViewSettingsSheets'
-import { SettingsRow } from './settingsRow'
 import { SubscriptionCard } from './subscriptionCard'
 
 interface ProfileViewProps {
@@ -20,15 +21,20 @@ interface ProfileViewProps {
   subscriptionTier: string
   subscriptionExpiresAt: string | null
   superlikesCount: number
+  onBuySuperlikes: () => void
   boostsCount: number
+  boostExpiresAt: string | null
   notificationsEnabled: boolean
   language: UserLanguage
   referralCode: string
   adequacyScore: number
   referralsCount: number
+  onActivateBoost: () => void
+  onBuyBoostsPackage: () => void
   onNotificationsChange: (enabled: boolean) => void
   onLanguageChange: (lang: UserLanguage) => void
   settingsUpdating?: boolean
+  boostActivating?: boolean
 }
 
 export const ProfileView = ({
@@ -39,15 +45,20 @@ export const ProfileView = ({
   subscriptionTier,
   subscriptionExpiresAt,
   superlikesCount,
+  onBuySuperlikes,
   boostsCount,
+  boostExpiresAt,
   notificationsEnabled,
   language,
   referralCode,
   adequacyScore,
   referralsCount,
+  onActivateBoost,
+  onBuyBoostsPackage,
   onNotificationsChange,
   onLanguageChange,
   settingsUpdating,
+  boostActivating,
 }: ProfileViewProps): JSX.Element => (
   <>
     <ProfileMainRow avatarUrl={avatarUrl} title={profileTitle} onOpenEdit={onOpenEdit} />
@@ -61,8 +72,17 @@ export const ProfileView = ({
     </section>
 
     <section className="mt-5 flex flex-col gap-1.5">
-      <SettingsRow label="Суперлайки" value={String(superlikesCount)} />
-      <SettingsRow label="Бусты" value={String(boostsCount)} />
+      <ProfileSuperlikesSheetRow
+        superlikesCount={superlikesCount}
+        onBuySuperlikes={onBuySuperlikes}
+      />
+      <ProfileBoostsSheetRow
+        boostsCount={boostsCount}
+        boostExpiresAt={boostExpiresAt}
+        onActivate={onActivateBoost}
+        onBuyBoostsPackage={onBuyBoostsPackage}
+        activating={boostActivating}
+      />
       <ProfileNotificationsSheetRow
         enabled={notificationsEnabled}
         onApply={onNotificationsChange}

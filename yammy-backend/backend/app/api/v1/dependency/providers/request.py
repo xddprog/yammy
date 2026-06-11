@@ -130,16 +130,31 @@ class RequestProvider(Provider):
         return services.CityService(redis_client=redis_client)
 
     @provide(scope=Scope.REQUEST)
+    def get_user_index_service(
+        self,
+        session: AsyncSession,
+        elasticsearch_client: ElasticsearchClient,
+        ml_service: MLService,
+    ) -> services.UserIndexService:
+        return services.UserIndexService(
+            user_repository=repositories.UserRepository(session=session),
+            elasticsearch_client=elasticsearch_client,
+            ml_service=ml_service,
+        )
+
+    @provide(scope=Scope.REQUEST)
     def get_user_service(
         self,
         session: AsyncSession,
         image_service: services.ImageService,
         moderation_service: services.ModerationService,
+        user_index_service: services.UserIndexService,
     ) -> services.UserService:
         return services.UserService(
             user_repository=repositories.UserRepository(session=session),
             image_service=image_service,
             moderation_service=moderation_service,
+            user_index_service=user_index_service,
         )
 
 

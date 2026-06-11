@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
+import { useActivateBoost } from '@/entities/user/hooks/useActivateBoost'
 import { useUpdateUserProfile } from '@/entities/user/hooks/useUpdateUserProfile'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
 import type { ProfilePhotoItem, UserLanguage } from '@/entities/user/types/types'
@@ -23,6 +24,7 @@ const ProfilePage = (): JSX.Element => {
   const navigate = useNavigate()
   const filters = useFiltersState()
   const { data: filtersMetadata } = useFiltersMetadata()
+  const activateBoostMutation = useActivateBoost()
   const updateUserProfileMutation = useUpdateUserProfile()
   const { data: profile, status } = useUserProfile()
   const [screen, setScreen] = useState<ProfileScreen>('view')
@@ -117,12 +119,22 @@ const ProfilePage = (): JSX.Element => {
                     subscriptionTier={profile.subscription_tier}
                     subscriptionExpiresAt={profile.subscription_expires_at}
                     superlikesCount={profile.superlikes_balance}
+                    onBuySuperlikes={() => {
+                      showErrorToast('Покупка суперлайков скоро появится')
+                    }}
                     boostsCount={profile.boosts_balance}
+                    boostExpiresAt={profile.boost_expires_at}
                     notificationsEnabled={profile.notifications_enabled}
                     language={profile.language}
                     referralCode={profile.referral_code ?? ''}
                     adequacyScore={profile.adequacy_score}
                     referralsCount={profile.referrals_count}
+                    onActivateBoost={() => {
+                      void activateBoostMutation.mutateAsync()
+                    }}
+                    onBuyBoostsPackage={() => {
+                      showErrorToast('Покупка пакета бустов скоро появится')
+                    }}
                     onNotificationsChange={(enabled) => {
                       void updateUserProfileMutation.mutateAsync({ notifications_enabled: enabled })
                     }}
@@ -130,6 +142,7 @@ const ProfilePage = (): JSX.Element => {
                       void updateUserProfileMutation.mutateAsync({ language: lang })
                     }}
                     settingsUpdating={updateUserProfileMutation.isPending}
+                    boostActivating={activateBoostMutation.isPending}
                   />
                 ) : (
                   <ProfilePageSkeleton />

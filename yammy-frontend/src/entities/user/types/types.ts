@@ -73,6 +73,8 @@ export interface UserSearchApiUser {
   photos: string[]
   filter_option_ids: string[]
   match_percentage: number
+  like_type?: 'like' | 'superlike' | null
+  like_message?: string | null
 }
 
 export interface FeedStackCardUser {

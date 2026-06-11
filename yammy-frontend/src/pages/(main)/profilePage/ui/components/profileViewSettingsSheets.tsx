@@ -171,6 +171,212 @@ export const ProfileLanguageSheetRow = memo(function ProfileLanguageSheetRow({
   )
 })
 
+const ProfileSuperlikesSheetContent = memo(function ProfileSuperlikesSheetContent({
+  superlikesCount,
+  onBuySuperlikes,
+  close,
+}: {
+  superlikesCount: number
+  onBuySuperlikes: () => void
+  close: () => void
+}): JSX.Element {
+  return (
+    <SheetShell title="Суперлайки" close={close}>
+      <p className="mb-3 text-[13px] font-[200] leading-snug text-muted-foreground">
+        Суперлайк помогает выделиться в ленте и повышает шанс, что вас заметят быстрее.
+      </p>
+      <div className="pb-1">
+        <div className="flex min-h-[48px] items-center rounded-[24px] bg-card/60 px-4 py-2 ring-1 ring-inset ring-border/30">
+          <input
+            disabled
+            value={String(superlikesCount)}
+            aria-label="Баланс суперлайков"
+            className="w-full cursor-not-allowed border-none bg-transparent py-1 text-[13px] font-[100] text-foreground outline-none"
+          />
+        </div>
+      </div>
+      <Button
+        type="button"
+        size="default"
+        onClick={onBuySuperlikes}
+        className="mt-3 w-full rounded-full shadow-lg shadow-[#FF6BA4]/25"
+      >
+        Купить суперлайки
+      </Button>
+    </SheetShell>
+  )
+})
+
+export const ProfileSuperlikesSheetRow = memo(function ProfileSuperlikesSheetRow({
+  superlikesCount,
+  onBuySuperlikes,
+}: {
+  superlikesCount: number
+  onBuySuperlikes: () => void
+}): JSX.Element {
+  const { open } = useOverlay()
+  const summary = String(superlikesCount)
+
+  return (
+    <button
+      type="button"
+      aria-label="Суперлайки"
+      onClick={() =>
+        open({
+          backdropClassName: 'bg-black/50 backdrop-blur-sm',
+          panelClassName: bottomSheetPanelClassNames,
+          content: (close) => (
+            <ProfileSuperlikesSheetContent
+              superlikesCount={superlikesCount}
+              onBuySuperlikes={onBuySuperlikes}
+              close={close}
+            />
+          ),
+        })
+      }
+      className="flex w-full items-center gap-3 rounded-[28px] bg-card px-4 py-7.5 text-left transition-colors hover:bg-card/85 active:scale-[0.99]"
+    >
+      <span className="min-w-0 flex-1 text-[14px] font-[200] text-foreground">Суперлайки</span>
+      <span className="truncate text-[14px] font-[200] text-muted-foreground">{summary}</span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" strokeWidth={2} />
+    </button>
+  )
+})
+
+const ProfileBoostsSheetContent = memo(function ProfileBoostsSheetContent({
+  boostsCount,
+  boostExpiresAt,
+  onActivate,
+  onBuyBoostsPackage,
+  activating,
+  close,
+}: {
+  boostsCount: number
+  boostExpiresAt: string | null
+  onActivate: () => void
+  onBuyBoostsPackage: () => void
+  activating?: boolean
+  close: () => void
+}): JSX.Element {
+  const boostExpiresDate = boostExpiresAt ? new Date(boostExpiresAt) : null
+  const isBoostActive = Boolean(boostExpiresDate && !Number.isNaN(boostExpiresDate.getTime()) && boostExpiresDate.getTime() > Date.now())
+  const boostActiveUntil = isBoostActive && boostExpiresDate
+    ? new Intl.DateTimeFormat('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(boostExpiresDate)
+    : null
+  const edgeInsetClass = 'w-3 shrink-0 snap-start'
+  const edgeInsetEndClass = 'w-3 shrink-0 snap-end'
+  const peekItemClass = 'shrink-0 snap-start min-w-[calc(100%-3.5rem)]'
+
+  return (
+    <SheetShell title="Бусты" close={close}>
+      <p className="mb-3 text-[13px] font-[200] leading-snug text-muted-foreground">
+        Буст временно поднимает ваш профиль выше в рекомендациях, чтобы получить больше показов.
+      </p>
+      <div className="flex flex-col gap-2 pb-1">
+        <div className="flex min-h-[48px] items-center rounded-[24px] bg-card/60 px-4 py-2 ring-1 ring-inset ring-border/30">
+          <input
+            disabled
+            value={String(boostsCount)}
+            aria-label="Баланс бустов"
+            className="w-full cursor-not-allowed border-none bg-transparent py-1 text-[13px] font-[100] text-foreground outline-none"
+          />
+        </div>
+        <div className="flex min-h-[48px] items-center rounded-[24px] bg-card/60 px-4 py-2 ring-1 ring-inset ring-border/30">
+          <input
+            disabled
+            value={isBoostActive && boostActiveUntil ? `Активен до ${boostActiveUntil}` : 'Не активен'}
+            aria-label="Статус активного буста"
+            className="w-full cursor-not-allowed border-none bg-transparent py-1 text-[13px] font-[100] text-foreground outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="-mx-5 mt-3 overflow-x-auto no-scrollbar snap-x snap-mandatory">
+        <div className="flex gap-2">
+          <div className={edgeInsetClass} aria-hidden />
+          <div className={peekItemClass}>
+            <Button
+              type="button"
+              size="default"
+              className="w-full rounded-full"
+              disabled={activating || boostsCount <= 0 || isBoostActive}
+              onClick={() => {
+                onActivate()
+                close()
+              }}
+            >
+              {isBoostActive ? 'Буст уже активен' : 'Активировать буст'}
+            </Button>
+          </div>
+          <div className={peekItemClass}>
+            <Button
+              type="button"
+              variant="default"
+              size="default"
+              className="w-full rounded-full border-0 bg-white text-black hover:bg-white/90"
+              onClick={onBuyBoostsPackage}
+            >
+              Купить бусты
+            </Button>
+          </div>
+          <div className={edgeInsetEndClass} aria-hidden />
+        </div>
+      </div>
+    </SheetShell>
+  )
+})
+
+export const ProfileBoostsSheetRow = memo(function ProfileBoostsSheetRow({
+  boostsCount,
+  boostExpiresAt,
+  onActivate,
+  onBuyBoostsPackage,
+  activating,
+}: {
+  boostsCount: number
+  boostExpiresAt: string | null
+  onActivate: () => void
+  onBuyBoostsPackage: () => void
+  activating?: boolean
+}): JSX.Element {
+  const { open } = useOverlay()
+  const summary = String(boostsCount)
+
+  return (
+    <button
+      type="button"
+      aria-label="Бусты"
+      onClick={() =>
+        open({
+          backdropClassName: 'bg-black/50 backdrop-blur-sm',
+          panelClassName: bottomSheetPanelClassNames,
+          content: (close) => (
+            <ProfileBoostsSheetContent
+              boostsCount={boostsCount}
+              boostExpiresAt={boostExpiresAt}
+              onActivate={onActivate}
+              onBuyBoostsPackage={onBuyBoostsPackage}
+              activating={activating}
+              close={close}
+            />
+          ),
+        })
+      }
+      className="flex w-full items-center gap-3 rounded-[28px] bg-card px-4 py-7.5 text-left transition-colors hover:bg-card/85 active:scale-[0.99]"
+    >
+      <span className="min-w-0 flex-1 text-[14px] font-[200] text-foreground">Бусты</span>
+      <span className="truncate text-[14px] font-[200] text-muted-foreground">{summary}</span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" strokeWidth={2} />
+    </button>
+  )
+})
+
 const ProfileReferralSheetContent = memo(function ProfileReferralSheetContent({
   referralCode,
   close,

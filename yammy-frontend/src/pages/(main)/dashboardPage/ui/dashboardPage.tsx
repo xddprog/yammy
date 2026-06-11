@@ -1,21 +1,27 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { JSX } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
-import { sendUserDislike, sendUserLike } from '@/entities/like/api/likeService'
-import { showErrorToast } from '@/shared'
+import { AppPageLoader } from '@/app/ui/AppPageLoader'
+import { sendUserDislike, sendUserLike, sendUserSuperLike } from '@/entities/like/api/likeService'
 import { sendAppearanceRating } from '@/entities/user/api/appearanceRatingService'
 import { useAppearanceRatingUsers } from '@/entities/user/hooks/useAppearanceRatingUsers'
 import { useUsersSearch } from '@/entities/user/hooks/useUsersSearch'
-import type { AppearanceRatingUserDto, FeedStackCardUser, UserSearchApiUser } from '@/entities/user/types/types'
-import { AppPageLoader } from '@/app/ui/AppPageLoader'
+import { usersQueryKeys } from '@/entities/user/lib/usersQueryKeys'
+import type {
+  AppearanceRatingUserDto,
+  FeedStackCardUser,
+  UserSearchApiUser,
+} from '@/entities/user/types/types'
 import { RateFeed, SwipeFeed } from '@/features'
 import type { MatchFeedAppendHandle } from '@/features/matches-feed/model/matchFeedAppendHandle'
 import { useFiltersSearchParams } from '@/features/matches-filter/model/useFiltersSearchParams'
 import { ProfileFillPromptBanner, useProfileFillPrompt } from '@/features/profile-fill-prompt'
-import { ERouteNames } from '@/shared/lib/routeVariables'
+import { showErrorToast } from '@/shared'
 import { cn } from '@/shared'
+import { ERouteNames } from '@/shared/lib/routeVariables'
 import { Header } from '@/widgets'
 
 const FEED_EMPTY_MESSAGE = 'Анкеты закончились, попробуйте поменять фильтры'
@@ -30,12 +36,12 @@ const emptyStateClassName = cn(
 )
 
 const DashboardPage = (): JSX.Element => {
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const mode = searchParams.get('mode') || 'swipe'
   const isSwipeMode = mode !== 'rate'
-  const { visible: showFillPrompt, dismissForToday, notifyAfterSwipe } =
-    useProfileFillPrompt()
+  const { visible: showFillPrompt, dismissForToday, notifyAfterSwipe } = useProfileFillPrompt()
 
   const filterParams = useFiltersSearchParams()
   const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams])
@@ -46,6 +52,8 @@ const DashboardPage = (): JSX.Element => {
 
   const swipeUsers = swipeSearch.data ?? []
   const rateUsers = appearanceSearch.data ?? []
+  const refetchSwipeSearch = swipeSearch.refetch
+  const refetchAppearanceSearch = appearanceSearch.refetch
 
   const isSuccess = isSwipeMode ? swipeSearch.isSuccess : appearanceSearch.isSuccess
 
@@ -53,10 +61,10 @@ const DashboardPage = (): JSX.Element => {
 
   const refetchFeed = useCallback(async () => {
     if (isSwipeMode) {
-      return swipeSearch.refetch()
+      return refetchSwipeSearch()
     }
-    return appearanceSearch.refetch()
-  }, [isSwipeMode, swipeSearch.refetch, appearanceSearch.refetch])
+    return refetchAppearanceSearch()
+  }, [isSwipeMode, refetchSwipeSearch, refetchAppearanceSearch])
 
   const feedRef = useRef<MatchFeedAppendHandle | null>(null)
   const [feedFullyEnded, setFeedFullyEnded] = useState(false)
@@ -89,6 +97,21 @@ const DashboardPage = (): JSX.Element => {
       })
     },
     [notifyAfterSwipe],
+  )
+
+  const onSuperLike = useCallback(
+    (item: FeedStackCardUser, message: string) => {
+      notifyAfterSwipe()
+      void sendUserSuperLike(item.user_id, message)
+        .then((matchMessage) => {
+          void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
+          if (matchMessage) showErrorToast(matchMessage)
+        })
+        .catch(() => {
+          /* throwApiError уже показал тост */
+        })
+    },
+    [notifyAfterSwipe, queryClient],
   )
 
   const handleFeedEmpty = useCallback(async () => {
@@ -171,7 +194,7 @@ const DashboardPage = (): JSX.Element => {
                 fillHeight
                 onSwipeLeft={onDislike}
                 onSwipeRight={onLike}
-                onSuperLike={onLike}
+                onSuperLike={onSuperLike}
                 onEmpty={handleFeedEmpty}
               />
             )}
@@ -196,10 +219,11 @@ const DashboardPage = (): JSX.Element => {
               'absolute inset-x-0 bottom-5 top-0 z-20 flex items-center justify-center rounded-[48px] bg-background/90 px-6',
             )}
           >
-            <p className="max-w-[280px] text-center text-sm text-muted-foreground">{FEED_EMPTY_MESSAGE}</p>
+            <p className="max-w-[280px] text-center text-sm text-muted-foreground">
+              {FEED_EMPTY_MESSAGE}
+            </p>
           </div>
         )}
-
       </div>
 
       <ProfileFillPromptBanner

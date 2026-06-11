@@ -25,7 +25,8 @@ elasticsearch<9.0.0,>=8.0.0
 mypy
 prometheus-fastapi-instrumentator
 faker
-taskiq
+taskiq[opentelemetry]
 taskiq-redis
+prometheus_client
 mtcnn[tensorflow]
 fastapi-limiter

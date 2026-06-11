@@ -19,6 +19,7 @@ const FILTERS_ENDPOINT = 'api/v1/filters/'
 const PROFILE_ENDPOINT = 'api/v1/users/'
 const USER_IMAGE_ENDPOINT = 'api/v1/users/image'
 const USER_MAIN_IMAGE_ENDPOINT = 'api/v1/users/image/main'
+const USER_BOOST_ACTIVATE_ENDPOINT = 'api/v1/users/boosts/activate'
 
 const userImageOrderEndpoint = (imageId: string) => `${USER_IMAGE_ENDPOINT}/${imageId}/order`
 
@@ -137,6 +138,13 @@ export class UserService {
       await throwApiError(response, 'Удаление фото')
     }
   }
+
+  public async activateBoost(): Promise<void> {
+    const response = await authApi.post(USER_BOOST_ACTIVATE_ENDPOINT)
+    if (!response.ok) {
+      await throwApiError(response, 'Активация буста')
+    }
+  }
 }
 
 export const userService = new UserService()
@@ -151,4 +159,5 @@ export const {
   setMainFromGalleryPhoto,
   updateUserPhotosOrder,
   deleteUserGalleryPhoto,
+  activateBoost,
 } = userService

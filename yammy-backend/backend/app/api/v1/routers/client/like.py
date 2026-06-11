@@ -7,6 +7,7 @@ from app.utils.helpers.rate_limit import RateLimited
 from pyrate_limiter import Duration
 
 from app.api.v1.dependency.providers.request import get_current_user
+from app.core.dto.like import SuperLikeRequest
 from app.core.services.like_service import LikeService
 from app.infrastructure.database.models.user import User
 
@@ -26,6 +27,21 @@ async def like_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> Response:
     return await like_service.add_like(current_user.id, user_to_id)
+
+
+@router.post("/superlike",
+    dependencies=[
+        Depends(RateLimited(20, Duration.MINUTE))
+    ]
+)
+@inject
+async def superlike_user(
+    user_to_id: UUID,
+    body: SuperLikeRequest,
+    like_service: FromDishka[LikeService],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> Response:
+    return await like_service.add_superlike(current_user.id, user_to_id, body.message)
 
 
 @router.post("/dislike",

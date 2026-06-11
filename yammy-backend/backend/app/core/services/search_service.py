@@ -237,8 +237,8 @@ class SearchService:
         current_user: User,
         pagination: PaginationRequestModel,
     ) -> PaginationResponseModel[UserSearchResponseSchema]:
-        total, liker_ids = await self.like_repository.get_received_like_sender_ids(current_user.id, pagination)
-        if not liker_ids:
+        total, received_likes = await self.like_repository.get_received_like_sender_ids(current_user.id, pagination)
+        if not received_likes:
             return PaginationResponseModel(
                 total=0,
                 page=pagination.page,
@@ -246,7 +246,11 @@ class SearchService:
                 items=[],
             )
 
-        id_strs = [str(uid) for uid in liker_ids]
+        like_meta_by_user_id = {
+            str(like.user_from_id): (like.like_type, like.message)
+            for like in received_likes
+        }
+        id_strs = list(like_meta_by_user_id)
 
         user_vector = await self.redis_client.get(UserCacheKeys.USER_VECTOR.format(user_id=current_user.id))
         if not user_vector:
@@ -269,7 +273,12 @@ class SearchService:
             match_pct = self._match_percentage_for_candidate(
                 source, user_vector, my_specs, current_user_with_filters
             )
+            like_meta = like_meta_by_user_id.get(str(source.get("user_id") or source.get("id")))
             source["match_percentage"] = match_pct
+            
+            if like_meta:
+                source["like_type"] = like_meta[0]
+                source["like_message"] = like_meta[1]
             results.append(UserSearchResponseSchema.model_validate(source))
 
         results.sort(key=lambda u: u.match_percentage or 0, reverse=True)

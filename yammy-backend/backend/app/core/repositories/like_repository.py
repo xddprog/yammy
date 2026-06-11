@@ -11,11 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.constants.enums import LikeTypeEnum
 from app.core.dto.pagination import PaginationRequestModel
 
+
 class LikeRepository(SqlAlchemyRepository[Like]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, Like)
 
-    async def add_item(self, user_from_id: UUID, user_to_id: UUID, like_type: LikeTypeEnum):
+    async def add_item(
+        self,
+        user_from_id: UUID,
+        user_to_id: UUID,
+        like_type: LikeTypeEnum,
+        message: str | None = None,
+    ):
         query = (
             pg_insert(Like)
             .values(
@@ -23,11 +30,18 @@ class LikeRepository(SqlAlchemyRepository[Like]):
                     {
                         "user_from_id": user_from_id,
                         "user_to_id": user_to_id,
-                        "like_type": like_type
+                        "like_type": like_type,
+                        "message": message,
                     }
                 ]
             )
-            .on_conflict_do_nothing(index_elements=["user_from_id", "user_to_id"])
+            .on_conflict_do_update(
+                index_elements=["user_from_id", "user_to_id"],
+                set_={
+                    "like_type": like_type,
+                    "message": message,
+                },
+            )
         )
         await self.session.execute(query)
         await self.session.commit()
@@ -55,6 +69,7 @@ class LikeRepository(SqlAlchemyRepository[Like]):
         user_from_id: UUID,
         user_to_id: UUID,
         like_type: LikeTypeEnum,
+        message: str | None = None,
     ) -> None:
         await self.session.execute(
             update(Like)
@@ -62,7 +77,7 @@ class LikeRepository(SqlAlchemyRepository[Like]):
                 Like.user_from_id == user_from_id,
                 Like.user_to_id == user_to_id,
             )
-            .values(like_type=like_type)
+            .values(like_type=like_type, message=message)
         )
         await self.session.commit()
 
@@ -94,7 +109,7 @@ class LikeRepository(SqlAlchemyRepository[Like]):
         self, 
         user_to_id: UUID, 
         pagination: PaginationRequestModel
-    ) -> tuple[list[UUID], int]:
+    ) -> tuple[list[Like], int]:
         already_matched = exists(
             select(1)
             .select_from(Match)
@@ -105,7 +120,7 @@ class LikeRepository(SqlAlchemyRepository[Like]):
                 )
             )
         )
-        query = select(Like.user_from_id).where(
+        query = select(Like).where(
             Like.user_to_id == user_to_id,
             Like.like_type.in_((LikeTypeEnum.LIKE, LikeTypeEnum.SUPERLIKE)),
             ~already_matched,

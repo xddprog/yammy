@@ -2,6 +2,7 @@ from typing import Any
 import json
 from typing import Set
 from redis.asyncio.client import Redis
+from redis.exceptions import ResponseError
 
 from app.infrastructure.config.config import REDIS_CONFIG
 
@@ -62,3 +63,24 @@ class RedisClient:
 
     async def clear(self):
         return await self.redis.flushdb()
+
+    async def rename_key(self, source_key: str, target_key: str) -> bool:
+        try:
+            await self.redis.rename(source_key, target_key)
+            return True
+        except ResponseError:
+            return False
+
+    async def set_if_not_exists(self, key: str, value: str, ttl: int | None = None) -> bool:
+        return bool(await self.redis.set(key, value, nx=True, ex=ttl))
+
+    async def hset(self, key: str, field: str, value: str) -> int:
+        return await self.redis.hset(key, field, value)
+
+    async def hgetall(self, key: str) -> dict[str, str]:
+        raw = await self.redis.hgetall(key)
+        return {
+            (k.decode() if isinstance(k, bytes) else str(k)):
+            (v.decode() if isinstance(v, bytes) else str(v))
+            for k, v in raw.items()
+        }

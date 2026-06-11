@@ -10,6 +10,7 @@ from app.utils.constants.enums import (
     SubscriptionTierEnum,
     EducationLevelEnum,
     JobSphereEnum,
+    LikeTypeEnum,
     UserLanguageEnum,
 )
 
@@ -136,6 +137,8 @@ class UserSearchResponseSchema(BaseModel):
         validation_alias=AliasChoices("filters", "filter_option_ids"),
     )
     match_percentage: int | None = None
+    like_type: LikeTypeEnum | None = None
+    like_message: str | None = None
 
     @field_validator("filter_option_ids", mode="before")
     @classmethod

@@ -93,6 +93,7 @@ class PresenceService:
         async with await self._db_connection.get_session() as session:
             repository = UserRepository(session=session)
             await repository.update_last_seen(user_id, at)
+        await self._redis.hset(PresenceKeys.LAST_SEEN_BUFFER, str(user_id), at.isoformat())
 
     async def _send_envelope(
         self,

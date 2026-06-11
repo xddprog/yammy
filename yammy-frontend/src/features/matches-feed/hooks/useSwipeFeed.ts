@@ -12,7 +12,7 @@ export interface UseSwipeFeedOptions<T extends FeedStackCardUser = FeedStackCard
   initialItems: T[]
   onSwipeLeft?: (item: T) => void
   onSwipeRight?: (item: T) => void
-  onSuperLike?: (item: T) => void
+  onSuperLike?: (item: T, message: string) => void
   onEmpty?: () => void
   /** Вызывается при приближении к концу ленты. Используйте для подгрузки новых элементов. */
   onNearEnd?: (remainingCount: number) => void
@@ -26,7 +26,7 @@ export interface UseSwipeFeedResult<T extends FeedStackCardUser = FeedStackCardU
   stackProgress: MotionValue<number>
   handleSwipeLeft: () => void
   handleSwipeRight: () => void
-  handleSuperLike: () => void
+  handleSuperLike: (message: string) => void
   /** Подмешивание после refetch; элементы должны совпадать с типом ленты (`T`). */
   appendItems: (newItems: FeedStackCardUser[]) => number
 }
@@ -127,13 +127,16 @@ export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
     }
   }, [advanceCard])
 
-  const handleSuperLike = useCallback(() => {
-    const top = itemsRef.current[currentIndexRef.current]
-    if (top) {
-      callbacksRef.current.onSuperLike?.(top)
-      advanceCard()
-    }
-  }, [advanceCard])
+  const handleSuperLike = useCallback(
+    (message: string) => {
+      const top = itemsRef.current[currentIndexRef.current]
+      if (top) {
+        callbacksRef.current.onSuperLike?.(top, message)
+        advanceCard()
+      }
+    },
+    [advanceCard],
+  )
 
   /** Добавить новую порцию карточек (дедуп по `user_id`). */
   const appendItems = useCallback((newItems: FeedStackCardUser[]) => {

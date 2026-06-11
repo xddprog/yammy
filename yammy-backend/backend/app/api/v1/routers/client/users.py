@@ -212,3 +212,18 @@ async def set_main_image(
     existing_image_id: UUID | None = None,
 ) -> UserPhoto | list[UserPhoto]:
     return await user_service.set_main_image(current_user.id, image, existing_image_id)
+
+
+@router.post(
+    "/boosts/activate",
+    status_code=204,
+    dependencies=[
+        Depends(RateLimited(10, Duration.MINUTE)),
+    ],
+)
+@inject
+async def activate_boost(
+    user_service: FromDishka[UserService],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    await user_service.activate_boost(current_user.id)

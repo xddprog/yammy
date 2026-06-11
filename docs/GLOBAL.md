@@ -10,7 +10,7 @@
 | Правила слоёв бэкенда | Рефакторинг «ради чистоты», новые абстракции |
 
 **Подключение:** `@docs/GLOBAL.md`  
-**Репозиторий:** `/Users/mago/yammy` · **Обновлено:** 2026-06-04
+**Репозиторий:** `/Users/mago/yammy` · **Обновлено:** 2026-06-11
 
 ---
 
@@ -153,7 +153,9 @@ infrastructure/database/models/  → ORM без логики
 
 **Фронт:** `pages/(main)/likesPage/`, сетка `LikesCard`, ответ взаимным like/dislike из оверлея профиля.
 
-**Суперлайк в API списка:** пока **нет** `like_type` / `message` (см. § Незавершённое).
+**Суперлайк в API списка:** есть `like_type` и `like_message` (оба optional в `UserSearchResponseSchema` / `UserSearchApiUser`).
+
+**UX страницы лайков:** суперлайки (`like_type=superlike`) показываются отдельной секцией **«Огоньки»** полноширинными карточками с видимым `like_message`; обычные лайки — отдельной сеткой 2 колонки.
 
 ---
 
@@ -162,14 +164,15 @@ infrastructure/database/models/  → ORM без логики
 | Метод | Путь | Назначение |
 |-------|------|------------|
 | POST | `/` | Лайк `user_to_id`; при взаимном — матч + JSON `{message: "У вас новый метч!"}` иначе 204 + Telegram «X лайкнул вас» |
+| POST | `/superlike` | Суперлайк `user_to_id` + body `{message}`; сохраняет `like_type=superlike` и `likes.message` |
 | POST | `/dislike` | Дизлайк в Redis-буфер (`LikeCacheKeys.DISLIKE_BUFFER`), flush таской в БД |
 | POST | `/match` | Служебный like+match (rate limit) |
 
 **Seen:** после like/dislike user_to попадает в Redis seen (`LikeService`).
 
-**Enum `LikeTypeEnum`:** `like`, `dislike`, `superlike` — в БД; суперлайк **без отдельного endpoint** в роутере сейчас.
+**Enum `LikeTypeEnum`:** `like`, `dislike`, `superlike` — в БД; суперлайк имеет отдельный endpoint `POST /likes/superlike`.
 
-**Фронт:** `entities/like/api/likeService.ts` — `sendUserLike`, `sendUserDislike`; суперлайк UI (`superLikeOverlay`, long-press) часто вызывает обычный лайк.
+**Фронт:** `entities/like/api/likeService.ts` — `sendUserLike`, `sendUserSuperLike`, `sendUserDislike`; суперлайк отправляется с текстом из `SuperLikeOverlay`.
 
 ---
 
@@ -311,7 +314,7 @@ infrastructure/database/models/  → ORM без логики
 | Маршрут | Страница | Функционал |
 |---------|----------|------------|
 | `/dashboard` | `dashboardPage` | Свайп-лента (`SwipeFeed`) или рейтинг (`RateFeed`, `?mode=rate`); like/dislike; оверлей профиля; суперлайк UI |
-| `/likes` | `likesPage` | Входящие лайки, infinite scroll |
+| `/likes` | `likesPage` | Входящие лайки: секция полноширинных суперлайков + отдельная сетка обычных лайков |
 | `/chats` | `chatsPage` | Список матчей/чатов |
 | `/chats/:id` | `chatDetailPage` | WS-чат, сообщения, typing, presence |
 | `/profile` | `profilePage` | Просмотр/редактирование анкеты и фото |
@@ -364,7 +367,7 @@ infrastructure/database/models/  → ORM без логики
 
 | Фича | Состояние |
 |------|-----------|
-| **Суперлайк end-to-end** | UI есть; `POST /likes/superlike`, списание баланса, `GET /likes` с message — **нет** |
+| **Суперлайк end-to-end** | **Есть**: `POST /likes/superlike`, сохранение `likes.message`, выдача `like_type`/`like_message` в `GET /users/likes`, отдельный UI на `/likes` |
 | **Оплата / подписка** | Поля user + модели Payment; API и UI оплаты **нет** |
 | **Block** | ORM без API |
 
@@ -386,12 +389,11 @@ SQL для `likes.message` при старой БД: добавить колон
 
 ---
 
-*Последнее (2026-06-04):*
+*Последнее (2026-06-11):*
 
-- *Auth:* dev bootstrap без `loginTelegram` в DEV; onboarding JWT; `complete_onboarding` только create user (без update существующего).
-- *Онбординг UI:* 4 шага, ВУЗ при высшем образовании, финиш → `/dashboard`, черновик в sessionStorage.
-- *Фильтры ленты:* `localStorage` + «Применить»; × не сбрасывает; reconcile с `GET /filters/`; без `premiumOnly` в UI.
-- *Профиль/фото:* rollback главного фото при ошибке загрузки; меню главного фото (modal).
-- *Прочее:* `profile-fill-prompt` на ленте; async Telegram SDK.
+- *Суперлайки (backend):* добавлен `POST /likes/superlike`; `LikeService.add_superlike` валидирует message (trim, <=200), пишет `like_type=superlike`, ведет стандартный match flow; входящие лайки обогащаются `like_type` + `like_message`.
+- *Суперлайки (frontend):* добавлен `sendUserSuperLike`; message из `SuperLikeOverlay` прокинут через `SwipeFeed`/`useSwipeFeed` в dashboard и AI search; после суперлайка инвалидация `usersQueryKeys.profile()`.
+- *Likes page UX:* суперлайки вынесены в отдельную секцию «Огоньки» полноширинными карточками (`SuperLikeCard`) с текстом сразу на карточке; обычные лайки остаются сеткой.
+- *Test DB seed:* в `seed_test_received_likes` добавлены 2 суперлайка с сообщениями, не подряд в последовательности сидинга.
 
 *В конце файла при крупных изменениях: строка «Последнее (дата): …».*

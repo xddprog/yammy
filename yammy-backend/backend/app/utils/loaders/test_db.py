@@ -29,8 +29,9 @@ from app.utils.constants.enums import (
 from app.infrastructure.config.config import BASE_DIR
 from app.infrastructure.logging.logger import get_logger
 from app.core.services.ml_service import MLService
+from app.core.services.user_index_service import UserIndexService
+from app.core.repositories.user_repository import UserRepository
 from app.core.clients.elasticsearch_client import ElasticsearchClient
-from app.core.dto.user import UserSearchResponseSchema
 from app.core.dto.filter import FilterCategorySchema
 
 
@@ -132,6 +133,11 @@ COMMON_BIO_TEMPLATES = {
 
 HIGH_MATCH_SHARE = 0.35
 LIKES_SEED_COUNT_PER_USER = 12
+SUPERLIKE_SEED_CREATED_INDICES = {1, 4}
+SUPERLIKE_SEED_MESSAGES: tuple[str, str] = (
+    "Не смог пройти мимо твоей анкеты — очень зацепила улыбка.",
+    "Кажется, у нас может получиться классный разговор. Давай проверим?",
+)
 
 INITIAL_FILTERS = [
     {
@@ -406,6 +412,7 @@ async def seed_test_received_likes(session: AsyncSession) -> set[tuple[uuid.UUID
 
     skip_match_pairs: set[tuple[uuid.UUID, uuid.UUID]] = set()
     created = 0
+    superlikes_created = 0
 
     for recipient_id in user_ids:
         candidates = [uid for uid in user_ids if uid != recipient_id]
@@ -416,11 +423,21 @@ async def seed_test_received_likes(session: AsyncSession) -> set[tuple[uuid.UUID
                 break
             if (sender_id, recipient_id) in existing_likes:
                 continue
+            like_type = LikeTypeEnum.LIKE
+            message = None
+            if (
+                created in SUPERLIKE_SEED_CREATED_INDICES
+                and superlikes_created < len(SUPERLIKE_SEED_MESSAGES)
+            ):
+                like_type = LikeTypeEnum.SUPERLIKE
+                message = SUPERLIKE_SEED_MESSAGES[superlikes_created]
+                superlikes_created += 1
             session.add(
                 Like(
                     user_from_id=sender_id,
                     user_to_id=recipient_id,
-                    like_type=LikeTypeEnum.LIKE,
+                    like_type=like_type,
+                    message=message,
                 )
             )
             existing_likes.add((sender_id, recipient_id))
@@ -434,6 +451,7 @@ async def seed_test_received_likes(session: AsyncSession) -> set[tuple[uuid.UUID
     logger.info(
         "test_received_likes_seeded",
         likes_created=created,
+        superlikes_created=superlikes_created,
         user_count=len(user_ids),
         per_user_target=LIKES_SEED_COUNT_PER_USER,
     )
@@ -683,43 +701,23 @@ async def sync_test_users_to_es(
             return
 
         ml_service = await container.get(MLService)
+        user_index_service = UserIndexService(
+            user_repository=UserRepository(session=session),
+            elasticsearch_client=es_client,
+            ml_service=ml_service,
+        )
 
         logger.info("Building Elasticsearch documents from DB user rows")
 
         es_operations = []
 
         for i, user in enumerate(users):
-            es_data = UserSearchResponseSchema.model_validate(user, from_attributes=True)
-
-            personality_vector = await ml_service.get_embedding(user.bio)
-
-            filter_option_ids = [str(opt.id) for opt in user.filters]
-            spec_strings = [
-                f"{opt.subcategory.category.slug}:{opt.subcategory.slug}:{opt.slug}"
-                for opt in user.filters
-            ]
-
-            doc_dict = es_data.model_dump(mode="json", by_alias=True)
-            doc_dict.update(
-                {
-                    "telegram_id": user.telegram_id,
-                    "subscription_tier": user.subscription_tier,
-                    "boost_expires_at": user.boost_expires_at,
-                    "last_seen": user.last_seen,
-                    "is_banned": user.is_banned,
-                    "adequacy_score": user.adequacy_score,
-                    "superlikes_balance": user.superlikes_balance,
-                    "boosts_balance": user.boosts_balance,
-                    "notifications_enabled": user.notifications_enabled,
-                    "language": user.language,
-                    "subscription_expires_at": user.subscription_expires_at,
-                }
+            doc_dict = await user_index_service.build_document(
+                user.id,
+                include_personality_vector=True,
             )
-            doc_dict["personality_vector"] = personality_vector
-            doc_dict["filter_option_ids"] = filter_option_ids
-            doc_dict["specs"] = spec_strings
-
-            es_operations.append(doc_dict)
+            if doc_dict:
+                es_operations.append(doc_dict)
 
             if (i + 1) % 10 == 0:
                 logger.info(f"Processed {i + 1}/{len(users)} users")

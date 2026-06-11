@@ -18,6 +18,10 @@ class UserCacheKeys:
 
 class LikeCacheKeys:
     DISLIKE_BUFFER = "like:dislike_buffer"
+    DISLIKE_BUFFER_PROCESSING = "like:dislike_buffer:processing"
+
+    NOTIFY_LIKE_SENT = "notify:like:{user_to_id}:{liker_name}:{like_type}"
+    NOTIFY_MATCH_SENT = "notify:match:{recipient_id}:{pair_key}"
 
 
 class AppearanceRatingCacheKeys:
@@ -35,6 +39,8 @@ class UniversityCacheKeys:
 
 class PresenceKeys:
     ONLINE_SET = "presence:online"
+    LAST_SEEN_BUFFER = "presence:last_seen:buffer"
+    LAST_SEEN_BUFFER_PROCESSING = "presence:last_seen:buffer:processing"
 
     @staticmethod
     def session_key(session_id: str) -> str:

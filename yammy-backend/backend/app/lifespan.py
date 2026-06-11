@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from app.core.clients.elasticsearch_client import ElasticsearchClient
 from app.core.clients.redis_client import RedisClient
-from app.core.clients.taskiq_client import TaskiqClient
+from app.core.clients.taskiq_client import taskiq_client
 from app.infrastructure.config.config import APP_CONFIG
 from app.infrastructure.database.adapters.pg_connection import DatabaseConnection
 from app.infrastructure.logging.logger import get_logger
@@ -21,7 +21,6 @@ async def lifespan(app: FastAPI):
     try:
         db_connection = DatabaseConnection()
         es_client = ElasticsearchClient()
-        taskiq_client = TaskiqClient()
         redis_client = RedisClient()
 
         seeded_new_users = await db_connection.init_test_db(clear_db=False)

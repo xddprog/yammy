@@ -10,7 +10,7 @@ from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
-@broker.task("process_ai_search_history")
+@broker.task("process_ai_search_history", retry_on_error=True, max_retries=6, delay=20)
 @inject(patch_module=True)
 async def process_ai_search_history(history_id: str, ai_search_service: FromDishka[AiSearchService]) -> None:
     logger.info("process_ai_search_history_started", history_id=history_id)

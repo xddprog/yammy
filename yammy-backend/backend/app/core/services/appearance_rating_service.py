@@ -35,9 +35,19 @@ class AppearanceRatingService:
         )
     
     async def flush_appearance_ratings_to_db(self) -> dict[str, int]:
-        all_ratings = await self.redis_client.smembers(AppearanceRatingCacheKeys.APPEARANCE_RATING_BUFFER)
+        processing_key = f"{AppearanceRatingCacheKeys.APPEARANCE_RATING_BUFFER}:processing"
+        all_ratings = await self.redis_client.smembers(processing_key)
+        if not all_ratings:
+            swapped = await self.redis_client.rename_key(
+                AppearanceRatingCacheKeys.APPEARANCE_RATING_BUFFER,
+                processing_key,
+            )
+            if not swapped:
+                return {"flushed": 0}
+            all_ratings = await self.redis_client.smembers(processing_key)
         
         if not all_ratings:
+            await self.redis_client.delete_by_key(processing_key)
             return {"flushed": 0}
         
         values = []
@@ -55,10 +65,11 @@ class AppearanceRatingService:
             })
         
         if not values:
+            await self.redis_client.delete_by_key(processing_key)
             return {"flushed": 0}
         
         await self.appearance_rating_repository.batch_create_appearance_ratings(values)
-        await self.redis_client.delete_by_key(AppearanceRatingCacheKeys.APPEARANCE_RATING_BUFFER)
+        await self.redis_client.delete_by_key(processing_key)
         
         logger.info("Appearance ratings flushed to DB", count=len(values))
         

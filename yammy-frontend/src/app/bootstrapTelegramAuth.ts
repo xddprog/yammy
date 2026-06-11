@@ -1,5 +1,9 @@
 import { loginTelegram } from '@/entities/auth/api/authService'
-import { deleteAccessToken, deleteRefreshToken } from '@/entities/token/lib/tokenService'
+import {
+  deleteAccessToken,
+  deleteRefreshToken,
+  getRefreshToken,
+} from '@/entities/token/lib/tokenService'
 
 import { ensureDevAuthToken } from './bootstrapDevAuth'
 import { ensureDevOnboardingToken } from './bootstrapDevOnboarding'
@@ -12,6 +16,12 @@ function getTelegramInitData(): string | null {
 
 export async function ensureAppAuth(): Promise<void> {
   if (import.meta.env.DEV) {
+    // Не перетираем полноценную сессию (после завершения онбординга)
+    // принудительным dev/onboarding токеном при следующей загрузке.
+    if (getRefreshToken()) {
+      return
+    }
+
     // В dev всегда заглушка / dev/onboarding — не loginTelegram(initData): в TMA initData
     // часто без hash, а при ENVIRONMENT=production бэк отвечает 400.
     if (import.meta.env.VITE_DEV_AUTH === 'onboarding') {

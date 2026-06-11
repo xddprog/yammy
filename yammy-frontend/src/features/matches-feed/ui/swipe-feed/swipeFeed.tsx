@@ -1,10 +1,9 @@
-import { memo, useCallback, useEffect, useImperativeHandle, useRef, forwardRef } from 'react'
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 
+import type { UserSearchApiUser } from '@/entities/user/types/types'
 import { useSwipeFeed } from '@/features/matches-feed/hooks/useSwipeFeed'
 import type { MatchFeedAppendHandle } from '@/features/matches-feed/model/matchFeedAppendHandle'
 import { cn } from '@/shared'
-
-import type { UserSearchApiUser } from '@/entities/user/types/types'
 
 import { useMatchesOverlay } from '../matches-card/matchesOverlay'
 import { SwipeCard } from '../swipe-card'
@@ -13,7 +12,7 @@ export interface SwipeFeedProps {
   items: UserSearchApiUser[]
   onSwipeLeft?: (item: UserSearchApiUser) => void
   onSwipeRight?: (item: UserSearchApiUser) => void
-  onSuperLike?: (item: UserSearchApiUser) => void
+  onSuperLike?: (item: UserSearchApiUser, message: string) => void
   onEmpty?: () => void
   /** Вызывается при приближении к концу ленты. Используйте для подгрузки новых элементов. */
   onNearEnd?: (remainingCount: number) => void
@@ -81,8 +80,8 @@ const SwipeFeedComponent = forwardRef<MatchFeedAppendHandle, SwipeFeedProps>(fun
       onLike: handleSwipeRight,
       onSuperLike: (closeParent) => {
         openSuperLikeOverlay({
-          onSend: () => {
-            handleSuperLike()
+          onSend: (message) => {
+            handleSuperLike(message)
           },
           closeAlso: closeParent,
         })
@@ -93,8 +92,8 @@ const SwipeFeedComponent = forwardRef<MatchFeedAppendHandle, SwipeFeedProps>(fun
   const handleSuperLikeClick = useCallback(() => {
     if (topItemRef.current == null) return
     openSuperLikeOverlay({
-      onSend: () => {
-        handleSuperLike()
+      onSend: (message) => {
+        handleSuperLike(message)
       },
     })
   }, [openSuperLikeOverlay, handleSuperLike])

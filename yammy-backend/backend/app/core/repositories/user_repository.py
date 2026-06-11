@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -15,6 +15,13 @@ from app.infrastructure.database.models.filter import FilterOption, FilterSubcat
 class UserRepository(SqlAlchemyRepository[User]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, User)
+
+    async def _touch_user_updated_at(self, user_id: UUID) -> None:
+        await self.session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(updated_at=func.now())
+        )
 
     async def add_item(
         self,
@@ -61,6 +68,59 @@ class UserRepository(SqlAlchemyRepository[User]):
             .values(last_seen=last_seen)
         )
         await self.session.commit()
+
+    async def decrement_superlikes_balance(self, user_id: UUID) -> int | None:
+        result = await self.session.execute(
+            update(User)
+            .where(
+                User.id == user_id,
+                User.superlikes_balance > 0,
+            )
+            .values(superlikes_balance=User.superlikes_balance - 1)
+            .returning(User.superlikes_balance)
+        )
+        balance = result.scalar_one_or_none()
+        await self.session.commit()
+        return balance
+
+    async def activate_boost(self, user_id: UUID, duration_hours: int = 2) -> tuple[int, datetime] | None:
+        now = datetime.now(timezone.utc)
+        boost_until = now + timedelta(hours=duration_hours)
+        result = await self.session.execute(
+            update(User)
+            .where(
+                User.id == user_id,
+                User.boosts_balance > 0,
+                (User.boost_expires_at.is_(None) | (User.boost_expires_at <= now)),
+            )
+            .values(
+                boosts_balance=User.boosts_balance - 1,
+                boost_expires_at=boost_until,
+                updated_at=func.now(),
+            )
+            .returning(User.boosts_balance, User.boost_expires_at)
+        )
+        row = result.one_or_none()
+        await self.session.commit()
+        if row is None:
+            return None
+        balance, expires_at = row
+        return int(balance), expires_at
+
+    async def set_ban_status(self, user_id: UUID, is_banned: bool) -> bool:
+        result = await self.session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(is_banned=is_banned, updated_at=func.now())
+            .returning(User.id)
+        )
+        updated = result.scalar_one_or_none()
+        await self.session.commit()
+        return updated is not None
+
+    async def touch_updated_at(self, user_id: UUID) -> None:
+        await self._touch_user_updated_at(user_id)
+        await self.session.commit()
     
     async def get_user_with_filters(self, user_id: UUID) -> User | None:
         stmt = (
@@ -74,6 +134,36 @@ class UserRepository(SqlAlchemyRepository[User]):
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_user_for_index(self, user_id: UUID) -> User | None:
+        stmt = (
+            select(User)
+            .where(User.id == user_id)
+            .options(
+                selectinload(User.photos),
+                selectinload(User.filters)
+                .selectinload(FilterOption.subcategory)
+                .selectinload(FilterSubcategory.category),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_users_updated_since(self, since: datetime, limit: int = 500) -> list[User]:
+        stmt = (
+            select(User)
+            .where(User.updated_at >= since)
+            .order_by(User.updated_at.asc())
+            .limit(limit)
+            .options(
+                selectinload(User.photos),
+                selectinload(User.filters)
+                .selectinload(FilterOption.subcategory)
+                .selectinload(FilterSubcategory.category),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def get_user_profile(self, user_id: UUID) -> tuple[User, int] | None:
         referred = aliased(User, name="referred_users")
@@ -140,6 +230,7 @@ class UserRepository(SqlAlchemyRepository[User]):
 
         await self.session.execute(delete_filters_query)
         await self.session.execute(insert_query)
+        await self._touch_user_updated_at(user_id)
 
     async def delete_image(self, user_id: UUID, image_id: UUID) -> str | None:
         result = await self.session.execute(
@@ -166,6 +257,7 @@ class UserRepository(SqlAlchemyRepository[User]):
         for i, p in enumerate(remaining):
             p.order = i
 
+        await self._touch_user_updated_at(user_id)
         await self.session.commit()
         return image_path
 
@@ -189,6 +281,7 @@ class UserRepository(SqlAlchemyRepository[User]):
         )
 
         self.session.add(new_photo)
+        await self._touch_user_updated_at(user_id)
         await self.session.commit()
         await self.session.refresh(new_photo)
         return new_photo
@@ -210,6 +303,7 @@ class UserRepository(SqlAlchemyRepository[User]):
         previous_path = prev_main_photo.file_path
         prev_main_photo.file_path = image_path
 
+        await self._touch_user_updated_at(user_id)
         await self.session.commit()
         await self.session.refresh(prev_main_photo)
         return prev_main_photo, previous_path
@@ -252,6 +346,7 @@ class UserRepository(SqlAlchemyRepository[User]):
         old_main.is_main = False
         old_main.order = target_order_before
 
+        await self._touch_user_updated_at(user_id)
         await self.session.commit()
 
         refreshed = await self.session.execute(
@@ -276,6 +371,7 @@ class UserRepository(SqlAlchemyRepository[User]):
                 raise ValueError("photo_not_found")
             image.order = photo.order
 
+        await self._touch_user_updated_at(user_id)
         await self.session.commit()
 
         refreshed = await self.session.execute(query)
