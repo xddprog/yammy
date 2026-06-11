@@ -7,8 +7,22 @@ import {
 
 import { ensureDevAuthToken } from './bootstrapDevAuth'
 import { ensureDevOnboardingToken } from './bootstrapDevOnboarding'
+import { loadTelegramWebAppScript } from './providers/loadTelegramWebAppScript'
 
-function getTelegramInitData(): string | null {
+async function getTelegramInitData(): Promise<string | null> {
+  const currentInitData = (
+    window as Window & { Telegram?: { WebApp?: { initData?: string } } }
+  ).Telegram?.WebApp?.initData?.trim()
+  if (currentInitData) {
+    return currentInitData
+  }
+
+  try {
+    await loadTelegramWebAppScript()
+  } catch {
+    return null
+  }
+
   const tg = (window as Window & { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp
   const initData = tg?.initData?.trim()
   return initData || null
@@ -33,7 +47,7 @@ export async function ensureAppAuth(): Promise<void> {
     return
   }
 
-  const initData = getTelegramInitData()
+  const initData = await getTelegramInitData()
   if (!initData) {
     deleteAccessToken()
     deleteRefreshToken()
