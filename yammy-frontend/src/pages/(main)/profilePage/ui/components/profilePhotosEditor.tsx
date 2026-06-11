@@ -79,6 +79,10 @@ const CORNER_BTN_CLASS =
 const EMPTY_PHOTO_SLOT_CLASS =
   'flex size-full min-h-0 items-center justify-center rounded-2xl bg-card text-muted-foreground transition-colors hover:bg-background/75 hover:text-foreground'
 
+const PHOTO_REMOVE_MS = 240
+const PHOTO_REMOVING_CLASS =
+  'pointer-events-none opacity-0 scale-[0.88] blur-[2px] transition-[opacity,transform,filter] duration-[240ms] ease-[cubic-bezier(0.22,0.61,0.36,1)]'
+
 /** Hit-test по внешним ячейкам сетки (они не двигаются transform’ом — без ложных переключений). */
 function pickSlotIndexUnderPointStable(
   clientX: number,
@@ -171,6 +175,9 @@ export const ProfilePhotosEditor = ({
     h: number
   } | null>(null)
   const pointerFloatMetricsRef = useRef<{ w: number; h: number } | null>(null)
+  const [deletingPhotoIds, setDeletingPhotoIds] = useState<Set<string>>(() => new Set())
+  const deletingPhotoIdsRef = useRef(deletingPhotoIds)
+  deletingPhotoIdsRef.current = deletingPhotoIds
 
   const mainPhoto = photos.find((p) => p.is_main)
   const nonMain = photos.filter((p) => !p.is_main)
@@ -226,6 +233,12 @@ export const ProfilePhotosEditor = ({
       const victim = photosRef.current.find((p) => p.id === id)
       revokeIfBlobUrl(victim?.file_path)
       photoFilesRef.current.delete(id)
+      setDeletingPhotoIds((prev) => {
+        if (!prev.has(id)) return prev
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
 
       if (isLocal || !SERVER_PHOTO_ID_RE.test(id)) {
         setPhotos((prev) => renumberPhotosOrder(prev.filter((p) => p.id !== id)))
@@ -246,6 +259,18 @@ export const ProfilePhotosEditor = ({
       })()
     },
     [isLocal, photoFilesRef, queryClient, revokeIfBlobUrl, setPhotos],
+  )
+
+  const requestRemovePhoto = useCallback(
+    (id: string): void => {
+      if (deletingPhotoIdsRef.current.has(id)) return
+      triggerHaptic()
+      requestAnimationFrame(() => {
+        setDeletingPhotoIds((prev) => new Set(prev).add(id))
+        window.setTimeout(() => removePhoto(id), PHOTO_REMOVE_MS)
+      })
+    },
+    [removePhoto],
   )
 
   const clearHoldTimer = () => {
@@ -935,6 +960,7 @@ export const ProfilePhotosEditor = ({
         {slots.slice(0, 2).map((photo, i) => {
           const slotIndex = i
           const n = i + 1
+          const isRemoving = photo != null && deletingPhotoIds.has(photo.id)
           return (
             <div
               key={photo?.id ?? `slot-${n}`}
@@ -960,6 +986,7 @@ export const ProfilePhotosEditor = ({
                       'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
                       reorderMode === 'pointer' && 'touch-none',
                       reorderMode === 'pointer' && draggingId === photo.id && 'opacity-0',
+                      isRemoving && PHOTO_REMOVING_CLASS,
                     )}
                     {...getPhotoDragSourceHandlers(photo.id)}
                   >
@@ -978,7 +1005,7 @@ export const ProfilePhotosEditor = ({
                       aria-label="Удалить фото"
                       onPointerDown={stopDragFromButton}
                       onMouseDown={stopDragFromButton}
-                      onClick={() => removePhoto(photo.id)}
+                      onClick={() => requestRemovePhoto(photo.id)}
                     >
                       <X className="size-4" strokeWidth={2} />
                     </button>
@@ -1001,6 +1028,7 @@ export const ProfilePhotosEditor = ({
         {slots.slice(2, 5).map((photo, i) => {
           const slotIndex = i + 2
           const n = i + 3
+          const isRemoving = photo != null && deletingPhotoIds.has(photo.id)
           return (
             <div
               key={photo?.id ?? `slot-${n}`}
@@ -1026,6 +1054,7 @@ export const ProfilePhotosEditor = ({
                       'relative z-0 h-full min-h-0 cursor-grab select-none overflow-visible rounded-2xl active:cursor-grabbing',
                       reorderMode === 'pointer' && 'touch-none',
                       reorderMode === 'pointer' && draggingId === photo.id && 'opacity-0',
+                      isRemoving && PHOTO_REMOVING_CLASS,
                     )}
                     {...getPhotoDragSourceHandlers(photo.id)}
                   >
@@ -1044,7 +1073,7 @@ export const ProfilePhotosEditor = ({
                       aria-label="Удалить фото"
                       onPointerDown={stopDragFromButton}
                       onMouseDown={stopDragFromButton}
-                      onClick={() => removePhoto(photo.id)}
+                      onClick={() => requestRemovePhoto(photo.id)}
                     >
                       <X className="size-4" strokeWidth={2} />
                     </button>
