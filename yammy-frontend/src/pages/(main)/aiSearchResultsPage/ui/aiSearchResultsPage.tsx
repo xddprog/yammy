@@ -40,7 +40,7 @@ const AiSearchResultsPage = (): JSX.Element => {
   if (isLoading) {
     return (
       <div className={pageColumnClassName}>
-        <header className={stickyTopHeaderClassNames({ variant: 'background' })} aria-hidden />
+        <header className={stickyTopHeaderClassNames()} aria-hidden />
         <div className="flex flex-1 items-center justify-center">
           <AppPageLoader />
         </div>
@@ -51,7 +51,7 @@ const AiSearchResultsPage = (): JSX.Element => {
   if (!job) {
     return (
       <div className={pageColumnClassName}>
-        <header className={stickyTopHeaderClassNames({ variant: 'background' })} aria-hidden />
+        <header className={stickyTopHeaderClassNames()} aria-hidden />
         <button
           type="button"
           onClick={goBack}
@@ -68,7 +68,7 @@ const AiSearchResultsPage = (): JSX.Element => {
   if (!isReady || !hasFeed) {
     return (
       <div className={pageColumnClassName}>
-        <header className={stickyTopHeaderClassNames({ variant: 'background' })} aria-hidden />
+        <header className={stickyTopHeaderClassNames()} aria-hidden />
         <button
           type="button"
           onClick={goBack}
@@ -89,7 +89,7 @@ const AiSearchResultsPage = (): JSX.Element => {
 
   return (
     <div className={cn(pageColumnClassName, 'relative')}>
-      <header className={stickyTopHeaderClassNames({ variant: 'background' })} aria-hidden />
+      <header className={stickyTopHeaderClassNames()} aria-hidden />
 
       <button
         type="button"

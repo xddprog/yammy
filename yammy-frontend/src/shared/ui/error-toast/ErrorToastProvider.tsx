@@ -50,7 +50,7 @@ export const ErrorToastProvider = ({ children }: { children: ReactNode }): JSX.E
             style={{ isolation: 'isolate' }}
             aria-live="assertive"
           >
-            <div className="pointer-events-auto w-full max-w-md px-4 pt-[95px]">
+            <div className="pointer-events-auto w-full max-w-md px-4 pt-[85px]">
               <AnimatePresence mode="wait">
                 {active != null ? (
                   <ErrorToastStrip key={active.id} message={active.message} onDone={dequeue} />

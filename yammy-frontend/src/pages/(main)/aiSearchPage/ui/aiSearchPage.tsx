@@ -85,7 +85,7 @@ const AiSearchPage = (): JSX.Element => {
       <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none no-scrollbar">
         <div className="flex flex-col gap-4 pb-4">
           <header
-            className={stickyTopHeaderClassNames({ variant: 'background' })}
+            className={stickyTopHeaderClassNames()}
             aria-hidden
           />
 

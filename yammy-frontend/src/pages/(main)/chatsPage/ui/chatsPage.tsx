@@ -71,7 +71,7 @@ const ChatsPage = (): JSX.Element => {
         <div className="flex flex-col gap-4 pb-[calc(5.25rem+2.25rem+3.5rem+env(safe-area-inset-bottom,0px))]">
           <header
             className={cn(
-              stickyTopHeaderClassNames({ variant: 'background' }),
+              stickyTopHeaderClassNames(),
               'flex min-h-11 shrink-0 items-center gap-2',
             )}
           >

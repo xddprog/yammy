@@ -310,7 +310,7 @@ const ChatDetailPage = () => {
         <motion.div
           key="chat-ready"
           ref={containerRef}
-          className="relative flex h-full flex-col overflow-hidden bg-background pt-[95px]"
+          className="relative flex h-full flex-col overflow-hidden bg-background pt-[85px]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

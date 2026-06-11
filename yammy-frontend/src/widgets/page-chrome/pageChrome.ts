@@ -8,18 +8,29 @@ const topHeaderScrimOnBackground =
 
 export type TopHeaderScrimVariant = 'dark' | 'background'
 
+/** Верхний отступ контента под статус-бар / scrim */
+export const APP_SCREEN_TOP_INSET_PX = 85
+
+const TOP_HEADER_SCRIM_OVERLAP_PX = 15
+
+export const TOP_HEADER_SCRIM_HEIGHT_PX = APP_SCREEN_TOP_INSET_PX + TOP_HEADER_SCRIM_OVERLAP_PX
+
 /** Только затемнение (градиент), без sticky — для лайков, профиля и т.п. */
 export const topHeaderScrimClassNames = ({
   variant = 'dark',
 }: { variant?: TopHeaderScrimVariant } = {}): string =>
   variant === 'dark' ? topHeaderScrimDark : topHeaderScrimOnBackground
 
-/** Sticky-шапка чатов: позиционирование + тот же scrim */
-export const stickyTopHeaderClassNames = ({
+/** Sticky-шапка: отступ под статус-бар (scrim — отдельный слой в rootPage). */
+export const stickyTopHeaderClassNames = (): string =>
+  'relative sticky top-0 z-40 shrink-0 pb-[15px] -mb-[15px] pt-[85px]'
+
+/** Верхний scrim на всю ширину shell (sibling поверх main, не режется overflow у страниц). */
+export const topHeaderScrimLayerClassNames = ({
   variant = 'dark',
 }: { variant?: TopHeaderScrimVariant } = {}): string =>
   cn(
-    'sticky top-0 z-40 shrink-0 -mx-4 px-4 pb-[15px] -mb-[15px] pt-[95px]',
+    'pointer-events-none absolute inset-x-0 top-0 z-30 h-[100px]',
     topHeaderScrimClassNames({ variant }),
   )
 
@@ -27,7 +38,9 @@ export const stickyTopHeaderClassNames = ({
 export const appScreenShellClassNames =
   'relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overflow-x-hidden bg-background px-4 text-foreground'
 
-export const appScreenTopInsetClassNames = 'pt-[95px]'
+export const appScreenTopInsetClassNames = 'pt-[85px]'
+
+export const appScreenTopOffsetClassNames = 'top-[85px]'
 
 export const appScreenBottomInsetClassNames =
   'pb-[calc(2.25rem+env(safe-area-inset-bottom,0px))]'

@@ -89,7 +89,14 @@ class AppConfig(Config):
     
     SLOW_REQUEST_THRESHOLD: float = Field(default=1.0, description="Порог медленных запросов в секундах")
 
-    CORS_ALLOWED_ORIGINS: str = Field(default="http://localhost:3000,http://localhost:5173")
+    CORS_ALLOWED_ORIGINS: str = Field(
+        default=(
+            "http://localhost:3000,http://localhost:5173,"
+            "https://yammy-1dmmkun55-xddprogs-projects.vercel.app,"
+            "https://yammy-nu.vercel.app,"
+            "https://yammy-t8rv.vercel.app"
+        )
+    )
 
 
 

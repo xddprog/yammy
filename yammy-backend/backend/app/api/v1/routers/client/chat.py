@@ -75,6 +75,7 @@ async def chat_websocket(
         if not access_token:
             raise HTTPException(status_code=401, detail="Неверные учетные данные")
         user = await auth_service.verify_user_token(access_token)
+        user_id = user.id
         ratelimit = RateLimited(10, Duration.SECOND, is_websocket=True)
 
         while True:
@@ -86,11 +87,11 @@ async def chat_websocket(
             response = None
             outgoing_event = None
             if incoming_event == ChatEvents.OPEN_CHAT:
-                response = await chat_service.get_chat_by_match_id(match_id, user.id)
+                response = await chat_service.get_chat_by_match_id(match_id, user_id)
                 outgoing_event = ChatEvents.OPEN_CHAT
             elif incoming_event == ChatEvents.MESSAGES:
                 pagination = PaginationRequestModel(**payload)
-                response = await chat_service.list_messages(match_id, user.id, pagination)
+                response = await chat_service.list_messages(match_id, user_id, pagination)
                 outgoing_event = ChatEvents.MESSAGES
             elif incoming_event == ChatEvents.MESSAGE:
                 form = MessageCreateRequest(**payload)
@@ -98,16 +99,16 @@ async def chat_websocket(
                 outgoing_event = ChatEvents.MESSAGE
             elif incoming_event == ChatEvents.READ:
                 message_id = payload.get("message_id")
-                response = await message_service.read_message(message_id, user.id)
+                response = await message_service.read_message(message_id, user_id)
                 outgoing_event = ChatEvents.READ
             elif incoming_event == ChatEvents.DELETE:
                 message_id = payload.get("message_id")
-                response = await message_service.delete_message(message_id, user.id)
+                response = await message_service.delete_message(message_id, user_id)
                 outgoing_event = ChatEvents.DELETE
             elif incoming_event == ChatEvents.EDIT:
                 message_id = payload.get("message_id")
                 form = MessageEditRequest(**payload)
-                response = await message_service.edit_message(message_id, user.id, form)
+                response = await message_service.edit_message(message_id, user_id, form)
                 outgoing_event = ChatEvents.EDIT
             elif incoming_event == ChatEvents.TYPING:
                 chat_id = UUID(payload["chat_id"])
@@ -115,7 +116,7 @@ async def chat_websocket(
                 response = await chat_service.build_typing_event(
                     match_id,
                     chat_id,
-                    user.id,
+                    user_id,
                     is_typing,
                 )
                 await ws_service.broadcast_except(

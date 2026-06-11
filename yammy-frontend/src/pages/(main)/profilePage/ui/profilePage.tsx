@@ -96,7 +96,7 @@ const ProfilePage = (): JSX.Element => {
       <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none pb-28 no-scrollbar">
         <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-6">
           <header
-            className={stickyTopHeaderClassNames({ variant: 'background' })}
+            className={stickyTopHeaderClassNames()}
             aria-hidden
           />
           <div>

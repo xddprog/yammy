@@ -8,6 +8,10 @@ import {
 import { showErrorToast } from '@/shared/ui/error-toast/errorToastBus'
 
 export async function throwApiError(response: Response, _fallbackPrefix: string): Promise<never> {
+  if (response.status === 401) {
+    throw new Error('UNAUTHORIZED')
+  }
+
   if (response.status === 500) {
     showErrorToast(USER_ERROR_INTERNAL_SERVER)
     throw new Error(USER_ERROR_INTERNAL_SERVER)

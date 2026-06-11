@@ -22,10 +22,7 @@ import { OnboardingLayout } from '@/features/onboarding/ui/OnboardingLayout'
 import { OnboardingTraitChips } from '@/features/onboarding/ui/OnboardingTraitChips'
 import { ProfileEditSheetRow } from '@/pages/(main)/profilePage/ui/components/profileEditSheetRow'
 import { ProfilePhotosEditor } from '@/pages/(main)/profilePage/ui/components/profilePhotosEditor'
-import {
-  EDUCATION_LEVEL_OPTIONS,
-  RELATIONSHIP_GOAL_OPTIONS,
-} from '@/pages/(main)/profilePage/ui/components/profile.constants'
+import { RELATIONSHIP_GOAL_OPTIONS } from '@/pages/(main)/profilePage/ui/components/profile.constants'
 import { usersQueryKeys } from '@/entities/user/lib/usersQueryKeys'
 import { ERouteNames } from '@/shared/lib/routeVariables'
 import { showErrorToast } from '@/shared'
@@ -90,14 +87,9 @@ const OnboardingPage = (): JSX.Element => {
     [photos],
   )
 
-  const isHigherEducation = draft.educationLevel === 'higher'
-
   const step3Valid = useMemo(
-    () =>
-      isFilledText(draft.city) &&
-      draft.educationLevel != null &&
-      draft.relationshipGoal != null,
-    [draft.city, draft.educationLevel, draft.relationshipGoal],
+    () => isFilledText(draft.city) && draft.relationshipGoal != null,
+    [draft.city, draft.relationshipGoal],
   )
 
   const step4Valid = useMemo(() => draft.filterOptionIds.length >= 1, [draft.filterOptionIds])
@@ -222,35 +214,6 @@ const OnboardingPage = (): JSX.Element => {
             placeholder="Не указано"
             ariaLabel="Город"
           />
-          <ProfileEditSheetRow
-            mode="pick"
-            label="Образование"
-            displayValue={draft.educationLabel}
-            options={EDUCATION_LEVEL_OPTIONS.map((o) => o.label)}
-            onPick={(label) => {
-              const selected = EDUCATION_LEVEL_OPTIONS.find((o) => o.label === label)
-              persistDraft({
-                ...draft,
-                educationLevel: selected?.value ?? null,
-                educationLabel: label,
-                educationInstitution:
-                  selected?.value === 'higher' ? draft.educationInstitution : '',
-              })
-            }}
-            placeholder="Не указано"
-            ariaLabel="Образование"
-          />
-          {isHigherEducation && (
-            <ProfileEditSheetRow
-              mode="university"
-              label="ВУЗ"
-              value={draft.educationInstitution}
-              suggestEnabled={isHigherEducation}
-              onApply={(value) => persistDraft({ ...draft, educationInstitution: value })}
-              placeholder="Не указано"
-              ariaLabel="Учебное заведение"
-            />
-          )}
           <ProfileEditSheetRow
             mode="pick"
             label="Цель отношений"

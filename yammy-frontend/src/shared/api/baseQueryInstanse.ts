@@ -1,6 +1,13 @@
 import ky, { type Options } from 'ky'
 
-import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken } from '@/entities'
+import {
+  deleteAccessToken,
+  deleteRefreshToken,
+  getAccessToken,
+  getRefreshToken,
+  setAccessToken,
+  setRefreshToken,
+} from '@/entities'
 import {
   API_BASE_URL,
   isNgrokApiBaseUrl,
@@ -56,6 +63,11 @@ export const publicApi = ky.create({
   },
   parseJson: (text) => JSON.parse(text),
 })
+
+export function clearAuthSession(): void {
+  deleteAccessToken()
+  deleteRefreshToken()
+}
 
 async function refreshUserTokensOnce(): Promise<boolean> {
   const refresh = getRefreshToken()
@@ -124,6 +136,7 @@ export const authApi = ky.create({
 
         const refreshed = await refreshUserTokensDeduped()
         if (!refreshed) {
+          clearAuthSession()
           return response
         }
 

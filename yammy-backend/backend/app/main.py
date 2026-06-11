@@ -35,6 +35,7 @@ setup_dishka_fastapi(di_container, app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=APP_CONFIG.CORS_ALLOWED_ORIGINS.split(","),
+    allow_origin_regex=r"https://yammy-[a-zA-Z0-9-]+\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

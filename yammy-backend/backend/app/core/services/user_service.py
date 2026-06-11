@@ -11,12 +11,9 @@ from app.core.services.moderation_service import ModerationService
 from app.core.services.user_index_service import UserIndexService
 from app.infrastructure.database.models.user import User
 from app.infrastructure.errors.base import BadRequestException, ConflictException, NotFoundException
-from app.utils.helpers.url_helper import get_absolute_url
-
-
 class UserService:
     BOOST_DURATION_HOURS = 12
-    
+
     def __init__(
         self,
         user_repository: UserRepository,
@@ -76,13 +73,14 @@ class UserService:
             file_path = await self.image_service.upload_and_convert(image, f"users/{user_id}")
             persisted_photos.append((file_path, photo.order, photo.is_main))
 
+        user_fields = form.model_dump(exclude={"filters", "photos"}, exclude_none=True)
         user = await self.user_repository.add_item(
             id=user_id,
             telegram_id=telegram_id,
             filters_ids=form.filters,
             photos=persisted_photos,
             referral_code=f"REF{uuid.uuid4().hex[:12].upper()}",
-            **form.model_dump(exclude={"filters", "photos"}),
+            **user_fields,
         )
         await self.user_index_service.upsert_user(
             user.id,
@@ -134,11 +132,10 @@ class UserService:
         except ValueError:
             raise BadRequestException("Вы превысили максимальное количество фотографий")
 
+        photo = UserPhoto.model_validate(row, from_attributes=True)
         await self._invalidate_profile_moderation_after_photo_change(user_id)
         await self._enqueue_reindex_user(user_id, include_personality_vector=False)
-        return UserPhoto.model_validate(row, from_attributes=True).model_copy(
-            update={"file_path": get_absolute_url(row.file_path)}
-        )
+        return photo
 
     async def set_main_image(self, user_id: UUID, image: UploadFile | None, existing_image_id: UUID | None) -> UserPhoto | list[UserPhoto]:
         if image:
@@ -146,24 +143,21 @@ class UserService:
             image_path = await self.image_service.upload_and_convert(image, f"users/{user_id}")
 
             row, previous_path = await self.user_repository.set_main_image(user_id, image_path)
+            photo = UserPhoto.model_validate(row, from_attributes=True)
             if previous_path and previous_path != image_path:
                 await self.image_service.delete_image(previous_path)
 
             await self._invalidate_profile_moderation_after_photo_change(user_id)
             await self._enqueue_reindex_user(user_id, include_personality_vector=False)
-            return UserPhoto.model_validate(row, from_attributes=True).model_copy(
-                update={"file_path": get_absolute_url(row.file_path)}
-            )
+            return photo
         else:
             try:
                 user_photos = await self.user_repository.swap_main_with_existing_gallery_photo(
                     user_id, existing_image_id
                 )
+                photos = [UserPhoto.model_validate(photo, from_attributes=True) for photo in user_photos]
                 await self._enqueue_reindex_user(user_id, include_personality_vector=False)
-                return [
-                    UserPhoto.model_validate(photo, from_attributes=True)
-                    for photo in user_photos
-                ]
+                return photos
             except ValueError:
                 raise NotFoundException("Изображение не найдено")
 
@@ -174,11 +168,9 @@ class UserService:
             images = await self.user_repository.update_image_order(user_id, body)
         except ValueError:
             raise NotFoundException("Изображения не найдено")
+        photos = [UserPhoto.model_validate(image, from_attributes=True) for image in images]
         await self._enqueue_reindex_user(user_id, include_personality_vector=False)
-        return [
-                UserPhoto.model_validate(image, from_attributes=True)
-                for image in images
-            ]
+        return photos
 
     async def set_ban_status(self, user_id: UUID, is_banned: bool) -> None:
         updated = await self.user_repository.set_ban_status(user_id, is_banned)

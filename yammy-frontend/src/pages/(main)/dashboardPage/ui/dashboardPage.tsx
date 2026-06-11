@@ -22,12 +22,13 @@ import { ProfileFillPromptBanner, useProfileFillPrompt } from '@/features/profil
 import { showErrorToast } from '@/shared'
 import { cn } from '@/shared'
 import { ERouteNames } from '@/shared/lib/routeVariables'
-import { Header } from '@/widgets'
+import { appScreenTopInsetClassNames, Header } from '@/widgets'
 
 const FEED_EMPTY_MESSAGE = 'Анкеты закончились, попробуйте поменять фильтры'
 
 const dashboardColumnClassName = cn(
-  'flex h-full min-h-0 flex-col px-4 pt-[95px]',
+  'flex h-full min-h-0 flex-col px-4',
+  appScreenTopInsetClassNames,
   'pb-[calc(5.25rem+2.25rem+env(safe-area-inset-bottom,0px))]',
 )
 

@@ -86,7 +86,7 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
   const isApplyDisabled = isEqual(filters.state, filters.appliedState)
 
   return (
-    <div className="h-full w-full px-4 pb-4 pt-[95px] flex flex-col min-h-0 min-w-0">
+    <div className="h-full w-full px-4 pb-4 pt-[85px] flex flex-col min-h-0 min-w-0">
       <motion.div
         className="flex flex-1 min-h-0 min-w-0 w-full flex-col"
         style={{ y: dragY }}

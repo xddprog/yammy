@@ -17,10 +17,6 @@ export function buildOnboardingUpdateBody(
     gender: GENDER_TO_API[draft.gender!],
     city: draft.city.trim(),
     relationship_goal: draft.relationshipGoal!,
-    education_level: draft.educationLevel!,
-    ...(draft.educationLevel === 'higher' && draft.educationInstitution.trim()
-      ? { education_details: draft.educationInstitution.trim() }
-      : {}),
     bio: draft.bio.trim() || '',
     filters: draft.filterOptionIds,
     notifications_enabled: notificationsEnabled,

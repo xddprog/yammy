@@ -34,7 +34,8 @@ class OnboardingFinishRequest(BaseModel):
     age: int = Field(ge=16, le=100)
     gender: GenderEnum
     city: str = Field(min_length=1, max_length=256)
-    education_level: EducationLevelEnum
+    education_level: EducationLevelEnum | None = None
+    education_details: str | None = None
     relationship_goal: RelationshipGoalEnum
     filters: list[UUID] = Field(min_length=1)
     photos: list[OnboardingPhotoMeta] = Field(min_length=1)

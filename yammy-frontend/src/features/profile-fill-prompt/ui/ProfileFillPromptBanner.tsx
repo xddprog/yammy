@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
 
 import { Button, cn } from '@/shared'
+import { appScreenTopOffsetClassNames } from '@/widgets'
 
 type ProfileFillPromptBannerProps = {
   open: boolean
@@ -20,7 +21,7 @@ const backdropClassName =
 
 const feedCardFrameClassName = cn(
   'pointer-events-none absolute inset-x-0 left-1/2 flex w-full max-w-md -translate-x-1/2 items-center justify-center px-4',
-  'top-[95px]',
+  appScreenTopOffsetClassNames,
   'bottom-[calc(5.25rem+2.25rem+env(safe-area-inset-bottom,0px))]',
 )
 

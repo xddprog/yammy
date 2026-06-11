@@ -82,8 +82,8 @@ const LikesPage = (): JSX.Element => {
         className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none no-scrollbar scroll-pb-[calc(5.25rem+2.25rem+3.5rem+env(safe-area-inset-bottom,0px))]"
       >
         <div className="flex flex-col gap-4 pb-[calc(5.25rem+2.25rem+3.5rem+env(safe-area-inset-bottom,0px))]">
-          <header className={stickyTopHeaderClassNames({ variant: 'background' })} aria-hidden />
-          <div className="flex min-h-[calc(100dvh-11rem-env(safe-area-inset-bottom,0px))] flex-col">
+          <header className={stickyTopHeaderClassNames()} aria-hidden />
+          <div className="flex min-h-[calc(100dvh-10.375rem-env(safe-area-inset-bottom,0px))] flex-col">
             <h1 className="mb-4 text-[22px] font-bold uppercase leading-none tracking-tight text-white">
               Лайки
             </h1>

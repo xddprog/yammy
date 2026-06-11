@@ -57,7 +57,10 @@ class User(Base):
 
     boost_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     
-    education_level: Mapped[EducationLevelEnum] = mapped_column(SQLAlchemyEnum(EducationLevelEnum))
+    education_level: Mapped[EducationLevelEnum | None] = mapped_column(
+        SQLAlchemyEnum(EducationLevelEnum),
+        nullable=True,
+    )
     education_details: Mapped[str | None]
 
     is_banned: Mapped[bool] = mapped_column(default=False)
