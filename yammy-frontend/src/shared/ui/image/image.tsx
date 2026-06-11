@@ -1,5 +1,7 @@
 import React, { CSSProperties, memo, useEffect, useState } from 'react'
 
+import { useResolvedMediaSrc } from '@/shared/lib/media'
+
 interface ImageProps {
   src: string
   alt: string
@@ -37,13 +39,14 @@ const ImageComponent = ({
   onMouseDown,
   onClick,
 }: ImageProps): React.JSX.Element => {
-  const [currentSrc, setCurrentSrc] = useState(src)
+  const resolvedSrc = useResolvedMediaSrc(src)
+  const [currentSrc, setCurrentSrc] = useState(resolvedSrc)
   const [hasError, setHasError] = useState(false)
 
   useEffect(() => {
-    setCurrentSrc(src)
+    setCurrentSrc(resolvedSrc)
     setHasError(false)
-  }, [src])
+  }, [resolvedSrc])
 
   const handleError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
     if (fallbackSrc && !hasError) {

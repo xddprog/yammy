@@ -20,6 +20,7 @@ import {
 } from '@/features/onboarding/lib/onboardingDraft'
 import { OnboardingLayout } from '@/features/onboarding/ui/OnboardingLayout'
 import { OnboardingTraitChips } from '@/features/onboarding/ui/OnboardingTraitChips'
+import { USER_AGE_MIN } from '@/shared/lib/userAgeLimits'
 import { ProfileEditSheetRow } from '@/pages/(main)/profilePage/ui/components/profileEditSheetRow'
 import { ProfilePhotosEditor } from '@/pages/(main)/profilePage/ui/components/profilePhotosEditor'
 import { RELATIONSHIP_GOAL_OPTIONS } from '@/pages/(main)/profilePage/ui/components/profile.constants'
@@ -77,7 +78,7 @@ const OnboardingPage = (): JSX.Element => {
     () =>
       isFilledText(draft.name) &&
       draft.age != null &&
-      draft.age >= 16 &&
+      draft.age >= USER_AGE_MIN &&
       draft.gender != null,
     [draft.name, draft.age, draft.gender],
   )
@@ -130,7 +131,7 @@ const OnboardingPage = (): JSX.Element => {
         totalSteps={4}
         primaryLabel="Далее"
         primaryDisabled={!step1Valid}
-        footerNote="Вам должно быть не менее 16 лет"
+        footerNote={`Вам должно быть не менее ${USER_AGE_MIN} лет`}
         onPrimary={() => goStep(2)}
       >
         <div className="flex flex-col gap-1.5">

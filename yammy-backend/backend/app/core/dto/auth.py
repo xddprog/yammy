@@ -31,7 +31,7 @@ class OnboardingPhotoMeta(BaseModel):
 
 class OnboardingFinishRequest(BaseModel):
     name: str = Field(min_length=1, max_length=128)
-    age: int = Field(ge=16, le=100)
+    age: int = Field(ge=13, le=100)
     gender: GenderEnum
     city: str = Field(min_length=1, max_length=256)
     education_level: EducationLevelEnum | None = None

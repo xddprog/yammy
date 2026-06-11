@@ -3,6 +3,7 @@ import { useMotionValue } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { FeedStackCardUser } from '@/entities/user/types/types'
+import { prefetchMediaSrc } from '@/shared/lib/media'
 
 const MAX_VISIBLE_CARDS = 3
 const DEFAULT_NEAR_END_THRESHOLD = 5
@@ -31,14 +32,11 @@ export interface UseSwipeFeedResult<T extends FeedStackCardUser = FeedStackCardU
   appendItems: (newItems: FeedStackCardUser[]) => number
 }
 
-/**
- * Предзагрузка изображений в браузерный кэш.
- * Создаёт Image-объект для каждого URL — браузер начинает загрузку в фоне.
- */
 function prefetchImages(urls: string[]): void {
   for (const url of urls) {
-    const img = new window.Image()
-    img.src = url
+    if (url) {
+      prefetchMediaSrc(url)
+    }
   }
 }
 

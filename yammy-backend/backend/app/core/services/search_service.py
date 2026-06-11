@@ -174,7 +174,11 @@ class SearchService:
             bonus += self.BONUS_CITY
         if c.get("relationship_goal") is not None and viewer.relationship_goal.value == c["relationship_goal"]:
             bonus += self.BONUS_RELATIONSHIP_GOAL
-        if c.get("education_level") is not None and viewer.education_level.value == c["education_level"]:
+        if (
+            c.get("education_level") is not None
+            and viewer.education_level is not None
+            and viewer.education_level.value == c["education_level"]
+        ):
             bonus += self.BONUS_EDUCATION_LEVEL
         cd = c.get("education_details")
         if viewer.education_details and cd and viewer.education_details == cd:

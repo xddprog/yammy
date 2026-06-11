@@ -2,7 +2,7 @@ import { Flame } from 'lucide-react'
 import { memo } from 'react'
 
 import type { UserSearchApiUser } from '@/entities/user/types/types'
-import { cn } from '@/shared'
+import { cn, Image } from '@/shared'
 
 export interface SuperLikeCardProps {
   item: UserSearchApiUser
@@ -29,9 +29,10 @@ const SuperLikeCardComponent = ({
         onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
       >
         {photo ? (
-          <img
+          <Image
             src={photo}
             alt={name}
+            loading="eager"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (

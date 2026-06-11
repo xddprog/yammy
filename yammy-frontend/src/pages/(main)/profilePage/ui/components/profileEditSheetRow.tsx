@@ -3,6 +3,7 @@ import { ChevronRight, Forward, X } from 'lucide-react'
 import { memo, useEffect, useRef, useState } from 'react'
 
 import { Button, cn, showErrorToast, useOverlay } from '@/shared'
+import { USER_AGE_MAX, USER_AGE_MIN } from '@/shared/lib/userAgeLimits'
 import { useCityNames } from '@/shared/hooks/useCityNames'
 import { useUniversityNames } from '@/shared/hooks/useUniversityNames'
 import { bottomSheetChromeClassNames, bottomSheetPanelClassNames } from '@/widgets'
@@ -235,12 +236,12 @@ function AgePanel({
       showErrorToast('Введите корректный возраст')
       return
     }
-    if (n < 16) {
-      showErrorToast('Минимальный возраст — 16 лет')
+    if (n < USER_AGE_MIN) {
+      showErrorToast(`Минимальный возраст — ${USER_AGE_MIN} лет`)
       return
     }
-    if (n > 100) {
-      showErrorToast('Максимальный возраст — 100 лет')
+    if (n > USER_AGE_MAX) {
+      showErrorToast(`Максимальный возраст — ${USER_AGE_MAX} лет`)
       return
     }
     onApplyAge(n)

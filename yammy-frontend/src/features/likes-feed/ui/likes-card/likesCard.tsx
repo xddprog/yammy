@@ -2,7 +2,7 @@ import { Heart } from 'lucide-react'
 import { memo } from 'react'
 
 import type { UserSearchApiUser } from '@/entities/user/types/types'
-import { cn } from '@/shared'
+import { cn, Image } from '@/shared'
 
 export interface LikesCardProps {
   item: UserSearchApiUser
@@ -25,9 +25,10 @@ const LikesCardComponent = ({ item, onClick, className }: LikesCardProps): React
         onClick={onClick}
         onKeyDown={(e) => e.key === 'Enter' && onClick?.()}
       >
-        <img
+        <Image
           src={photo}
           alt={name}
+          loading="eager"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
 

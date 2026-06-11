@@ -3,8 +3,8 @@ from app.utils.constants.enums import GenderEnum, JobSphereEnum, RelationshipGoa
 
 class SearchRequest(BaseModel):
     gender: GenderEnum
-    age_min: int = Field(default=18, ge=16, le=100)
-    age_max: int = Field(default=100, ge=16, le=100)
+    age_min: int = Field(default=18, ge=13, le=100)
+    age_max: int = Field(default=100, ge=13, le=100)
     relationship_goal: RelationshipGoalEnum | None = None
     city: str | None = None
 
