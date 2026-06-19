@@ -59,6 +59,7 @@ class JWTConfig(Config):
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=3)
     SCOPE_USER: str = Field(default="user")
     SCOPE_ONBOARDING: str = Field(default="onboarding")
+    SCOPE_STAFF: str = Field(default="staff")
     ONBOARDING_ACCESS_TOKEN_EXPIRE_HOURS: int = Field(default=2)
 
 

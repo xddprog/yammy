@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import repositories, services
 from app.core.clients.redis_client import RedisClient
-from app.core.dto.admin import BaseAdminSchema
 from app.infrastructure.database.adapters.pg_connection import DatabaseConnection
 from app.infrastructure.database.models.user import User
 from app.core.clients.elasticsearch_client import ElasticsearchClient
@@ -163,14 +162,24 @@ class RequestProvider(Provider):
         )
 
 
-@inject
-async def get_current_admin(
-    auth_service: FromDishka[services.AuthService], 
-    request: Request
-) -> BaseAdminSchema:
-    token = request.cookies.get('access_token')
-    data = await auth_service.verify_token(token)
-    return await auth_service.check_admin_exist(data)
+    @provide(scope=Scope.REQUEST)
+    def get_admin_stats_service(self, session: AsyncSession) -> services.AdminStatsService:
+        return services.AdminStatsService(
+            admin_stats_repository=repositories.AdminStatsRepository(session=session),
+        )
+
+    @provide(scope=Scope.REQUEST)
+    def get_admin_user_service(
+        self,
+        session: AsyncSession,
+        user_index_service: services.UserIndexService,
+    ) -> services.AdminUserService:
+        return services.AdminUserService(
+            admin_user_repository=repositories.AdminUserRepository(session=session),
+            like_repository=repositories.LikeRepository(session=session),
+            report_repository=repositories.ReportRepository(session=session),
+            user_index_service=user_index_service,
+        )
 
 
 @inject

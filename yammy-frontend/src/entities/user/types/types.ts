@@ -14,6 +14,7 @@ export interface SearchUsersRequest {
   only_online?: boolean
   only_premium?: boolean
   relationship_goal?: string
+  search_text?: string
   show_seen?: boolean
   weight_appearance?: number
   weight_personality?: number

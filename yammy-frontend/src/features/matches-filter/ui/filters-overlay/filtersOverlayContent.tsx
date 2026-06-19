@@ -23,6 +23,7 @@ import { FilterChipGroup } from './FilterChipGroup'
 import { FilterComboboxField } from './FilterComboboxField'
 import { AgeRangeSlider } from './AgeRangeSlider'
 import { FilterRadioGroup } from './FilterRadioGroup'
+import { FilterSearchTextField } from './FilterSearchTextField'
 import { FilterSection } from './FilterSection'
 import { PrioritySliders } from './PrioritySliders'
 
@@ -184,6 +185,15 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                   options={cityNames}
                   placeholder="Город"
                   ariaLabel="Город"
+                />
+              </FilterSection>
+
+              <FilterSection label="Поиск по описанию">
+                <FilterSearchTextField
+                  value={filters.state.searchText}
+                  onChange={filters.setSearchText}
+                  placeholder="Например: любит путешествия, йогу и кофе"
+                  ariaLabel="Семантический поиск по описанию анкеты"
                 />
               </FilterSection>
 

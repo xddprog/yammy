@@ -13,6 +13,8 @@ class SearchRequest(BaseModel):
     education_levels: list[EducationLevelEnum] | None = None
     education_details: str | None = None
 
+    search_text: str | None = Field(default=None, max_length=500)
+
     filters: dict[str, dict[str, list[str]]] | list[str] = Field(default_factory=dict)
 
     weight_appearance: float = Field(default=0.33, ge=0.0, le=1.0)
@@ -22,6 +24,14 @@ class SearchRequest(BaseModel):
     only_online: bool = False
     only_premium: bool = False
     show_seen: bool = False
+
+    @field_validator("search_text", mode="before")
+    @classmethod
+    def normalize_search_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        stripped = v.strip()
+        return stripped or None
 
     @field_validator("filters", mode="before")
     @classmethod
@@ -48,6 +58,7 @@ class SearchRequest(BaseModel):
                 "job_spheres": ["it", "art_design"],
                 "education_levels": ["higher"],
                 "education_details": "МГУ",
+                "search_text": "любит путешествия и активный отдых",
                 "filters": {
                     "appearance": {
                         "hair": ["bob", "long"],

@@ -94,6 +94,28 @@ class UserSearchQueryBuilder:
             })
         return self
 
+    def add_semantic_text_boost(
+        self,
+        search_text: str | None,
+        weight_personality: float,
+    ) -> Self:
+        text = (search_text or "").strip()
+        if not text:
+            return self
+
+        self.functions.append({
+            "filter": {
+                "multi_match": {
+                    "query": text,
+                    "fields": ["bio^3", "name^2", "job", "education_details"],
+                    "type": "best_fields",
+                    "fuzziness": "AUTO",
+                }
+            },
+            "weight": weight_personality * 8,
+        })
+        return self
+
     def add_personality_vector(
         self, 
         vector: list[float], 

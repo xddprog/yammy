@@ -22,6 +22,7 @@ export interface FiltersContextValue {
   setGender: (v: FiltersState['gender']) => void
   setAgeRange: (v: [number, number]) => void
   setCity: (v: string) => void
+  setSearchText: (v: string) => void
   setFilterValue: (categorySlug: string, subcategorySlug: string, values: string[]) => void
   setRelationshipGoals: (v: FiltersState['relationshipGoals']) => void
   setWorkFields: (v: FiltersState['workFields']) => void
@@ -55,6 +56,12 @@ function useDraftSetters(
   const setCity = useCallback(
     (v: string) => {
       setState((s) => ({ ...s, city: v }))
+    },
+    [setState],
+  )
+  const setSearchText = useCallback(
+    (v: string) => {
+      setState((s) => ({ ...s, searchText: v }))
     },
     [setState],
   )
@@ -113,6 +120,7 @@ function useDraftSetters(
       setGender,
       setAgeRange,
       setCity,
+      setSearchText,
       setFilterValue,
       setRelationshipGoals,
       setWorkFields,
@@ -124,6 +132,7 @@ function useDraftSetters(
       setGender,
       setAgeRange,
       setCity,
+      setSearchText,
       setFilterValue,
       setRelationshipGoals,
       setWorkFields,

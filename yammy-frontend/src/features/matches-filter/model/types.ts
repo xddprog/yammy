@@ -12,8 +12,10 @@ export interface FiltersState {
   ageRange: [number, number]
   /** Город (название или id — уточнить при интеграции с API) */
   city: string
-  /** О себе (`users.bio`). */
+  /** О себе в профиле (`users.bio`). */
   bio: string
+  /** Семантический поиск по описанию в ленте (`search_text` в API). */
+  searchText: string
   /** Динамические фильтры по категориям/подкатегориям (из метаданных бэка) */
   filters: UserFilters
   /** Цели отношений (множественный выбор) */
@@ -35,6 +37,7 @@ export const getDefaultFiltersState = (): FiltersState => ({
   ageRange: [AGE_DEFAULT_MIN, AGE_DEFAULT_MAX],
   city: '',
   bio: '',
+  searchText: '',
   filters: {},
   relationshipGoals: [],
   workFields: [],

@@ -128,11 +128,12 @@ infrastructure/database/models/  → ORM без логики
 
 Основная лента на **дашборде** (`?mode=swipe` по умолчанию).
 
-**Тело `SearchRequest`:** пол, возраст, цель, город, сферы работы, образование, **filters** (nested `category_slug → sub_slug → option_slug[]`), веса appearance/social/personality, `only_online`, `show_seen` (поле `only_premium` в API есть, в UI фильтра ленты **нет**).
+**Тело `SearchRequest`:** пол, возраст, цель, город, сферы работы, образование, **filters** (nested `category_slug → sub_slug → option_slug[]`), **`search_text`** (семантический поиск по bio/имени/работе), веса appearance/social/personality, `only_online`, `show_seen` (поле `only_premium` в API есть, в UI фильтра ленты **нет**).
 
 **Логика (`SearchService`):**
 
-- ES-запрос через `UserSearchQueryBuilder` + вектор личности из bio (`MLService` / Redis cache).
+- ES-запрос через `UserSearchQueryBuilder` + вектор личности: при `search_text` — эмбеддинг запроса (ML), иначе bio текущего пользователя (Redis cache).
+- `multi_match` по `bio`, `name`, `job`, `education_details` (анализатор ES) + cosine по `personality_vector`.
 - Исключения: уже seen (Redis), лайки/дизлайки, матчи; слоты для **boosted** анкет.
 - `match_percentage` в ответе; лимит выдачи ~30 карточек.
 - Fallback по городу, если мало результатов.
@@ -144,7 +145,7 @@ infrastructure/database/models/  → ORM без логики
 | Поведение | Детали |
 |-----------|--------|
 | Черновик vs applied | В оверлее правится `state`; лента и API — только `appliedState` после **«Применить»** |
-| Сохранение | `localStorage` ключ `yammy_feed_filters_v1`: пол, `ageRange`, город, цель, работа, образование, вуз, приоритеты (веса), dynamic `filters` |
+| Сохранение | `localStorage` ключ `yammy_feed_filters_v1`: пол, `ageRange`, город, **`searchText`**, цель, работа, образование, вуз, приоритеты (веса), dynamic `filters` |
 | Загрузка | При старте `FiltersProvider` → `loadAppliedFiltersState()`; парсинг по полям (битый `priorities` не сбрасывает весь объект) |
 | Каталог с бэка | После `GET /filters/` (или onboarding) — `reconcileFeedFiltersWithMetadata`: убрать slug категорий/опций, которых нет в актуальном каталоге (админка) |
 | Закрытие оверлея | **×** и свайп вниз — откат черновика к `appliedState` (**не** `reset`, storage не трогается) |
@@ -280,12 +281,18 @@ infrastructure/database/models/  → ORM без логики
 
 ---
 
-### Admin API — `/admin` (отдельно от клиента)
+### Admin panel
 
-| Префикс | Назначение |
-|---------|------------|
-| `/admin/auth` | login, current_user, refresh для админов |
-| `/admin/filters` | GET каталог фильтров (админка) |
+Отдельное приложение **`yammy-admin/`** + API **`/admin`** (Bearer JWT, roles `admin` / `support`).
+
+| Роль | Доступ |
+|------|--------|
+| **admin** | Dashboard stats, users search/actions, moderation, reports |
+| **support** | Profile moderation + reported users (без stats и ban) |
+
+Dev: `admin/admin`, `support/support` · миграция `20260619_admin_panel`.
+
+**Подробно:** [docs/ADMIN.md](./ADMIN.md)
 
 ---
 
@@ -405,6 +412,7 @@ SQL/миграция для статистики профиля: `migrations/ver
 
 *Последнее (2026-06-19):*
 
+- *Семантический поиск в фильтрах ленты:* `search_text` в `POST /users/search` — эмбеддинг запроса + ES `multi_match`; UI — поле «Поиск по описанию» в оверлее фильтров, `searchText` в `yammy_feed_filters_v1`.
 - *Profile stats (backend):* `GET /users/` возвращает `received_likes_count`, `matches_count`, `profile_views_count`; лайки/матчи считаются в `LikeRepository`; просмотры инкрементятся через `POST /users/{user_id}/view`.
 - *Profile stats (frontend):* под верхним блоком профиля добавлены 3 чипа в одну строку: «Лайкнули», «Матчи», «Просмотры».
 - *Profile views:* хранится только агрегированный `users.profile_views_count`; истории просмотров и списка “кто смотрел” пока нет.

@@ -69,7 +69,7 @@ x-app-env: &app-env
   - AI_SEARCH_CONFIG__DAILY_LIMIT_PREMIUM=6
 
   # CORS
-  - APP_CONFIG__CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,https://www.lascovo.ru,https://lascovo.ru,https://yammy-1dmmkun55-xddprogs-projects.vercel.app,https://yammy-nu.vercel.app,https://yammy-t8rv.vercel.app
+  - APP_CONFIG__CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:5174,https://www.lascovo.ru,https://lascovo.ru,https://admin.lascovo.ru,https://yammy-1dmmkun55-xddprogs-projects.vercel.app,https://yammy-nu.vercel.app,https://yammy-t8rv.vercel.app
   
   # Other
   - APP_CONFIG__SITEMAP_PASSWORD=m_8jMpDsZ09yF1AphJnnEOg_zW0UOe4KXM4cvr_BkvY
@@ -157,13 +157,23 @@ services:
 
   # frontend:
   #   build:
-  #     context: ./frontend
+  #     context: ../yammy-frontend
   #   container_name: frontend-store
   #   ports:
-  #     - "5173:80"
+  #     - "3000:80"
   #   depends_on:
-  #     - app 
-  #   restart: always
+  #     - app
+  #   restart: unless-stopped
+  #   networks:
+  #     - app-network
+
+  # admin:
+  #   build:
+  #     context: ../yammy-admin
+  #   container_name: admin-store
+  #   ports:
+  #     - "5174:80"
+  #   restart: unless-stopped
   #   networks:
   #     - app-network
 

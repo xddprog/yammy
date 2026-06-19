@@ -18,6 +18,9 @@ from app.core.services.report_service import ReportService
 from app.core.services.ai_search_service import AiSearchService
 from app.core.services.user_index_service import UserIndexService
 
+from app.core.services.admin_stats_service import AdminStatsService
+from app.core.services.admin_user_service import AdminUserService
+
 __all__ = [
     "AuthService",
     "UniversityService",
@@ -38,4 +41,6 @@ __all__ = [
     "ReportService",
     "AiSearchService",
     "UserIndexService",
+    "AdminStatsService",
+    "AdminUserService",
 ]

@@ -1,9 +1,9 @@
 import random
 import shutil
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from faker import Faker
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from passlib.context import CryptContext
@@ -11,13 +11,18 @@ from passlib.context import CryptContext
 from dishka import AsyncContainer
 
 from app.infrastructure.database.models.admin import Admin
+from app.infrastructure.database.models.ai_search_history import AiSearchHistory
 from app.infrastructure.database.models.chat import Chat
 from app.infrastructure.database.models.like import Like
 from app.infrastructure.database.models.match import Match
 from app.infrastructure.database.models.message import Message
+from app.infrastructure.database.models.payment import Payment
+from app.infrastructure.database.models.report import Report
 from app.infrastructure.database.models.user import User, UserPhoto
 from app.infrastructure.database.models.filter import FilterCategory, FilterSubcategory, FilterOption, UserFilterAssociation
 from app.utils.constants.enums import (
+    AdminRoleEnum,
+    AiSearchHistoryStatusEnum,
     GenderEnum,
     JobSphereEnum,
     RelationshipGoalEnum,
@@ -25,6 +30,9 @@ from app.utils.constants.enums import (
     SubscriptionTierEnum,
     UserLanguageEnum,
     LikeTypeEnum,
+    PaymentStatus,
+    ReportReasonEnum,
+    ReportStatusEnum,
 )
 from app.infrastructure.config.config import BASE_DIR
 from app.infrastructure.logging.logger import get_logger
@@ -526,14 +534,456 @@ async def clear_elasticsearch_users_index(es_client: ElasticsearchClient) -> Non
     logger.info("elasticsearch_users_index_cleared_after_test_db_seed")
 
 
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+# Детерминированные demo-пользователи для админки (см. docs/ADMIN.md).
+ADMIN_DEMO_MOD_1_TELEGRAM_ID = 9_100_000_001
+ADMIN_DEMO_MOD_2_TELEGRAM_ID = 9_100_000_002
+ADMIN_DEMO_REPORTED_TELEGRAM_ID = 9_100_000_003
+ADMIN_DEMO_BANNED_TELEGRAM_ID = 9_100_000_004
+ADMIN_DEMO_VIP_TELEGRAM_ID = 9_100_000_005
+ADMIN_DEMO_PREMIUM_TELEGRAM_ID = 9_100_000_006
+ADMIN_DEMO_STATS_MARKER_TELEGRAM_ID = 9_100_000_099
+
+
+async def _ensure_user_photo(
+    session: AsyncSession,
+    user: User,
+    photo_paths: list[str],
+) -> None:
+    has_photo = await session.scalar(
+        select(UserPhoto.id).where(UserPhoto.user_id == user.id).limit(1)
+    )
+    if has_photo:
+        return
+    for order, file_path in enumerate(pick_test_photo_paths(photo_paths, 2)):
+        session.add(
+            UserPhoto(
+                user_id=user.id,
+                file_path=file_path,
+                order=order,
+                is_main=(order == 0),
+            )
+        )
+    await session.flush()
+
+
+async def _get_or_create_demo_user(
+    session: AsyncSession,
+    *,
+    telegram_id: int,
+    photo_paths: list[str],
+    defaults: dict,
+) -> User:
+    user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
+    if user is None:
+        user = User(
+            telegram_id=telegram_id,
+            referral_code=f"ADM{telegram_id}",
+            **defaults,
+        )
+        session.add(user)
+        await session.flush()
+    else:
+        for key, value in defaults.items():
+            setattr(user, key, value)
+    await _ensure_user_photo(session, user, photo_paths)
+    return user
+
+
+async def _seed_admin_demo_users(session: AsyncSession, photo_paths: list[str]) -> dict[str, User]:
+    now = _utc_now()
+    common = {
+        "age": 26,
+        "gender": GenderEnum.FEMALE,
+        "city": "Москва",
+        "job_sphere": JobSphereEnum.IT,
+        "job": "Demo seed",
+        "relationship_goal": RelationshipGoalEnum.RELATIONSHIP,
+        "education_level": EducationLevelEnum.HIGHER,
+        "adequacy_score": 8.5,
+        "language": UserLanguageEnum.RU,
+        "notifications_enabled": True,
+    }
+
+    users = {
+        "mod_1": await _get_or_create_demo_user(
+            session,
+            telegram_id=ADMIN_DEMO_MOD_1_TELEGRAM_ID,
+            photo_paths=photo_paths,
+            defaults={
+                **common,
+                "name": "Анна Модерация",
+                "bio": "Новый профиль на проверке — тестовая анкета для очереди модерации.",
+                "profile_moderation_approved": False,
+                "last_seen": now - timedelta(hours=2),
+                "subscription_tier": SubscriptionTierEnum.FREE,
+            },
+        ),
+        "mod_2": await _get_or_create_demo_user(
+            session,
+            telegram_id=ADMIN_DEMO_MOD_2_TELEGRAM_ID,
+            photo_paths=photo_paths,
+            defaults={
+                **common,
+                "name": "Мария Модерация",
+                "gender": GenderEnum.FEMALE,
+                "bio": "Обновила фото — ждёт одобрения модератором.",
+                "profile_moderation_approved": False,
+                "last_seen": now - timedelta(hours=5),
+                "subscription_tier": SubscriptionTierEnum.FREE,
+            },
+        ),
+        "reported": await _get_or_create_demo_user(
+            session,
+            telegram_id=ADMIN_DEMO_REPORTED_TELEGRAM_ID,
+            photo_paths=photo_paths,
+            defaults={
+                **common,
+                "name": "Спамер Тест",
+                "gender": GenderEnum.MALE,
+                "bio": "Подозрительная активность — demo user для жалоб.",
+                "profile_moderation_approved": True,
+                "last_seen": now - timedelta(days=1),
+                "subscription_tier": SubscriptionTierEnum.FREE,
+            },
+        ),
+        "banned": await _get_or_create_demo_user(
+            session,
+            telegram_id=ADMIN_DEMO_BANNED_TELEGRAM_ID,
+            photo_paths=photo_paths,
+            defaults={
+                **common,
+                "name": "Забанен Тест",
+                "gender": GenderEnum.MALE,
+                "bio": "Заблокирован за нарушения — demo для карточки user.",
+                "profile_moderation_approved": True,
+                "is_banned": True,
+                "last_seen": now - timedelta(days=14),
+                "subscription_tier": SubscriptionTierEnum.FREE,
+            },
+        ),
+        "vip": await _get_or_create_demo_user(
+            session,
+            telegram_id=ADMIN_DEMO_VIP_TELEGRAM_ID,
+            photo_paths=photo_paths,
+            defaults={
+                **common,
+                "name": "Пётр VIP",
+                "gender": GenderEnum.MALE,
+                "bio": "VIP-подписчик для теста monetization и поиска.",
+                "profile_moderation_approved": True,
+                "last_seen": now - timedelta(minutes=30),
+                "subscription_tier": SubscriptionTierEnum.VIP,
+                "superlikes_balance": 5,
+                "boosts_balance": 3,
+            },
+        ),
+        "premium": await _get_or_create_demo_user(
+            session,
+            telegram_id=ADMIN_DEMO_PREMIUM_TELEGRAM_ID,
+            photo_paths=photo_paths,
+            defaults={
+                **common,
+                "name": "Елена Premium",
+                "bio": "Premium-подписчик для теста actions в админке.",
+                "profile_moderation_approved": True,
+                "last_seen": now - timedelta(hours=12),
+                "subscription_tier": SubscriptionTierEnum.PREMIUM,
+                "superlikes_balance": 10,
+                "boosts_balance": 5,
+            },
+        ),
+    }
+    return users
+
+
+async def _seed_admin_reports(
+    session: AsyncSession,
+    *,
+    reported_user: User,
+    reporter_ids: list[uuid.UUID],
+) -> int:
+    existing = int(
+        (
+            await session.scalar(
+                select(func.count(Report.id)).where(Report.reported_id == reported_user.id)
+            )
+        )
+        or 0
+    )
+    if existing >= 5:
+        return 0
+
+    now = _utc_now()
+    payloads = [
+        (ReportReasonEnum.SPAM, "Шлёт одинаковые сообщения всем подряд", ReportStatusEnum.PENDING),
+        (ReportReasonEnum.HARASSMENT, "Оскорбления в чате", ReportStatusEnum.PENDING),
+        (ReportReasonEnum.FAKE_PROFILE, "Фото не похожи на человека", ReportStatusEnum.PENDING),
+        (ReportReasonEnum.INAPPROPRIATE_CONTENT, "Неприемлемый контент в био", ReportStatusEnum.REVIEWED),
+        (ReportReasonEnum.OTHER, "Жалоба без деталей", ReportStatusEnum.DISMISSED),
+    ]
+    created = 0
+    for i, (reason, comment, status) in enumerate(payloads):
+        reporter_id = reporter_ids[i % len(reporter_ids)]
+        if reporter_id == reported_user.id:
+            continue
+        dup = await session.scalar(
+            select(Report.id).where(
+                Report.reporter_id == reporter_id,
+                Report.reported_id == reported_user.id,
+                Report.reason == reason,
+            )
+        )
+        if dup:
+            continue
+        reviewed_at = now - timedelta(days=2) if status != ReportStatusEnum.PENDING else None
+        review_note = "Проверено support" if status == ReportStatusEnum.REVIEWED else None
+        if status == ReportStatusEnum.DISMISSED:
+            review_note = "Недостаточно оснований"
+        report = Report(
+            reporter_id=reporter_id,
+            reported_id=reported_user.id,
+            reason=reason,
+            comment=comment,
+            status=status,
+            reviewed_at=reviewed_at,
+            review_note=review_note,
+            created_at=now - timedelta(days=i + 1),
+        )
+        session.add(report)
+        created += 1
+
+    if created:
+        await session.flush()
+    return created
+
+
+async def _seed_admin_payments(session: AsyncSession, payer_ids: list[uuid.UUID]) -> int:
+    existing = int((await session.scalar(select(func.count(Payment.id)))) or 0)
+    if existing >= 8:
+        return 0
+
+    now = _utc_now()
+    amounts = (299, 499, 799, 999, 1499, 1999, 299, 599)
+    created = 0
+    for i, user_id in enumerate(payer_ids[:8]):
+        payment = Payment(
+            user_id=user_id,
+            amount=amounts[i % len(amounts)],
+            status=PaymentStatus.PAID,
+            transaction_id=f"demo-txn-{user_id.hex[:8]}-{i}",
+            payment_date=(now - timedelta(days=i * 3)).replace(tzinfo=None),
+        )
+        session.add(payment)
+        created += 1
+    if created:
+        await session.flush()
+    return created
+
+
+async def _seed_admin_ai_search(session: AsyncSession, user_ids: list[uuid.UUID]) -> int:
+    existing = int((await session.scalar(select(func.count(AiSearchHistory.id)))) or 0)
+    if existing >= 5:
+        return 0
+
+    now = _utc_now()
+    queries = [
+        ("девушка 25 лет Москва йога", AiSearchHistoryStatusEnum.READY, 12),
+        ("парень IT спорт", AiSearchHistoryStatusEnum.READY, 8),
+        ("общение без серьёзных отношений", AiSearchHistoryStatusEnum.READY, 5),
+        ("редкие хобби фото путешествия", AiSearchHistoryStatusEnum.SEARCHING, None),
+        ("несуществующий запрос xyz", AiSearchHistoryStatusEnum.FAILED, None),
+    ]
+    created = 0
+    for i, (query_text, status, result_count) in enumerate(queries):
+        user_id = user_ids[i % len(user_ids)]
+        entry = AiSearchHistory(
+            user_id=user_id,
+            query_text=query_text,
+            status=status,
+            result_count=result_count,
+            error_message="Demo: search timeout" if status == AiSearchHistoryStatusEnum.FAILED else None,
+            completed_at=now - timedelta(hours=i + 1) if status != AiSearchHistoryStatusEnum.SEARCHING else None,
+            created_at=now - timedelta(days=i),
+        )
+        session.add(entry)
+        created += 1
+    if created:
+        await session.flush()
+    return created
+
+
+async def _redistribute_clustered_messages(session: AsyncSession) -> None:
+    """Размазывает created_at сообщений по 30 дням, если сид создал один огромный пик."""
+    now = _utc_now()
+    total = int((await session.scalar(select(func.count(Message.id)))) or 0)
+    if total < 10:
+        return
+
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_count = int(
+        (
+            await session.scalar(
+                select(func.count(Message.id)).where(Message.created_at >= today_start)
+            )
+        )
+        or 0
+    )
+    if today_count / total < 0.5:
+        return
+
+    message_ids = list(
+        (await session.execute(select(Message.id).order_by(Message.created_at))).scalars().all()
+    )
+    for i, message_id in enumerate(message_ids):
+        await session.execute(
+            update(Message)
+            .where(Message.id == message_id)
+            .values(created_at=now - timedelta(days=i % 30, hours=(i * 5) % 24, minutes=i % 60))
+        )
+    await session.flush()
+    logger.info(
+        "admin_stats_messages_redistributed",
+        total=total,
+        previous_today_count=today_count,
+    )
+
+
+async def _seed_admin_stats_timeseries(session: AsyncSession) -> None:
+    marker_exists = await session.scalar(
+        select(User.id).where(User.telegram_id == ADMIN_DEMO_STATS_MARKER_TELEGRAM_ID)
+    )
+    if marker_exists:
+        return
+
+    now = _utc_now()
+    user_ids = list(
+        (await session.execute(select(User.id).order_by(User.created_at).limit(40))).scalars().all()
+    )
+    if not user_ids:
+        return
+
+    for i, user_id in enumerate(user_ids):
+        day_offset = i % 30
+        last_seen_offset = min(i * 6, 29 * 24 * 60)
+        await session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(
+                created_at=now - timedelta(days=day_offset, hours=i % 12),
+                last_seen=now - timedelta(minutes=last_seen_offset),
+            )
+        )
+
+    like_rows = (
+        await session.execute(select(Like.user_from_id, Like.user_to_id).limit(90))
+    ).all()
+    for i, (user_from_id, user_to_id) in enumerate(like_rows):
+        await session.execute(
+            update(Like)
+            .where(Like.user_from_id == user_from_id, Like.user_to_id == user_to_id)
+            .values(created_at=now - timedelta(days=i % 30, hours=i % 8))
+        )
+
+    message_ids = list(
+        (await session.execute(select(Message.id).order_by(Message.created_at))).scalars().all()
+    )
+    for i, message_id in enumerate(message_ids):
+        await session.execute(
+            update(Message)
+            .where(Message.id == message_id)
+            .values(created_at=now - timedelta(days=i % 30, hours=(i * 3) % 24))
+        )
+
+    report_ids = list(
+        (await session.execute(select(Report.id).limit(20))).scalars().all()
+    )
+    for i, report_id in enumerate(report_ids):
+        await session.execute(
+            update(Report)
+            .where(Report.id == report_id)
+            .values(created_at=now - timedelta(days=i % 30))
+        )
+
+    session.add(
+        User(
+            telegram_id=ADMIN_DEMO_STATS_MARKER_TELEGRAM_ID,
+            name="StatsMarker",
+            age=99,
+            gender=GenderEnum.MALE,
+            city="Москва",
+            relationship_goal=RelationshipGoalEnum.COMMUNICATION,
+            referral_code="ADMIN_DEMO_STATS",
+            profile_moderation_approved=True,
+            is_banned=True,
+            last_seen=now - timedelta(days=365),
+        )
+    )
+    await session.flush()
+    logger.info("admin_stats_timeseries_backdated", users=len(user_ids), likes=len(like_rows))
+
+
+async def seed_admin_demo_data(session: AsyncSession, photo_paths: list[str]) -> None:
+    """Demo-данные для всех экранов админки (идемпотентно)."""
+    demo_users = await _seed_admin_demo_users(session, photo_paths)
+
+    all_user_ids = list(
+        (await session.execute(select(User.id).where(User.is_banned.is_(False)))).scalars().all()
+    )
+    reporter_pool = [uid for uid in all_user_ids if uid != demo_users["reported"].id][:10]
+    if not reporter_pool:
+        reporter_pool = [demo_users["vip"].id]
+
+    reports_created = await _seed_admin_reports(
+        session,
+        reported_user=demo_users["reported"],
+        reporter_ids=reporter_pool,
+    )
+
+    payer_ids = [
+        demo_users["vip"].id,
+        demo_users["premium"].id,
+        *all_user_ids[:6],
+    ]
+    payments_created = await _seed_admin_payments(session, payer_ids)
+    ai_created = await _seed_admin_ai_search(session, all_user_ids[:5] or [demo_users["vip"].id])
+    await _seed_admin_stats_timeseries(session)
+    await _redistribute_clustered_messages(session)
+
+    logger.info(
+        "admin_demo_data_seeded",
+        moderation_pending=2,
+        reported_user=demo_users["reported"].name,
+        reports_created=reports_created,
+        payments_created=payments_created,
+        ai_search_created=ai_created,
+        search_hints=["Анна", "Спамер", "VIP", "Premium", "Забанен"],
+    )
+
+
 async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
     try:
-        admin_exists = (await session.execute(select(User))).scalars().first()
+        admin_exists = (await session.execute(select(Admin))).scalars().first()
         if not admin_exists:
             pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
-            admin = Admin(username="admin", password_hash=pwd_context.hash("admin"))
-            session.add(admin)
-            logger.info("Admin created")
+            session.add(
+                Admin(
+                    username="admin",
+                    password_hash=pwd_context.hash("admin"),
+                    role=AdminRoleEnum.ADMIN,
+                )
+            )
+            session.add(
+                Admin(
+                    username="support",
+                    password_hash=pwd_context.hash("support"),
+                    role=AdminRoleEnum.SUPPORT,
+                )
+            )
+            logger.info("Admin accounts created")
 
         filters_exist = (await session.execute(select(FilterCategory))).scalars().first()
         if not filters_exist:
@@ -566,6 +1016,8 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
                 target_count=count,
             )
             await seed_test_matches(session)
+            await seed_admin_demo_data(session, test_photo_paths)
+            await _redistribute_clustered_messages(session)
             await session.commit()
             return False
 
@@ -643,6 +1095,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
         await seed_match_calibration_users(session, photo_paths=test_photo_paths)
         likes_skip_pairs = await seed_test_received_likes(session)
         await seed_test_matches(session, skip_pairs=likes_skip_pairs)
+        await seed_admin_demo_data(session, test_photo_paths)
 
         await session.commit()
         logger.info(f"Successfully seeded {count} users")

@@ -5,12 +5,13 @@ import { getDefaultFiltersState } from '../model/types'
 
 const STORAGE_KEY = 'yammy_feed_filters_v1'
 
-/** Поля ленты поиска (без bio/job — они из профиля в API). */
+/** Поля ленты поиска (без bio/job — они из профиля на сервере). */
 export type PersistedFeedFilters = Pick<
   FiltersState,
   | 'gender'
   | 'ageRange'
   | 'city'
+  | 'searchText'
   | 'filters'
   | 'relationshipGoals'
   | 'workFields'
@@ -24,6 +25,7 @@ export function extractPersistedFeedFilters(state: FiltersState): PersistedFeedF
     gender: state.gender,
     ageRange: state.ageRange,
     city: state.city,
+    searchText: state.searchText,
     filters: state.filters,
     relationshipGoals: state.relationshipGoals,
     workFields: state.workFields,
@@ -80,6 +82,7 @@ function parsePersistedFilters(raw: unknown): PersistedFeedFilters {
     gender: parsedGender,
     ageRange: parseAgeRange(data.ageRange, defaults.ageRange),
     city: typeof data.city === 'string' ? data.city : defaults.city,
+    searchText: typeof data.searchText === 'string' ? data.searchText : defaults.searchText,
     filters:
       data.filters != null && typeof data.filters === 'object' && !Array.isArray(data.filters)
         ? (data.filters as FiltersState['filters'])

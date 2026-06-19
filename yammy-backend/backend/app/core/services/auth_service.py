@@ -18,7 +18,7 @@ from app.core.dto.auth import (
     TokenSchema,
     TelegramAuthSchema,
 )
-from app.core.dto.admin import BaseAdminSchema
+from app.core.dto.admin import AdminSchema
 from app.core.repositories.admin_repository import AdminRepository
 from app.core.repositories.user_repository import UserRepository
 from app.infrastructure.database.models.admin import Admin
@@ -44,6 +44,26 @@ class AuthService:
         to_encode = {"sub": sub, "exp": expire, "scope": scope}
         return jwt.encode(to_encode, JWT_CONFIG.SECRET_KEY, algorithm=JWT_CONFIG.ALGORITHM)
 
+    def create_staff_access_token(self, sub: str, role: str) -> str:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_CONFIG.ACCESS_TOKEN_EXPIRE_MINUTES)
+        to_encode = {
+            "sub": sub,
+            "exp": expire,
+            "scope": JWT_CONFIG.SCOPE_STAFF,
+            "role": role,
+        }
+        return jwt.encode(to_encode, JWT_CONFIG.SECRET_KEY, algorithm=JWT_CONFIG.ALGORITHM)
+
+    def create_staff_refresh_token(self, sub: str, role: str) -> str:
+        expire = datetime.now(timezone.utc) + timedelta(days=JWT_CONFIG.REFRESH_TOKEN_EXPIRE_DAYS)
+        to_encode = {
+            "sub": sub,
+            "exp": expire,
+            "scope": JWT_CONFIG.SCOPE_STAFF,
+            "role": role,
+        }
+        return jwt.encode(to_encode, JWT_CONFIG.SECRET_KEY, algorithm=JWT_CONFIG.ALGORITHM)
+
     def create_access_token(self, sub: str) -> str:
         expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_CONFIG.ACCESS_TOKEN_EXPIRE_MINUTES)
         return self._encode_token(sub, expire, JWT_CONFIG.SCOPE_USER)
@@ -64,9 +84,15 @@ class AuthService:
         if not admin or not self._verify_password(form.password, admin.password_hash):
             raise InvalidCredentials()
 
-        access_token = self.create_access_token(str(admin.id))
-        refresh_token = self.create_refresh_token(str(admin.id))
+        access_token = self.create_staff_access_token(str(admin.id), admin.role.value)
+        refresh_token = self.create_staff_refresh_token(str(admin.id), admin.role.value)
         return TokenSchema(access_token=access_token, refresh_token=refresh_token)
+
+    async def verify_staff_token(self, token: str) -> AdminSchema:
+        payload = await self.verify_token(token)
+        if payload.get("scope") != JWT_CONFIG.SCOPE_STAFF:
+            raise InvalidCredentials()
+        return await self.check_admin_exist(payload)
 
     async def verify_token(self, token: str | None) -> dict:
         if not token:
@@ -78,7 +104,7 @@ class AuthService:
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             raise InvalidCredentials()
 
-    async def check_admin_exist(self, token_data: dict) -> BaseAdminSchema:
+    async def check_admin_exist(self, token_data: dict) -> AdminSchema:
         try:
             admin_id = UUID(token_data.get("sub"))
         except (ValueError, TypeError):
@@ -87,11 +113,13 @@ class AuthService:
         admin = await self.admin_repository.get_by_filter(one_or_none=True, id=admin_id)
         if not admin:
             raise ForbiddenException()
-        return BaseAdminSchema.model_validate(admin, from_attributes=True)
+        return AdminSchema.model_validate(admin, from_attributes=True)
 
     async def refresh_admin_token(self, refresh_token: str) -> TokenSchema:
         try:
             payload = await self.verify_token(refresh_token)
+            if payload.get("scope") != JWT_CONFIG.SCOPE_STAFF:
+                raise InvalidCredentials()
             admin_id = UUID(payload.get("sub"))
 
             admin = await self.admin_repository.get_by_filter(id=admin_id, one_or_none=True)
@@ -99,8 +127,8 @@ class AuthService:
             if not admin:
                 raise InvalidCredentials()
 
-            access_token = self.create_access_token(str(admin.id))
-            new_refresh_token = self.create_refresh_token(str(admin.id))
+            access_token = self.create_staff_access_token(str(admin.id), admin.role.value)
+            new_refresh_token = self.create_staff_refresh_token(str(admin.id), admin.role.value)
 
             return TokenSchema(access_token=access_token, refresh_token=new_refresh_token)
 

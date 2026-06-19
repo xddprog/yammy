@@ -54,7 +54,7 @@ class SearchService:
     def _create_base_query_builder(
         self,
         search_request: SearchRequest,
-        user_vector,
+        query_vector: list[float] | None,
         exclude_list: list[str],
         city: str | None,
     ) -> UserSearchQueryBuilder:
@@ -80,8 +80,12 @@ class SearchService:
                 weight_social=search_request.weight_social,
                 weight_personality=search_request.weight_personality
             )
+            .add_semantic_text_boost(
+                search_text=search_request.search_text,
+                weight_personality=search_request.weight_personality,
+            )
             .add_personality_vector(
-                vector=user_vector,
+                vector=query_vector,
                 weight_personality=search_request.weight_personality
             )
             .add_system_rankings()
@@ -92,21 +96,35 @@ class SearchService:
         response = await self.elasticsearch_client.search(index="users", query=query)
         return response.get("hits", {}).get("hits", [])
 
+    async def _resolve_query_vector(
+        self,
+        search_request: SearchRequest,
+        current_user: User,
+        cached_user_vector: list[float] | None,
+    ) -> list[float] | None:
+        if search_request.search_text:
+            return await self.ml_service.get_embedding(search_request.search_text)
+
+        if cached_user_vector:
+            return cached_user_vector
+
+        return await self.ml_service.get_embedding(current_user.bio)
+
     async def _search_user_hits(
         self,
         search_request: SearchRequest,
-        user_vector,
+        query_vector: list[float] | None,
         exclude_list: list[str],
         city: str | None,
     ) -> list[dict]:
         boosted_hits, regular_hits = await asyncio.gather(
             self._execute_search(
-                self._create_base_query_builder(search_request, user_vector, exclude_list, city)
+                self._create_base_query_builder(search_request, query_vector, exclude_list, city)
                 .set_limit(self.BOOSTED_LIMIT)
                 .only_boosted()
             ),
             self._execute_search(
-                self._create_base_query_builder(search_request, user_vector, exclude_list, city)
+                self._create_base_query_builder(search_request, query_vector, exclude_list, city)
                 .set_limit(self.REGULAR_LIMIT)
                 .exclude_boosted()
             ),
@@ -116,7 +134,7 @@ class SearchService:
     def _search_results_from_hits(
         self,
         all_hits: list[dict],
-        user_vector,
+        query_vector: list[float] | None,
         my_specs: list[str],
         viewer: User,
     ) -> list[UserSearchResponseSchema]:
@@ -124,7 +142,7 @@ class SearchService:
         for hit in all_hits:
             source = hit["_source"]
             match_percentage = self._match_percentage_for_candidate(
-                source, user_vector, my_specs, viewer
+                source, query_vector, my_specs, viewer
             )
             if match_percentage >= self.MIN_MATCH_PERCENTAGE:
                 source["match_percentage"] = match_percentage
@@ -217,22 +235,24 @@ class SearchService:
         
         exclude_list = [str(current_user.id)] + list(seen_ids)
 
-        user_vector = await self.redis_client.get(UserCacheKeys.USER_VECTOR.format(user_id=current_user.id))
+        cached_user_vector = await self.redis_client.get(
+            UserCacheKeys.USER_VECTOR.format(user_id=current_user.id)
+        )
+        query_vector = await self._resolve_query_vector(
+            search_request, current_user, cached_user_vector
+        )
 
-        if not user_vector:
-            user_vector = await self.ml_service.get_embedding(current_user.bio)
-        
         u = await self.user_repository.get_user_with_filters(current_user.id)
         my_specs = self._extract_user_specs(u)
 
         es_city = search_request.city if search_request.city is not None else u.city
 
-        all_hits = await self._search_user_hits(search_request, user_vector, exclude_list, es_city)
-        results = self._search_results_from_hits(all_hits, user_vector, my_specs, u)
+        all_hits = await self._search_user_hits(search_request, query_vector, exclude_list, es_city)
+        results = self._search_results_from_hits(all_hits, query_vector, my_specs, u)
         
         if search_request.city is None and u.city and not results:
-            all_hits = await self._search_user_hits(search_request, user_vector, exclude_list, None)
-            results = self._search_results_from_hits(all_hits, user_vector, my_specs, u)
+            all_hits = await self._search_user_hits(search_request, query_vector, exclude_list, None)
+            results = self._search_results_from_hits(all_hits, query_vector, my_specs, u)
         
         return results[:self.FINAL_LIMIT]
 

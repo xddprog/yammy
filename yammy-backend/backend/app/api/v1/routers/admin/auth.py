@@ -1,14 +1,14 @@
 from typing import Annotated
+
 from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, Depends
 
-from app.api.v1.dependency.providers.request import get_current_admin
+from app.api.v1.dependency.staff_auth import get_current_staff
+from app.core.dto.admin import AdminSchema
 from app.core.dto.auth import LoginSchema, RefreshTokenSchema, TokenSchema
-from app.core.dto.admin import BaseAdminSchema
 from app.core.services.auth_service import AuthService
 from app.infrastructure.errors.auth_errors import InvalidCredentials
 from app.infrastructure.errors.error_extra import error_response
-from app.infrastructure.database.models.admin import Admin
 
 
 router = APIRouter()
@@ -26,8 +26,8 @@ async def login(
 @router.get("/current_user")
 @inject
 async def get_current_admin_info(
-    current_user: Annotated[Admin, Depends(get_current_admin)]
-):
+    current_user: Annotated[AdminSchema, Depends(get_current_staff)],
+) -> AdminSchema:
     return current_user
 
 
@@ -38,4 +38,3 @@ async def refresh_token(
     auth_service: FromDishka[AuthService],
 ) -> TokenSchema:
     return await auth_service.refresh_admin_token(refresh_data.refresh_token)
-

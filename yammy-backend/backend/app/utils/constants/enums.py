@@ -1,6 +1,17 @@
 from enum import Enum
 
 
+class AdminRoleEnum(str, Enum):
+    ADMIN = "admin"
+    SUPPORT = "support"
+
+
+class ReportStatusEnum(str, Enum):
+    PENDING = "pending"
+    REVIEWED = "reviewed"
+    DISMISSED = "dismissed"
+
+
 class PaymentStatus(str, Enum):
     PENDING = "pending"
     PAID = "paid"
