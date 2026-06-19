@@ -26,6 +26,8 @@ import { appScreenTopInsetClassNames, Header } from '@/widgets'
 
 const FEED_EMPTY_MESSAGE = 'Анкеты закончились, попробуйте поменять фильтры'
 
+const EMPTY_SWIPE_USERS: UserSearchApiUser[] = []
+
 const dashboardColumnClassName = cn(
   'flex h-full min-h-0 flex-col px-4',
   appScreenTopInsetClassNames,
@@ -52,7 +54,7 @@ const DashboardPage = (): JSX.Element => {
   const swipeSearch = useUsersSearch(filterParams, { enabled: isSwipeMode })
   const appearanceSearch = useAppearanceRatingUsers({ enabled: !isSwipeMode })
 
-  const swipeUsers = swipeSearch.data ?? []
+  const swipeUsers = swipeSearch.data ?? EMPTY_SWIPE_USERS
   const rateUsers = appearanceSearch.data ?? []
   const refetchSwipeSearch = swipeSearch.refetch
   const refetchAppearanceSearch = appearanceSearch.refetch

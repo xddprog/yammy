@@ -113,7 +113,7 @@ export const ProfileEditForm = ({
           options={WORK_SPHERE_OPTIONS.map((option) => option.label)}
           onPick={(label) => {
             const selected = WORK_SPHERE_OPTIONS.find((option) => option.label === label)
-            const nextFields = selected ? [selected.value] : label ? [label] : []
+            const nextFields = selected ? [selected.value] : []
             setDraft((prev) => ({
               ...prev,
               workFields: nextFields,

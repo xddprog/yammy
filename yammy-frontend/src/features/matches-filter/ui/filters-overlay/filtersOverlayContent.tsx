@@ -188,31 +188,36 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                 />
               </FilterSection>
 
-              <FilterSection label="Поиск по описанию">
-                <FilterSearchTextField
-                  value={filters.state.searchText}
-                  onChange={filters.setSearchText}
-                  placeholder="Например: любит путешествия, йогу и кофе"
-                  ariaLabel="Семантический поиск по описанию анкеты"
-                />
-              </FilterSection>
-
               <FilterSection label="Сфера работы">
                 <FilterComboboxField
+                  selectOnly
                   value={
                     WORK_SPHERE_OPTIONS.find((option) =>
                       filters.state.workFields.includes(option.value),
                     )?.label ?? ''
                   }
                   onChange={(value) => {
-                    const selected = WORK_SPHERE_OPTIONS.find(
-                      (option) => option.label === value,
-                    )
-                    filters.setWorkFields(selected ? [selected.value] : value ? [value] : [])
+                    if (!value) {
+                      filters.setWorkFields([])
+                      return
+                    }
+                    const selected = WORK_SPHERE_OPTIONS.find((option) => option.label === value)
+                    if (selected) {
+                      filters.setWorkFields([selected.value])
+                    }
                   }}
                   options={WORK_SPHERE_OPTIONS.map((option) => option.label)}
                   placeholder="Сфера работы"
                   ariaLabel="Сфера работы"
+                />
+              </FilterSection>
+
+              <FilterSection label="Поиск по описанию">
+                <FilterSearchTextField
+                  value={filters.state.searchText}
+                  onChange={filters.setSearchText}
+                  placeholder="Например: любит путешествия"
+                  ariaLabel="Семантический поиск по описанию анкеты"
                 />
               </FilterSection>
 

@@ -58,38 +58,39 @@ class SearchService:
         exclude_list: list[str],
         city: str | None,
     ) -> UserSearchQueryBuilder:
-        return (
-            UserSearchQueryBuilder()
-            .add_basic_filters(
-                gender=search_request.gender,
-                age_min=search_request.age_min,
-                age_max=search_request.age_max,
-                city=city,
-                goal=search_request.relationship_goal
-            )
-            .add_social_filters(
-                job_sphere=search_request.job_spheres,
-                edu_level=search_request.education_levels,
-                edu_query=search_request.education_details,
-            )
-            .add_premium_filter(search_request.only_premium)
-            .exclude_users(exclude_list)
-            .add_trait_boosts(
-                flattened_traits=search_request.filters,
-                weight_appearance=search_request.weight_appearance,
-                weight_social=search_request.weight_social,
-                weight_personality=search_request.weight_personality
-            )
-            .add_semantic_text_boost(
-                search_text=search_request.search_text,
-                weight_personality=search_request.weight_personality,
-            )
-            .add_personality_vector(
-                vector=query_vector,
-                weight_personality=search_request.weight_personality
-            )
-            .add_system_rankings()
+        builder = UserSearchQueryBuilder()
+        builder.add_basic_filters(
+            gender=search_request.gender,
+            age_min=search_request.age_min,
+            age_max=search_request.age_max,
+            city=city,
+            goal=search_request.relationship_goal,
         )
+        builder.add_social_filters(
+            job_sphere=search_request.job_spheres,
+            edu_level=search_request.education_levels,
+            edu_query=search_request.education_details,
+        )
+        builder.add_premium_filter(search_request.only_premium)
+        builder.exclude_users(exclude_list)
+        builder.add_trait_boosts(
+            flattened_traits=search_request.filters,
+            weight_appearance=search_request.weight_appearance,
+            weight_social=search_request.weight_social,
+            weight_personality=search_request.weight_personality,
+        )
+        if query_vector:
+            personality_weight = (
+                1.0
+                if (search_request.search_text or "").strip()
+                else search_request.weight_personality
+            )
+            builder.add_personality_vector(
+                vector=query_vector,
+                weight_personality=personality_weight,
+            )
+        builder.add_system_rankings()
+        return builder
     
     async def _execute_search(self, builder: UserSearchQueryBuilder) -> list[dict]:
         query = builder.build()
@@ -102,13 +103,17 @@ class SearchService:
         current_user: User,
         cached_user_vector: list[float] | None,
     ) -> list[float] | None:
-        if search_request.search_text:
-            return await self.ml_service.get_embedding(search_request.search_text)
+        search_text = (search_request.search_text or "").strip()
+        if search_text:
+            return await self.ml_service.get_embedding(search_text)
 
         if cached_user_vector:
             return cached_user_vector
 
-        return await self.ml_service.get_embedding(current_user.bio)
+        bio = (current_user.bio or "").strip()
+        if not bio:
+            return None
+        return await self.ml_service.get_embedding(bio)
 
     async def _search_user_hits(
         self,
@@ -137,14 +142,15 @@ class SearchService:
         query_vector: list[float] | None,
         my_specs: list[str],
         viewer: User,
+        semantic_search: bool = False,
     ) -> list[UserSearchResponseSchema]:
         results: list[UserSearchResponseSchema] = []
         for hit in all_hits:
             source = hit["_source"]
             match_percentage = self._match_percentage_for_candidate(
-                source, query_vector, my_specs, viewer
+                source, query_vector, my_specs, viewer, semantic_search=semantic_search
             )
-            if match_percentage >= self.MIN_MATCH_PERCENTAGE:
+            if semantic_search or match_percentage >= self.MIN_MATCH_PERCENTAGE:
                 source["match_percentage"] = match_percentage
                 results.append(UserSearchResponseSchema.model_validate(source))
         return results
@@ -209,6 +215,7 @@ class SearchService:
         user_embedding: list[float] | None,
         my_specs: list[str],
         viewer: User,
+        semantic_search: bool = False,
     ) -> int:
         candidate_vector = source.get("personality_vector")
         if candidate_vector and user_embedding:
@@ -217,9 +224,12 @@ class SearchService:
         else:
             forward_match = 50
 
-        backward_match = self._calculate_backward_match(my_specs, source.get("specs"))
+        if semantic_search:
+            blended = float(forward_match)
+        else:
+            backward_match = self._calculate_backward_match(my_specs, source.get("specs"))
+            blended = (forward_match + backward_match) / 2.0
 
-        blended = (forward_match + backward_match) / 2.0
         blended = min(100.0, blended + self._demographic_bonus(viewer, source))
         raw = self._spread_from_midpoint(blended, self.MATCH_PERCENT_SPREAD_FACTOR)
         return min(raw, 94)
@@ -241,6 +251,7 @@ class SearchService:
         query_vector = await self._resolve_query_vector(
             search_request, current_user, cached_user_vector
         )
+        semantic_search = bool((search_request.search_text or "").strip())
 
         u = await self.user_repository.get_user_with_filters(current_user.id)
         my_specs = self._extract_user_specs(u)
@@ -248,11 +259,15 @@ class SearchService:
         es_city = search_request.city if search_request.city is not None else u.city
 
         all_hits = await self._search_user_hits(search_request, query_vector, exclude_list, es_city)
-        results = self._search_results_from_hits(all_hits, query_vector, my_specs, u)
-        
+        results = self._search_results_from_hits(
+            all_hits, query_vector, my_specs, u, semantic_search=semantic_search
+        )
+
         if search_request.city is None and u.city and not results:
             all_hits = await self._search_user_hits(search_request, query_vector, exclude_list, None)
-            results = self._search_results_from_hits(all_hits, query_vector, my_specs, u)
+            results = self._search_results_from_hits(
+                all_hits, query_vector, my_specs, u, semantic_search=semantic_search
+            )
         
         return results[:self.FINAL_LIMIT]
 

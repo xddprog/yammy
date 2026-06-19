@@ -9,7 +9,7 @@ class UserSearchQueryBuilder:
         self.must_not_filters = []
         self.should_queries = []
         self.functions = []
-        self.boost_functions = [] 
+        self.boost_functions = []
         self.size = 50
         
     def set_limit(self, limit: int):
@@ -77,43 +77,20 @@ class UserSearchQueryBuilder:
         weight_personality: float
     ) -> Self:
         for trait in flattened_traits:
-            boost = 1.0
-            
-            if trait.startswith("appearance"):
+            category = trait.split(":", 1)[0]
+            if category == "appearance":
                 boost = weight_appearance * 10
-                
-            elif trait.startswith("social"):
+            elif category in ("social", "interests"):
                 boost = weight_social * 10
-                
-            elif trait.startswith("personality"):
+            elif category in ("personality", "lifestyle"):
                 boost = weight_personality * 10
-            
+            else:
+                boost = 1.0
+
             self.functions.append({
                 "filter": {"term": {"specs": trait}},
                 "weight": boost
             })
-        return self
-
-    def add_semantic_text_boost(
-        self,
-        search_text: str | None,
-        weight_personality: float,
-    ) -> Self:
-        text = (search_text or "").strip()
-        if not text:
-            return self
-
-        self.functions.append({
-            "filter": {
-                "multi_match": {
-                    "query": text,
-                    "fields": ["bio^3", "name^2", "job", "education_details"],
-                    "type": "best_fields",
-                    "fuzziness": "AUTO",
-                }
-            },
-            "weight": weight_personality * 8,
-        })
         return self
 
     def add_personality_vector(
@@ -124,6 +101,8 @@ class UserSearchQueryBuilder:
         if not vector:
             return self
 
+        score_weight = weight_personality * 5
+
         self.must_filters.append({"exists": {"field": "personality_vector"}})
         self.functions.append({
             "script_score": {
@@ -131,7 +110,7 @@ class UserSearchQueryBuilder:
                     "source": "(cosineSimilarity(params.query_vector, 'personality_vector') + 1.0) * params.weight",
                     "params": {
                         "query_vector": vector,
-                        "weight": weight_personality * 5 
+                        "weight": score_weight,
                     }
                 }
             }
@@ -243,7 +222,7 @@ class UserSearchQueryBuilder:
                         }
                     },
                     "query_weight": 0.5,
-                    "rescore_query_weight": 2.0
+                    "rescore_query_weight": 2.0,
                 }
             }
         

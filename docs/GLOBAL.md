@@ -132,8 +132,9 @@ infrastructure/database/models/  → ORM без логики
 
 **Логика (`SearchService`):**
 
-- ES-запрос через `UserSearchQueryBuilder` + вектор личности: при `search_text` — эмбеддинг запроса (ML), иначе bio текущего пользователя (Redis cache).
-- `multi_match` по `bio`, `name`, `job`, `education_details` (анализатор ES) + cosine по `personality_vector`.
+- ES-запрос: **все фильтры** (пол, возраст, город, цель, работа, образование, trait-boosts) всегда в запросе; `search_text` меняет только эмбеддинг для cosine по `personality_vector` (bio в индексе), без отключения фильтров.
+- Без `search_text` — эмбеддинг bio текущего пользователя, сила cosine × `weight_personality` (слайдер приоритетов).
+- С `search_text` — эмбеддинг текста запроса, cosine на полную (слайдер личности на вектор не влияет); фильтры и trait-boosts как обычно.
 - Исключения: уже seen (Redis), лайки/дизлайки, матчи; слоты для **boosted** анкет.
 - `match_percentage` в ответе; лимит выдачи ~30 карточек.
 - Fallback по городу, если мало результатов.
@@ -412,7 +413,7 @@ SQL/миграция для статистики профиля: `migrations/ver
 
 *Последнее (2026-06-19):*
 
-- *Семантический поиск в фильтрах ленты:* `search_text` в `POST /users/search` — эмбеддинг запроса + ES `multi_match`; UI — поле «Поиск по описанию» в оверлее фильтров, `searchText` в `yammy_feed_filters_v1`.
+- *Семантический поиск в фильтрах ленты:* `search_text` в `POST /users/search` — эмбеддинг запроса vs `personality_vector` (bio); UI — поле «Поиск по описанию» в оверлее фильтров, `searchText` в `yammy_feed_filters_v1`.
 - *Profile stats (backend):* `GET /users/` возвращает `received_likes_count`, `matches_count`, `profile_views_count`; лайки/матчи считаются в `LikeRepository`; просмотры инкрементятся через `POST /users/{user_id}/view`.
 - *Profile stats (frontend):* под верхним блоком профиля добавлены 3 чипа в одну строку: «Лайкнули», «Матчи», «Просмотры».
 - *Profile views:* хранится только агрегированный `users.profile_views_count`; истории просмотров и списка “кто смотрел” пока нет.

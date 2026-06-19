@@ -1,9 +1,12 @@
+import { WORK_SPHERE_OPTIONS } from '@/entities/user/constants/profileFieldOptions'
+
 import { AGE_ABSOLUTE_MAX, AGE_ABSOLUTE_MIN } from '../lib/constants'
 import type { EducationLevel } from '../model/educationLevel'
 import type { FiltersState } from '../model/types'
 import { getDefaultFiltersState } from '../model/types'
 
 const STORAGE_KEY = 'yammy_feed_filters_v1'
+const WORK_SPHERE_VALUES = new Set<string>(WORK_SPHERE_OPTIONS.map((option) => option.value))
 
 /** Поля ленты поиска (без bio/job — они из профиля на сервере). */
 export type PersistedFeedFilters = Pick<
@@ -91,7 +94,9 @@ function parsePersistedFilters(raw: unknown): PersistedFeedFilters {
       ? data.relationshipGoals.filter((v): v is string => typeof v === 'string')
       : defaults.relationshipGoals,
     workFields: Array.isArray(data.workFields)
-      ? data.workFields.filter((v): v is string => typeof v === 'string')
+      ? data.workFields.filter(
+          (v): v is string => typeof v === 'string' && WORK_SPHERE_VALUES.has(v),
+        )
       : defaults.workFields,
     educationLevel: parsedEducation,
     educationInstitution:

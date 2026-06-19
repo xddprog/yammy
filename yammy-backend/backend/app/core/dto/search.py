@@ -13,7 +13,7 @@ class SearchRequest(BaseModel):
     education_levels: list[EducationLevelEnum] | None = None
     education_details: str | None = None
 
-    search_text: str | None = Field(default=None, max_length=500)
+    search_text: str | None = Field(default=None, max_length=150)
 
     filters: dict[str, dict[str, list[str]]] | list[str] = Field(default_factory=dict)
 

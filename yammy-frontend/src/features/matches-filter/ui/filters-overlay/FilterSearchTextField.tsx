@@ -1,8 +1,8 @@
-import { memo } from 'react'
+import { memo, useCallback, useLayoutEffect, useRef } from 'react'
 
 import { cn } from '@/shared'
 
-const SEARCH_TEXT_MAX_LEN = 500
+export const SEARCH_TEXT_MAX_LEN = 150
 
 interface FilterSearchTextFieldProps {
   value: string
@@ -17,22 +17,43 @@ const FilterSearchTextFieldComponent = ({
   placeholder,
   ariaLabel,
 }: FilterSearchTextFieldProps): React.JSX.Element => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const autosize = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = '0px'
+    el.style.height = `${el.scrollHeight}px`
+  }, [])
+
+  useLayoutEffect(() => {
+    autosize()
+  }, [autosize, value])
+
   return (
-    <div className="w-full">
+    <div
+      className={cn(
+        'flex w-full min-h-[42px] items-center rounded-full border border-[#F2F2F2] bg-white px-4 shadow-none',
+        'focus-within:border-[#FF6BA4]/30',
+      )}
+    >
       <textarea
+        ref={textareaRef}
         value={value}
-        onChange={(event) => onChange(event.target.value.slice(0, SEARCH_TEXT_MAX_LEN))}
+        onChange={(event) => {
+          onChange(event.target.value.slice(0, SEARCH_TEXT_MAX_LEN))
+          requestAnimationFrame(autosize)
+        }}
         placeholder={placeholder}
-        rows={3}
+        rows={1}
         aria-label={ariaLabel}
         className={cn(
-          'w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-[15px] text-neutral-900',
-          'outline-none placeholder:text-neutral-400 focus-visible:border-[#FF6BA4] focus-visible:ring-2 focus-visible:ring-[#FF6BA4]/20',
+          'w-full resize-none overflow-hidden border-0 bg-transparent p-0 shadow-none outline-none',
+          'text-[13px] font-light leading-none text-[#141414]',
+          'placeholder:text-[13px] placeholder:font-light placeholder:leading-none',
+          'placeholder:text-[#141414] placeholder:opacity-100',
         )}
       />
-      <p className="mt-1 text-right text-[11px] text-neutral-400">
-        {value.length}/{SEARCH_TEXT_MAX_LEN}
-      </p>
     </div>
   )
 }

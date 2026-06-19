@@ -1,6 +1,9 @@
+import { WORK_SPHERE_OPTIONS } from '@/entities/user/constants/profileFieldOptions'
 import type { SearchUsersRequest } from '@/entities/user/types/types'
 
 import type { FiltersState } from './types'
+
+const WORK_SPHERE_VALUES = new Set<string>(WORK_SPHERE_OPTIONS.map((option) => option.value))
 
 const GENDER_TO_API: Record<NonNullable<FiltersState['gender']>, string> = {
   Мужской: 'male',
@@ -24,8 +27,9 @@ export function mapFiltersToSearchRequest(state: FiltersState): SearchUsersReque
   if (state.relationshipGoals.length > 0) {
     params.relationship_goal = state.relationshipGoals[0]
   }
-  if (state.workFields.length > 0) {
-    params.job_spheres = [...state.workFields]
+  const jobSpheres = state.workFields.filter((value) => WORK_SPHERE_VALUES.has(value))
+  if (jobSpheres.length > 0) {
+    params.job_spheres = jobSpheres
   }
   if (state.educationLevel != null) {
     params.education_levels = [state.educationLevel]

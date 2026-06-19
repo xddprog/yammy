@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 
 import { cn, Input } from '@/shared'
 
@@ -8,6 +8,8 @@ interface FilterComboboxFieldProps {
   options: readonly string[]
   placeholder: string
   ariaLabel: string
+  /** Только выбор из списка; промежуточный ввод не уходит в onChange. */
+  selectOnly?: boolean
 }
 
 const FilterComboboxFieldComponent = ({
@@ -16,27 +18,49 @@ const FilterComboboxFieldComponent = ({
   options,
   placeholder,
   ariaLabel,
+  selectOnly = false,
 }: FilterComboboxFieldProps): React.JSX.Element => {
   const [isOpen, setIsOpen] = useState(false)
+  const [inputValue, setInputValue] = useState(value)
+  const displayValue = selectOnly ? inputValue : value
+
+  useEffect(() => {
+    if (selectOnly) {
+      setInputValue(value)
+    }
+  }, [selectOnly, value])
 
   const items = useMemo(() => {
-    const normalized = value.trim().toLowerCase()
+    const normalized = displayValue.trim().toLowerCase()
     if (normalized === '') return [...options]
     return options.filter((option) => option.toLowerCase().includes(normalized))
-  }, [options, value])
+  }, [displayValue, options])
 
   return (
     <div className="relative w-full">
       <Input
         type="text"
-        value={value}
+        value={displayValue}
         onChange={(event) => {
-          onChange(event.target.value)
+          const next = event.target.value
+          if (selectOnly) {
+            setInputValue(next)
+            if (next === '') {
+              onChange('')
+            }
+          } else {
+            onChange(next)
+          }
           setIsOpen(true)
         }}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {
-          setTimeout(() => setIsOpen(false), 120)
+          setTimeout(() => {
+            setIsOpen(false)
+            if (selectOnly) {
+              setInputValue(value)
+            }
+          }, 120)
         }}
         placeholder={placeholder}
         aria-label={ariaLabel}
@@ -60,6 +84,9 @@ const FilterComboboxFieldComponent = ({
                     className="w-full cursor-pointer px-4 py-2 text-left text-[13px] font-[200] text-[#141414] hover:bg-[#F2F2F2]"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
+                      if (selectOnly) {
+                        setInputValue(item)
+                      }
                       onChange(item)
                       setIsOpen(false)
                     }}
