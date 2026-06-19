@@ -162,7 +162,7 @@ export const MessageList = ({
             replyToId={msg.replyToId}
             replyToText={msg.replyToText}
             replyToName={msg.replyToName}
-            onOpenMenu={interactionsLocked ? undefined : onOpenMenu}
+            onOpenMenu={onOpenMenu}
             onSwipeReply={
               interactionsLocked || isMenuOpen ? undefined : () => onReplyMessage(msg.id)
             }

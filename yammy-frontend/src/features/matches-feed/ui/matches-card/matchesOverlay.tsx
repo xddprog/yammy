@@ -1,10 +1,11 @@
 import { motion, type PanInfo } from 'framer-motion'
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo } from 'react'
 
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
+import { useRecordProfileView } from '@/entities/user/hooks/useRecordProfileView'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
-import { filterOptionIdsToUserFilters } from '@/entities/user/lib/filterOptionIdsToUserFilters'
 import { userFiltersToTraitDisplaySections } from '@/entities/user/lib/filterLabelByLanguage'
+import { filterOptionIdsToUserFilters } from '@/entities/user/lib/filterOptionIdsToUserFilters'
 import type { UserSearchApiUser } from '@/entities/user/types/types'
 import { useContentAreaHeight } from '@/features/matches-feed/hooks/useContentAreaHeight'
 import { useMatchesOverlayMotion } from '@/features/matches-feed/hooks/useMatchesOverlayMotion'
@@ -44,7 +45,12 @@ const OverlayContent = ({
 }: MatchesOverlayProps): React.JSX.Element => {
   const { data: filtersMetadata } = useFiltersMetadata()
   const { data: viewerProfile } = useUserProfile()
+  const { mutate: recordProfileView } = useRecordProfileView()
   const viewerLanguage = viewerProfile?.language
+  useEffect(() => {
+    recordProfileView(item.user_id)
+  }, [item.user_id, recordProfileView])
+
   const traitDisplaySections = useMemo(() => {
     const raw = item.filter_option_ids
     const ids = Array.isArray(raw) ? raw.map(String) : []
@@ -53,7 +59,7 @@ const OverlayContent = ({
     }
     const userFilters = filterOptionIdsToUserFilters(ids, filtersMetadata)
     return userFiltersToTraitDisplaySections(userFilters, filtersMetadata, viewerLanguage)
-  }, [item.filter_option_ids, item.user_id, filtersMetadata, viewerLanguage])
+  }, [item.filter_option_ids, filtersMetadata, viewerLanguage])
 
   const {
     name,

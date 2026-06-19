@@ -18,9 +18,16 @@ class ChatService:
         self.message_repository = message_repository
 
     async def list_user_chats(
-        self, user_id: UUID, pagination: PaginationRequestModel
+        self,
+        user_id: UUID,
+        pagination: PaginationRequestModel,
+        name_query: str | None = None,
     ) -> PaginationResponseModel[ChatListItemSchema]:
-        total, rows = await self.chat_repository.list_for_user(user_id, pagination)
+        total, rows = await self.chat_repository.list_for_user(
+            user_id,
+            pagination,
+            name_query=name_query,
+        )
         return PaginationResponseModel(
             total=total,
             page=pagination.page,

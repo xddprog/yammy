@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import UploadFile
-from app.core.repositories import UserRepository
+from app.core.repositories import LikeRepository, UserRepository
 from app.core.dto.auth import OnboardingFinishRequest
 from app.core.dto.user import ImageOrderUpdateSchema, UserPhoto, UserProfileSchema, UserUpdateRequest
 from app.core.services.image_service import ImageService
@@ -12,16 +12,18 @@ from app.core.services.user_index_service import UserIndexService
 from app.infrastructure.database.models.user import User
 from app.infrastructure.errors.base import BadRequestException, ConflictException, NotFoundException
 class UserService:
-    BOOST_DURATION_HOURS = 12
+    BOOST_DURATION_HOURS = 3
 
     def __init__(
         self,
         user_repository: UserRepository,
+        like_repository: LikeRepository,
         image_service: ImageService,
         moderation_service: ModerationService,
         user_index_service: UserIndexService,
     ):
         self.user_repository = user_repository
+        self.like_repository = like_repository
         self.image_service = image_service
         self.moderation_service = moderation_service
         self.user_index_service = user_index_service
@@ -46,10 +48,24 @@ class UserService:
             raise NotFoundException("Пользователь не найден")
 
         user, referrals_count = row
+        received_likes_count = await self.like_repository.count_received_likes(user_id)
+        matches_count = await self.like_repository.count_matches(user_id)
         
         return UserProfileSchema.model_validate(user, from_attributes=True).model_copy(
-            update={"referrals_count": referrals_count}
+            update={
+                "referrals_count": referrals_count,
+                "received_likes_count": received_likes_count,
+                "matches_count": matches_count,
+            }
         )
+
+    async def record_profile_view(self, current_user_id: UUID, viewed_user_id: UUID) -> None:
+        if current_user_id == viewed_user_id:
+            return
+
+        updated = await self.user_repository.increment_profile_views_count(viewed_user_id)
+        if not updated:
+            raise NotFoundException("Пользователь не найден")
 
     async def complete_onboarding(
         self,

@@ -26,7 +26,7 @@ const AiSearchPage = (): JSX.Element => {
   const navigate = useNavigate()
   const { open } = useOverlay()
   const jobsQuery = useAiSearchJobs()
-  const createJob = useCreateAiSearchJob()
+  const { mutateAsync: createAiSearchJob, isPending: isCreatingAiSearchJob } = useCreateAiSearchJob()
 
   const jobs = jobsQuery.data?.jobs ?? []
   const remainingToday = jobsQuery.data?.remainingToday
@@ -38,15 +38,15 @@ const AiSearchPage = (): JSX.Element => {
       content: (close) => (
         <AiSearchStartSheetContentMemo
           close={close}
-          isSubmitting={createJob.isPending}
+          isSubmitting={isCreatingAiSearchJob}
           onSubmit={async (query) => {
-            await createJob.mutateAsync(query)
+            await createAiSearchJob(query)
             showErrorToast('Поиск запущен. Можно закрыть приложение — результат появится в истории.')
           }}
         />
       ),
     })
-  }, [open, createJob])
+  }, [open, createAiSearchJob, isCreatingAiSearchJob])
 
   const openJobDetail = useCallback(
     (job: AiSearchJob) => {

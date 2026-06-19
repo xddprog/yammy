@@ -53,9 +53,11 @@ async def _send_ws_error(
 async def list_chats(
     chat_service: FromDishka[ChatService],
     current_user: Annotated[User, Depends(get_current_user)],
-    pagination: Annotated[PaginationRequestModel, Query()],
+    pagination: Annotated[PaginationRequestModel, Depends()],
+    q: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
 ) -> PaginationResponseModel[ChatListItemSchema]:
-    return await chat_service.list_user_chats(current_user.id, pagination)
+    name_query = q.strip() if q else None
+    return await chat_service.list_user_chats(current_user.id, pagination, name_query=name_query)
 
 
 @router.websocket("/{match_id}")

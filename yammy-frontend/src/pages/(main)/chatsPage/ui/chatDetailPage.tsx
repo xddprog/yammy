@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCheck, Edit2, Reply, Trash2 } from 'lucide-react'
+import { CheckCheck, Copy, Edit2, Reply, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { cn } from '@/shared'
+import { cn, showErrorToast } from '@/shared'
 import { ERouteNames } from '@/shared/lib/routeVariables'
 
 import { useChatWebSocket, usePresence, usePresenceSubscription } from '@/entities/chat'
@@ -146,9 +146,6 @@ const ChatDetailPage = () => {
   }
 
   const handleOpenMenu = (id: string, rect: DOMRect) => {
-    if (!canInteractWithMessages) {
-      return
-    }
     const msg = messages.find((m) => m.id === id)
     if (msg) {
       setMenuMessage(msg)
@@ -179,6 +176,23 @@ const ChatDetailPage = () => {
 
   const canDeleteMessage = (message: ChatMessage): boolean =>
     canInteractWithMessages && !message.isDeleted && message.senderId === 'me'
+
+  const canCopyMessage = (message: ChatMessage): boolean =>
+    Boolean(message.text?.trim())
+
+  const handleCopyAction = async () => {
+    if (!menuMessage || !canCopyMessage(menuMessage)) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(menuMessage.text?.trim() ?? '')
+      closeMessageMenu()
+      showErrorToast('Сообщение скопировано')
+    } catch {
+      showErrorToast('Не удалось скопировать')
+    }
+  }
 
   const handleEditAction = () => {
     if (!canInteractWithMessages) {
@@ -263,7 +277,13 @@ const ChatDetailPage = () => {
     const containerRect = containerRef.current.getBoundingClientRect()
     const isMe = menuMessage?.senderId === 'me'
     const menuWidth = 180
-    const menuHeight = 150
+    const actionItems = [
+      canInteractWithMessages,
+      menuMessage ? canCopyMessage(menuMessage) : false,
+      menuMessage ? canEditMessage(menuMessage) : false,
+      menuMessage ? canDeleteMessage(menuMessage) : false,
+    ].filter(Boolean).length
+    const menuHeight = 58 + actionItems * 41
 
     let top = menuRect.top - containerRect.top - menuHeight / 2 + menuRect.height / 2
     top = Math.max(10, Math.min(top, containerRect.height - menuHeight - 10))
@@ -390,6 +410,16 @@ const ChatDetailPage = () => {
                       >
                         <Reply size={16} strokeWidth={1.2} className="text-foreground" />
                         <span className="text-[13px] font-[200] text-foreground">Ответить</span>
+                      </button>
+                    )}
+
+                    {menuMessage && canCopyMessage(menuMessage) && (
+                      <button
+                        onClick={handleCopyAction}
+                        className="flex w-full items-bottom gap-2.5 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-background/60 active:scale-95"
+                      >
+                        <Copy size={16} strokeWidth={1.2} className="text-foreground" />
+                        <span className="text-[13px] font-[200] text-foreground">Скопировать</span>
                       </button>
                     )}
 

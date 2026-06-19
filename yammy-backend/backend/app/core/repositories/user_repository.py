@@ -187,6 +187,20 @@ class UserRepository(SqlAlchemyRepository[User]):
         
         return user, int(referrals_count)
 
+    async def increment_profile_views_count(self, viewed_user_id: UUID) -> bool:
+        result = await self.session.execute(
+            update(User)
+            .where(
+                User.id == viewed_user_id,
+                User.is_banned == False,
+            )
+            .values(profile_views_count=User.profile_views_count + 1)
+            .returning(User.id)
+        )
+        updated = result.scalar_one_or_none()
+        await self.session.commit()
+        return updated is not None
+
     async def get_random_users_with_photos(self, exclude_user_ids: list[UUID], limit: int = 20) -> list[User]:
         query = (
             select(User)

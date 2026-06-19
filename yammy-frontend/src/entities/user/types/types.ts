@@ -113,6 +113,9 @@ export interface UserProfileDto {
   photos: UserProfilePhotoDto[]
   adequacy_score: number
   referrals_count: number
+  received_likes_count: number
+  matches_count: number
+  profile_views_count: number
   /** Реферальная ссылка (Telegram deep link); ключ API — `referral_code`. */
   referral_code: string
   /** UUID выбранных `FilterOption` (как в PUT `filters`). */

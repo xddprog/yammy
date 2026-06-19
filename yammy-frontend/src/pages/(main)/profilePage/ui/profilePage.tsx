@@ -2,8 +2,8 @@ import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import { useActivateBoost } from '@/entities/user/hooks/useActivateBoost'
+import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import { useUpdateUserProfile } from '@/entities/user/hooks/useUpdateUserProfile'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
 import type { ProfilePhotoItem, UserLanguage } from '@/entities/user/types/types'
@@ -11,6 +11,7 @@ import type { FiltersState } from '@/features/matches-filter/model/types'
 import { useFiltersState } from '@/features/matches-filter/model/useFiltersState'
 import { showErrorToast } from '@/shared'
 import { stickyTopHeaderClassNames } from '@/widgets'
+
 import { buildProfileUpdateBody, userProfileToFiltersState } from '../lib/profileApiMapper'
 import { ProfileEditForm } from './components/profileEditForm'
 import { ProfileHeader } from './components/profileHeader'
@@ -46,7 +47,12 @@ const ProfilePage = (): JSX.Element => {
   }, [filters.state, screen])
 
   useEffect(() => {
-    if (screen !== 'edit' || !profile || profileFiltersHydratedRef.current || !filtersMetadata?.length) {
+    if (
+      screen !== 'edit' ||
+      !profile ||
+      profileFiltersHydratedRef.current ||
+      !filtersMetadata?.length
+    ) {
       return
     }
     setDraft((prev) => userProfileToFiltersState(profile, prev, filtersMetadata))
@@ -95,15 +101,17 @@ const ProfilePage = (): JSX.Element => {
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden overflow-x-hidden bg-background px-4 text-foreground">
       <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none pb-28 no-scrollbar">
         <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-6">
-          <header
-            className={stickyTopHeaderClassNames()}
-            aria-hidden
-          />
+          <header className={stickyTopHeaderClassNames()} aria-hidden />
           <div>
             {screen === 'edit' ? (
               <>
                 <ProfileHeader onBack={() => setScreen('view')} onSave={saveProfileSettings} />
-                <ProfileEditForm draft={draft} setDraft={setDraft} photos={photos} setPhotos={setPhotos} />
+                <ProfileEditForm
+                  draft={draft}
+                  setDraft={setDraft}
+                  photos={photos}
+                  setPhotos={setPhotos}
+                />
               </>
             ) : (
               <>
@@ -129,6 +137,9 @@ const ProfilePage = (): JSX.Element => {
                     referralCode={profile.referral_code ?? ''}
                     adequacyScore={profile.adequacy_score}
                     referralsCount={profile.referrals_count}
+                    receivedLikesCount={profile.received_likes_count}
+                    matchesCount={profile.matches_count}
+                    profileViewsCount={profile.profile_views_count}
                     onActivateBoost={() => {
                       void activateBoostMutation.mutateAsync()
                     }}

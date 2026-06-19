@@ -4,9 +4,9 @@ import { Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 
 import { PresenceProvider } from '@/entities/chat'
+import { ERouteNames } from '@/shared/lib/routeVariables'
 import { topHeaderScrimLayerClassNames, type TopHeaderScrimVariant } from '@/widgets'
 import { Navbar } from '@/widgets/navbar'
-import { ERouteNames } from '@/shared/lib/routeVariables'
 
 const RootPage = (): JSX.Element => {
   const location = useLocation()
@@ -15,7 +15,9 @@ const RootPage = (): JSX.Element => {
   const isAiSearch = pathname.includes('/ai-search')
   const hideNavbar = isChatDetail || isAiSearch
   const showEdgeGradients = !isChatDetail
-  const topScrimVariant: TopHeaderScrimVariant = pathname.includes(`/${ERouteNames.DASHBOARD_ROUTE}`)
+  const topScrimVariant: TopHeaderScrimVariant = pathname.includes(
+    `/${ERouteNames.DASHBOARD_ROUTE}`,
+  )
     ? 'dark'
     : 'background'
 
@@ -42,7 +44,7 @@ const RootPage = (): JSX.Element => {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-24 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
           )}
           {!hideNavbar && (
-            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[110] flex justify-center px-4 [padding-bottom:calc(2.25rem+env(safe-area-inset-bottom,0px))]">
+            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[110] flex justify-center px-4 [padding-bottom:calc(1.25rem+env(safe-area-inset-bottom,0px))]">
               <div className="pointer-events-auto relative w-full max-w-md">
                 <Navbar className="relative z-[110] my-0" />
               </div>

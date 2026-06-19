@@ -4,14 +4,6 @@ import { Skeleton } from '@/shared'
 
 export const ChatsPageSkeleton = (): JSX.Element => (
   <div className="flex flex-col gap-4" aria-busy aria-label="Загрузка чатов">
-    <div className="flex gap-3 overflow-hidden px-1">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex shrink-0 flex-col items-center gap-2">
-          <Skeleton className="size-[72px] rounded-full" />
-          <Skeleton className="h-3 w-14 rounded-md" />
-        </div>
-      ))}
-    </div>
 
     <div className="flex flex-col gap-1.5">
       {Array.from({ length: 6 }).map((_, i) => (

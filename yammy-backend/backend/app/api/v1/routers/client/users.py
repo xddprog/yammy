@@ -63,6 +63,22 @@ async def get_received_likes(
 
 
 @router.post(
+    "/{user_id}/view",
+    status_code=204,
+    dependencies=[
+        Depends(RateLimited(60, Duration.MINUTE)),
+    ],
+)
+@inject
+async def record_profile_view(
+    user_id: UUID,
+    user_service: FromDishka[UserService],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    await user_service.record_profile_view(current_user.id, user_id)
+
+
+@router.post(
     "/search",
     # dependencies=[
     #     Depends(RateLimited(4, Duration.MINUTE))

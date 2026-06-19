@@ -9,9 +9,16 @@ const CHATS_BASE = 'api/v1/chats'
 export async function fetchChatsList(
   page: number,
   size: number,
+  q?: string,
 ): Promise<PaginatedResponse<ChatListItemDto>> {
+  const trimmedQuery = q?.trim()
+  const searchParams: Record<string, string | number> = { page, size }
+  if (trimmedQuery) {
+    searchParams.q = trimmedQuery
+  }
+
   const response = await authApi.get(`${CHATS_BASE}/`, {
-    searchParams: { page, size },
+    searchParams,
   })
   if (!response.ok) {
     await throwApiError(response, 'Ошибка загрузки чатов')

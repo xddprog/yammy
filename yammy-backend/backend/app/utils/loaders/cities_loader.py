@@ -12,7 +12,7 @@ _DEFAULT_JSON = BASE_DIR / "russian-cities.json"
 def _city_names(raw: list[dict[str, Any]]) -> list[str]:
     names: set[str] = set()
     for item in raw:
-        n = (item.get("name") or "").strip()
+        n = item.get("name").strip()
         if n:
             names.add(n)
     return sorted(names)

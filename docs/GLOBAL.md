@@ -10,7 +10,7 @@
 | Правила слоёв бэкенда | Рефакторинг «ради чистоты», новые абстракции |
 
 **Подключение:** `@docs/GLOBAL.md`  
-**Репозиторий:** `/Users/mago/yammy` · **Обновлено:** 2026-06-11
+**Репозиторий:** `/Users/mago/yammy` · **Обновлено:** 2026-06-19
 
 ---
 
@@ -59,6 +59,8 @@ infrastructure/database/models/  → ORM без логики
 
 `AppAuthGate`: onboarding JWT → только `/onboarding`; полная сессия → редирект с `/onboarding` на `/dashboard`; `GET /users/` при бане.
 
+**Dev-грабля онбординга:** `VITE_DEV_AUTH=onboarding` нужен для свежей регистрации. После успешного `POST /auth/onboarding/finish` фронт получает full access+refresh и чистит `yammy_onboarding_*` из `sessionStorage`. Если после reload/перезапуска снова выдан onboarding JWT (например, refresh не восстановился или dev-сервер всё ещё стартует в onboarding mode), `AppAuthGate` вернёт на `/onboarding`, а шаг будет 1, потому что sessionStorage уже очищен.
+
 ---
 
 ## Стек и инфраструктура
@@ -104,14 +106,21 @@ infrastructure/database/models/  → ORM без логики
 |-------|------|------------|
 | GET | `/` | Профиль текущего пользователя (`UserProfileSchema`) |
 | PUT | `/` | Обновление анкеты (`UserUpdateRequest`: имя, возраст, bio, город, работа, образование, цель знакомства, фильтры-теги, язык и т.д.) |
+| POST | `/{user_id}/view` | Записать просмотр детальной анкеты пользователя (204; self-view не считается) |
 | POST | `/image` | Загрузка фото (+ `moderation_service` до сохранения) |
 | DELETE | `/image?image_id=` | Удаление фото |
 | PATCH | `/image/{id}/order` | Порядок фото в галерее |
 | PATCH | `/image/main` | Главное фото: upload или `existing_image_id` |
 
-**Поля пользователя (важное):** `telegram_id`, `gender`, `relationship_goal`, `subscription_tier` (free/vip/premium), `subscription_expires_at`, `superlikes_balance`, `boosts_balance`, `boost_expires_at`, `profile_moderation_approved`, `is_banned`, `adequacy_score`, `activity_score`, `last_seen`, `notifications_enabled`, `language` (ru/en).
+**Поля пользователя (важное):** `telegram_id`, `gender`, `relationship_goal`, `subscription_tier` (free/vip/premium), `subscription_expires_at`, `superlikes_balance`, `boosts_balance`, `boost_expires_at`, `profile_views_count`, `profile_moderation_approved`, `is_banned`, `adequacy_score`, `activity_score`, `last_seen`, `notifications_enabled`, `language` (ru/en).
 
-**Фронт:** `pages/(main)/profilePage/` — просмотр/редактирование, фото, характеристики из каталога фильтров; отображение баланса суперлайков/бустов.
+**Статистика профиля (`UserProfileSchema`):**
+
+- `received_likes_count` — все активные входящие like/superlike, как `GET /users/likes`: без дизлайков и без пар, уже ставших match; не зависит от того, открывалась ли страница лайков.
+- `matches_count` — количество текущих матчей пользователя.
+- `profile_views_count` — простой инкремент в `users`; история просмотров и “кто смотрел” не хранятся.
+
+**Фронт:** `pages/(main)/profilePage/` — просмотр/редактирование, фото, характеристики из каталога фильтров; отображение баланса суперлайков/бустов; под верхним блоком с именем — 3 чипа в одну строку: «Лайкнули», «Матчи», «Просмотры».
 
 ---
 
@@ -173,6 +182,8 @@ infrastructure/database/models/  → ORM без логики
 **Enum `LikeTypeEnum`:** `like`, `dislike`, `superlike` — в БД; суперлайк имеет отдельный endpoint `POST /likes/superlike`.
 
 **Фронт:** `entities/like/api/likeService.ts` — `sendUserLike`, `sendUserSuperLike`, `sendUserDislike`; суперлайк отправляется с текстом из `SuperLikeOverlay`.
+
+**Счётчики:** `LikeRepository.count_received_likes` считает входящие лайки для профиля; `LikeRepository.count_matches` считает матчи. `UserRepository` не дублирует SQL лайков/матчей.
 
 ---
 
@@ -294,7 +305,7 @@ infrastructure/database/models/  → ORM без логики
 
 | Таблица / сущность | Назначение |
 |--------------------|------------|
-| `users`, `photos` | Анкета |
+| `users`, `photos` | Анкета; `users.profile_views_count` — простой счетчик открытий детальной анкеты |
 | `likes` | like / dislike / superlike (пара user_from → user_to); `message` — для суперлайка (колонка может быть локально) |
 | `matches` | Взаимный интерес |
 | `chats`, `messages` | Переписка после матча |
@@ -333,7 +344,9 @@ infrastructure/database/models/  → ORM без логики
 
 Финиш: `completeOnboarding` → `POST /auth/onboarding/finish` → очистка session storage → **`replace` на `/dashboard`** (экрана «Готово» нет). `notifications_enabled: true` по умолчанию.
 
-**Профиль (`profilePage`):** просмотр / редактирование; `ProfilePhotosEditor` на сервере (upload с rollback при ошибке модерации/API); меню главного фото как в чате (portal, blur). После успешного `PUT /users/` — `filters.persist(draft)` синхронизирует пересекающиеся поля ленты в `yammy_feed_filters_v1`.
+**Профиль (`profilePage`):** просмотр / редактирование; под `ProfileMainRow` — чипы `received_likes_count`, `matches_count`, `profile_views_count`; `ProfilePhotosEditor` на сервере (upload с rollback при ошибке модерации/API); меню главного фото как в чате (portal, blur). После успешного `PUT /users/` — `filters.persist(draft)` синхронизирует пересекающиеся поля ленты в `yammy_feed_filters_v1`.
+
+**Просмотр детальной анкеты:** `matchesOverlay.tsx` вызывает `recordProfileView(user_id)` при монтировании `OverlayContent`; карточка в ленте сама по себе просмотр не пишет. Backend endpoint — `POST /users/{user_id}/view`.
 
 **Подсказка заполнить профиль (`features/profile-fill-prompt`):** на дашборде (swipe), если `filter_option_ids.length < 3`; модалка по центру ленты, blur как у оверлея профиля; «Заполнить» → `/profile` с `state.openEdit`; закрытие — до следующего свайпа (временно; задел под «раз в день» — `profileFillPromptStorage.ts`).
 
@@ -386,14 +399,14 @@ cd yammy-backend/backend && python3 -m compileall app
 Секреты — только `.env`. Локально для dev-заглушки Telegram: **`APP_CONFIG__ENVIRONMENT=development`** (при `production` stub `initData` даёт 400).
 
 SQL для `likes.message` при старой БД: добавить колонку вручную, если модель уже с `message`.
+SQL/миграция для статистики профиля: `migrations/versions/20260619_add_profile_views_count.py` добавляет `users.profile_views_count`; локально после обновления кода применить миграцию или вручную добавить колонку.
 
 ---
 
-*Последнее (2026-06-11):*
+*Последнее (2026-06-19):*
 
-- *Суперлайки (backend):* добавлен `POST /likes/superlike`; `LikeService.add_superlike` валидирует message (trim, <=200), пишет `like_type=superlike`, ведет стандартный match flow; входящие лайки обогащаются `like_type` + `like_message`.
-- *Суперлайки (frontend):* добавлен `sendUserSuperLike`; message из `SuperLikeOverlay` прокинут через `SwipeFeed`/`useSwipeFeed` в dashboard и AI search; после суперлайка инвалидация `usersQueryKeys.profile()`.
-- *Likes page UX:* суперлайки вынесены в отдельную секцию «Огоньки» полноширинными карточками (`SuperLikeCard`) с текстом сразу на карточке; обычные лайки остаются сеткой.
-- *Test DB seed:* в `seed_test_received_likes` добавлены 2 суперлайка с сообщениями, не подряд в последовательности сидинга.
+- *Profile stats (backend):* `GET /users/` возвращает `received_likes_count`, `matches_count`, `profile_views_count`; лайки/матчи считаются в `LikeRepository`; просмотры инкрементятся через `POST /users/{user_id}/view`.
+- *Profile stats (frontend):* под верхним блоком профиля добавлены 3 чипа в одну строку: «Лайкнули», «Матчи», «Просмотры».
+- *Profile views:* хранится только агрегированный `users.profile_views_count`; истории просмотров и списка “кто смотрел” пока нет.
 
 *В конце файла при крупных изменениях: строка «Последнее (дата): …».*

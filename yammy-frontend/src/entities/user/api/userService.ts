@@ -1,5 +1,4 @@
 import { isOnboardingSession } from '@/entities/token/lib/isOnboardingSession'
-
 import { authApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
 import type { PaginatedResponse } from '@/shared/api/pagination'
@@ -21,7 +20,9 @@ const USER_IMAGE_ENDPOINT = 'api/v1/users/image'
 const USER_MAIN_IMAGE_ENDPOINT = 'api/v1/users/image/main'
 const USER_BOOST_ACTIVATE_ENDPOINT = 'api/v1/users/boosts/activate'
 
-const userImageOrderEndpoint = (imageId: string) => `${USER_IMAGE_ENDPOINT}/${imageId}/order`
+const userImageOrderEndpoint = (imageId: string): string =>
+  `${USER_IMAGE_ENDPOINT}/${imageId}/order`
+const profileViewEndpoint = (userId: string): string => `api/v1/users/${userId}/view`
 
 export class UserService {
   public async getUsersSearch(body: SearchUsersRequest): Promise<UserSearchApiUser[]> {
@@ -50,9 +51,7 @@ export class UserService {
   }
 
   public async getFilters(): Promise<FiltersMetadataResponse> {
-    const path = isOnboardingSession()
-      ? 'api/v1/auth/onboarding/filters'
-      : FILTERS_ENDPOINT
+    const path = isOnboardingSession() ? 'api/v1/auth/onboarding/filters' : FILTERS_ENDPOINT
     const response = await authApi.get(path)
 
     if (!response.ok) {
@@ -80,6 +79,13 @@ export class UserService {
     const response = await authApi.put(PROFILE_ENDPOINT, { json: body })
     if (!response.ok) {
       await throwApiError(response, 'Сохранение профиля')
+    }
+  }
+
+  public async recordProfileView(userId: string): Promise<void> {
+    const response = await authApi.post(profileViewEndpoint(userId))
+    if (!response.ok && response.status === 401) {
+      await throwApiError(response, 'Просмотр профиля')
     }
   }
 
@@ -154,6 +160,7 @@ export const {
   getFilters,
   getUserProfile,
   updateUserProfile,
+  recordProfileView,
   uploadUserGalleryPhoto,
   uploadUserMainPhoto,
   setMainFromGalleryPhoto,

@@ -247,14 +247,6 @@ const OnboardingPage = (): JSX.Element => {
       onBack={() => goStep(3)}
       onPrimary={() => void finishOnboarding()}
     >
-      {filtersMetadata ? (
-        <OnboardingTraitChips
-          categories={filtersMetadata}
-          draft={draft}
-          onChange={persistDraft}
-          uiLang="ru"
-        />
-      ) : null}
       <div className="mt-4 flex flex-col gap-1.5">
         <ProfileEditSheetRow
           mode="longtext"
@@ -265,6 +257,14 @@ const OnboardingPage = (): JSX.Element => {
           placeholder="Не указано"
           ariaLabel="О себе"
         />
+      {filtersMetadata ? (
+        <OnboardingTraitChips
+          categories={filtersMetadata}
+          draft={draft}
+          onChange={persistDraft}
+          uiLang="ru"
+        />
+      ) : null}
       </div>
     </OnboardingLayout>
   )

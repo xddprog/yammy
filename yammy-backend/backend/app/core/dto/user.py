@@ -88,6 +88,9 @@ class UserProfileSchema(BaseUserSchema):
     subscription_expires_at: datetime | None = None
     adequacy_score: float = 10.0
     referrals_count: int = 0
+    received_likes_count: int = 0
+    matches_count: int = 0
+    profile_views_count: int = 0
     referral_code: str = ""
     filter_option_ids: list[UUID] = Field(default_factory=list, validation_alias="filters")
 

@@ -156,6 +156,7 @@ class RequestProvider(Provider):
     ) -> services.UserService:
         return services.UserService(
             user_repository=repositories.UserRepository(session=session),
+            like_repository=repositories.LikeRepository(session=session),
             image_service=image_service,
             moderation_service=moderation_service,
             user_index_service=user_index_service,

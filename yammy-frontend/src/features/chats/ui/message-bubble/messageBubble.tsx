@@ -50,7 +50,8 @@ export const MessageBubble = ({
   const replyOpacity = useTransform(swipeX, [-20, -72], [0, 1])
   const replyScale = useTransform(swipeX, [-20, -72], [0.78, 1])
   const replyShiftX = useTransform(swipeX, [-20, -72], [10, 0])
-  const canUseMessageActions = Boolean(onOpenMenu || onSwipeReply)
+  const canOpenMenu = Boolean(onOpenMenu)
+  const canSwipeReply = Boolean(onSwipeReply)
 
   const openImagesPreview = (index: number) => {
     if (messageImages.length === 0) return
@@ -70,7 +71,7 @@ export const MessageBubble = ({
   }
 
   const openActionsMenu = (target: EventTarget | null) => {
-    if (!canUseMessageActions) return
+    if (!canOpenMenu) return
     if (!(target instanceof HTMLElement)) return
     const rect = target.getBoundingClientRect()
     triggerHaptic()
@@ -78,7 +79,7 @@ export const MessageBubble = ({
   }
 
   const handleContextMenu = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!canUseMessageActions) return
+    if (!canOpenMenu) return
     e.preventDefault()
     openActionsMenu(e.currentTarget)
   }
@@ -92,7 +93,7 @@ export const MessageBubble = ({
   }
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!canUseMessageActions) return
+    if (!canOpenMenu) return
     const touch = e.touches[0]
     if (!touch) return
     const targetElement = e.currentTarget
@@ -150,26 +151,26 @@ export const MessageBubble = ({
     <div
       id={`chat-message-${id}`}
       className={cn('relative flex w-full flex-col', isMe ? 'items-end' : 'items-start')}
-      onContextMenu={canUseMessageActions ? handleContextMenu : undefined}
-      onTouchStart={canUseMessageActions ? handleTouchStart : undefined}
-      onTouchMove={canUseMessageActions ? handleTouchMove : undefined}
-      onTouchEnd={canUseMessageActions ? clearLongPress : undefined}
-      onTouchCancel={canUseMessageActions ? clearLongPress : undefined}
+      onContextMenu={canOpenMenu ? handleContextMenu : undefined}
+      onTouchStart={canOpenMenu ? handleTouchStart : undefined}
+      onTouchMove={canOpenMenu ? handleTouchMove : undefined}
+      onTouchEnd={canOpenMenu ? clearLongPress : undefined}
+      onTouchCancel={canOpenMenu ? clearLongPress : undefined}
     >
       <motion.div
         className={cn(
           'relative z-10 flex flex-col shrink-0',
           hasImages ? 'max-w-[70%]' : 'inline-flex max-w-[80%]',
         )}
-        style={canUseMessageActions ? { x: swipeX } : undefined}
-        drag={canUseMessageActions ? 'x' : false}
+        style={canSwipeReply ? { x: swipeX } : undefined}
+        drag={canSwipeReply ? 'x' : false}
         dragConstraints={{ left: -96, right: 0 }}
         dragElastic={{ left: 0.12, right: 0 }}
         dragMomentum={false}
-        onDragEnd={canUseMessageActions ? handleSwipeEnd : undefined}
+        onDragEnd={canSwipeReply ? handleSwipeEnd : undefined}
       >
         <div className="relative">
-          {canUseMessageActions && (
+          {canSwipeReply && (
             <motion.div
               className="pointer-events-none absolute left-[calc(100%+8px)] top-1/2 z-20 -translate-y-1/2"
               style={{ opacity: replyOpacity, scale: replyScale, x: replyShiftX }}

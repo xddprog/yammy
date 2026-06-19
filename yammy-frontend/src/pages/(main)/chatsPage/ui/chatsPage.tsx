@@ -11,7 +11,7 @@ import {
   usePresence,
   usePresenceSubscription,
 } from '@/entities/chat'
-import { ChatItem, ChatsSearchField, ChatsStoriesRow } from '@/features/chats'
+import { ChatItem, ChatsSearchField } from '@/features/chats'
 import { cn } from '@/shared'
 import { useInfiniteScrollLoadMore } from '@/shared/hooks/useInfiniteScrollLoadMore'
 import { formatUserErrorMessage } from '@/shared/lib/formatUserErrorMessage'
@@ -28,7 +28,7 @@ const ChatsPage = (): JSX.Element => {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const chatsQuery = useChatsList()
+  const chatsQuery = useChatsList(searchQuery)
   const { getPeerState } = usePresence()
 
   const chats = useMemo(() => flattenChatsPages(chatsQuery.data), [chatsQuery.data])
@@ -43,14 +43,6 @@ const ChatsPage = (): JSX.Element => {
     isFetchingNextPage: chatsQuery.isFetchingNextPage,
     fetchNextPage: () => void chatsQuery.fetchNextPage(),
   })
-
-  const filteredChats = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) {
-      return chats
-    }
-    return chats.filter((chat) => chat.name.toLowerCase().includes(q))
-  }, [chats, searchQuery])
 
   const closeSearch = () => {
     setSearchOpen(false)
@@ -148,7 +140,9 @@ const ChatsPage = (): JSX.Element => {
             </motion.button>
           </header>
 
-          {chatsQuery.isPending ? (
+          {chatsQuery.isPending && !searchQuery.trim() ? (
+            <ChatsPageSkeleton />
+          ) : chatsQuery.isSearchLoading ? (
             <ChatsPageSkeleton />
           ) : chatsQuery.isError ? (
             <div className="flex min-h-[min(420px,70vh)] flex-col items-center justify-center gap-3 text-center">
@@ -163,7 +157,7 @@ const ChatsPage = (): JSX.Element => {
                 Повторить
               </button>
             </div>
-          ) : chats.length === 0 ? (
+          ) : !searchQuery.trim() && chats.length === 0 ? (
             <div className="flex min-h-[min(420px,70vh)] flex-col items-center justify-center text-center">
               <p className="text-[15px] font-medium text-muted-foreground">Пока нет чатов</p>
               <p className="mt-1 text-[13px] text-muted-foreground">
@@ -171,48 +165,40 @@ const ChatsPage = (): JSX.Element => {
               </p>
             </div>
           ) : (
-            <>
-              <ChatsStoriesRow
-                chats={chats}
-                onStoryClick={(id) => navigate(`/${ERouteNames.CHATS_ROUTE}/${id}`)}
-              />
-              <div className="flex flex-col gap-1.5">
-                {filteredChats.length > 0 ? (
-                  filteredChats.map((chat) => {
-                    const presence = getPeerState(chat.peerId, chat.lastSeen)
+            <div className="flex flex-col gap-1.5">
+              {chats.length > 0 ? (
+                chats.map((chat) => {
+                  const presence = getPeerState(chat.peerId, chat.lastSeen)
 
-                    return (
-                      <ChatItem
-                        key={chat.id}
-                        chat={chat}
-                        online={presence.online}
-                        lastSeen={presence.lastSeenAt}
-                        onClick={() => navigate(`/${ERouteNames.CHATS_ROUTE}/${chat.id}`)}
-                      />
-                    )
-                  })
-                ) : (
-                  <div className="flex flex-col items-center justify-center pt-8 text-center">
-                    <p className="text-[15px] font-medium text-muted-foreground">
-                      Ничего не найдено
-                    </p>
-                  </div>
-                )}
-                {(chatsQuery.hasNextPage || chatsQuery.isFetchingNextPage) && (
-                  <div
-                    ref={loadMoreRef}
-                    className={cn(
-                      'flex shrink-0 items-center justify-center',
-                      chatsQuery.isFetchingNextPage ? 'py-1.5' : 'h-px',
-                    )}
-                    aria-busy={chatsQuery.isFetchingNextPage}
-                    aria-label={chatsQuery.isFetchingNextPage ? 'Подгрузка чатов' : undefined}
-                  >
-                    {chatsQuery.isFetchingNextPage && <AppLogoLoader size="small" />}
-                  </div>
-                )}
+                  return (
+                    <ChatItem
+                      key={chat.id}
+                      chat={chat}
+                      online={presence.online}
+                      lastSeen={presence.lastSeenAt}
+                      onClick={() => navigate(`/${ERouteNames.CHATS_ROUTE}/${chat.id}`)}
+                    />
+                  )
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center pt-8 text-center">
+                  <p className="text-[15px] font-medium text-muted-foreground">Ничего не найдено</p>
+                </div>
+              )}
+              {(chatsQuery.hasNextPage || chatsQuery.isFetchingNextPage) && (
+                <div
+                  ref={loadMoreRef}
+                  className={cn(
+                    'flex shrink-0 items-center justify-center',
+                    chatsQuery.isFetchingNextPage ? 'py-1.5' : 'h-px',
+                  )}
+                  aria-busy={chatsQuery.isFetchingNextPage}
+                  aria-label={chatsQuery.isFetchingNextPage ? 'Подгрузка чатов' : undefined}
+                >
+                  {chatsQuery.isFetchingNextPage && <AppLogoLoader size="small" />}
+                </div>
+              )}
               </div>
-            </>
           )}
         </div>
       </div>

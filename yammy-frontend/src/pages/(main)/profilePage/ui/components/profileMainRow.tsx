@@ -33,7 +33,7 @@ export const ProfileMainRow = ({
     <button
       type="button"
       onClick={onOpenEdit}
-      className="flex w-full items-center gap-3 rounded-[28px] bg-card px-4 py-4.5 text-left transition-colors hover:bg-card/85"
+      className="flex w-full items-center gap-3 rounded-[28px] bg-card px-4 py-4 text-left transition-colors hover:bg-card/85"
       aria-label="Редактировать профиль"
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">

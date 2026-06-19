@@ -78,7 +78,12 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
-    async def list_for_user(self, user_id: UUID, pagination: PaginationRequestModel) -> tuple[int, list[Any]]:
+    async def list_for_user(
+        self,
+        user_id: UUID,
+        pagination: PaginationRequestModel,
+        name_query: str | None = None,
+    ) -> tuple[int, list[Any]]:
         peer_id = case(
             (Match.user1_id == user_id, Match.user2_id),
             else_=Match.user1_id,
@@ -126,7 +131,7 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
             .subquery()
         )
 
-        query = (
+        stmt = (
             select(
                 Match.id.label("match_id"),
                 Chat.id.label("chat_id"),
@@ -141,17 +146,23 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
             .outerjoin(last_message, last_message.c.chat_id == Chat.id)
             .outerjoin(unread_counts, unread_counts.c.chat_id == Chat.id)
             .where(or_(Match.user1_id == user_id, Match.user2_id == user_id))
-            .options(joinedload(Peer.main_photo))
+        )
+
+        if name_query:
+            stmt = stmt.where(Peer.name.ilike(f"%{name_query}%"))
+
+        stmt = (
+            stmt.options(joinedload(Peer.main_photo))
             .order_by(func.coalesce(last_message.c.created_at, Match.updated_at).desc())
             .offset(pagination.offset)
             .limit(pagination.size)
         )
-        
-        result = await self.session.execute(query)
+
+        result = await self.session.execute(stmt)
         rows = result.mappings().all()
 
         if not rows:
             return 0, []
 
-        total = await self.get_total(query)
+        total = await self.get_total(stmt)
         return total, rows

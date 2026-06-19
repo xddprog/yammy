@@ -12,7 +12,8 @@ export function useReceivedLikes(pageSize: number = DEFAULT_PAGE_SIZE) {
     queryFn: ({ pageParam }) => getReceivedLikes(pageParam, pageSize),
     initialPageParam: 1,
     getNextPageParam,
-    staleTime: 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 }
 

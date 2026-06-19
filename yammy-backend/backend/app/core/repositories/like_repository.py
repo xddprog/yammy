@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import and_, exists, or_, select, update
+from sqlalchemy import and_, exists, func, or_, select, update
 from app.infrastructure.database.models.chat import Chat
 from app.infrastructure.database.models.like import Like
 from app.infrastructure.database.models.match import Match
@@ -134,6 +134,35 @@ class LikeRepository(SqlAlchemyRepository[Like]):
 
         total = await self.get_total(query)
         return total, liker_ids
+
+    async def count_received_likes(self, user_to_id: UUID) -> int:
+        already_matched = exists(
+            select(1)
+            .select_from(Match)
+            .where(
+                or_(
+                    and_(Match.user1_id == user_to_id, Match.user2_id == Like.user_from_id),
+                    and_(Match.user2_id == user_to_id, Match.user1_id == Like.user_from_id),
+                )
+            )
+        )
+        query = select(func.count(Like.user_from_id)).where(
+            Like.user_to_id == user_to_id,
+            Like.like_type.in_((LikeTypeEnum.LIKE, LikeTypeEnum.SUPERLIKE)),
+            ~already_matched,
+        )
+        result = await self.session.execute(query)
+        return int(result.scalar_one())
+
+    async def count_matches(self, user_id: UUID) -> int:
+        query = select(func.count(Match.id)).where(
+            or_(
+                Match.user1_id == user_id,
+                Match.user2_id == user_id,
+            )
+        )
+        result = await self.session.execute(query)
+        return int(result.scalar_one())
 
     async def create_match(self, user_from_id: UUID, user_to_id: UUID):
         query = (

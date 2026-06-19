@@ -75,6 +75,7 @@ class User(Base):
     subscription_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     superlikes_balance: Mapped[int] = mapped_column(default=1)
     boosts_balance: Mapped[int] = mapped_column(default=1)
+    profile_views_count: Mapped[int] = mapped_column(default=0, server_default="0")
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     language: Mapped[UserLanguageEnum] = mapped_column(

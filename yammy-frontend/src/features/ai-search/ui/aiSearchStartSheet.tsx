@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { memo, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 
 import { Button, cn, showErrorToast } from '@/shared'
 
@@ -19,15 +19,23 @@ const AiSearchStartSheetContent = ({
   isSubmitting = false,
 }: AiSearchStartSheetContentProps): JSX.Element => {
   const [query, setQuery] = useState('')
+  const submitInFlightRef = useRef(false)
   const maxLen = 500
 
   const handleSubmit = (): void => {
-    if (isSubmitting) return
-    void onSubmit(query.trim())
+    if (submitInFlightRef.current || isSubmitting) return
+
+    const trimmed = query.trim()
+
+    submitInFlightRef.current = true
+    void onSubmit(trimmed)
       .then(() => close())
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : 'Не удалось запустить поиск'
         showErrorToast(message)
+      })
+      .finally(() => {
+        submitInFlightRef.current = false
       })
   }
 
