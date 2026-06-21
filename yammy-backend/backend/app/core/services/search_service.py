@@ -107,6 +107,13 @@ class SearchService:
         if search_text:
             return await self.ml_service.get_embedding(search_text)
 
+        return await self._resolve_bio_vector(current_user, cached_user_vector)
+
+    async def _resolve_bio_vector(
+        self,
+        current_user: User,
+        cached_user_vector: list[float] | None,
+    ) -> list[float] | None:
         if cached_user_vector:
             return cached_user_vector
 
@@ -251,7 +258,7 @@ class SearchService:
         query_vector = await self._resolve_query_vector(
             search_request, current_user, cached_user_vector
         )
-        semantic_search = bool((search_request.search_text or "").strip())
+        match_vector = await self._resolve_bio_vector(current_user, cached_user_vector)
 
         u = await self.user_repository.get_user_with_filters(current_user.id)
         my_specs = self._extract_user_specs(u)
@@ -260,13 +267,13 @@ class SearchService:
 
         all_hits = await self._search_user_hits(search_request, query_vector, exclude_list, es_city)
         results = self._search_results_from_hits(
-            all_hits, query_vector, my_specs, u, semantic_search=semantic_search
+            all_hits, match_vector, my_specs, u, semantic_search=False
         )
 
         if search_request.city is None and u.city and not results:
             all_hits = await self._search_user_hits(search_request, query_vector, exclude_list, None)
             results = self._search_results_from_hits(
-                all_hits, query_vector, my_specs, u, semantic_search=semantic_search
+                all_hits, match_vector, my_specs, u, semantic_search=False
             )
         
         return results[:self.FINAL_LIMIT]

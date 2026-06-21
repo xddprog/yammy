@@ -48,10 +48,10 @@ const FilterSearchTextFieldComponent = ({
         rows={1}
         aria-label={ariaLabel}
         className={cn(
-          'w-full resize-none overflow-hidden border-0 bg-transparent p-0 shadow-none outline-none',
+          'w-full resize-none overflow-hidden border-0 bg-transparent p-0 shadow-none outline-none ring-0',
           'text-[13px] font-light leading-none text-[#141414]',
-          'placeholder:text-[13px] placeholder:font-light placeholder:leading-none',
-          'placeholder:text-[#141414] placeholder:opacity-100',
+          '!placeholder:text-[13px] !placeholder:font-light !placeholder:leading-none',
+          '!placeholder:text-[#141414] !placeholder:opacity-100',
         )}
       />
     </div>

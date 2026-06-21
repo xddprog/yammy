@@ -256,7 +256,7 @@ const FiltersOverlayContent = ({ onClose }: FiltersOverlayContentProps): React.J
                 )}
               </FilterSection>
 
-              <FilterSection label="Приоритеты (Веса)">
+              <FilterSection label="Приоритеты">
                 <PrioritySliders
                   value={filters.state.priorities}
                   onValueChange={filters.setPriorities}
