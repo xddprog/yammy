@@ -964,46 +964,85 @@ async def seed_admin_demo_data(session: AsyncSession, photo_paths: list[str]) ->
     )
 
 
+async def seed_filters_if_missing(session: AsyncSession) -> bool:
+    filters_exist = (await session.execute(select(FilterCategory))).scalars().first()
+    if filters_exist:
+        return False
+
+    for cat_data in INITIAL_FILTERS:
+        category = FilterCategory(name=cat_data["name"], slug=cat_data["slug"])
+        session.add(category)
+        await session.flush()
+        for sub_data in cat_data["subcategories"]:
+            subcategory = FilterSubcategory(
+                category_id=category.id, name=sub_data["name"], slug=sub_data["slug"]
+            )
+            session.add(subcategory)
+            await session.flush()
+            for opt_data in sub_data["options"]:
+                option = FilterOption(
+                    subcategory_id=subcategory.id, name=opt_data["name"], slug=opt_data["slug"]
+                )
+                session.add(option)
+    await session.flush()
+    logger.info("filters_seeded")
+    return True
+
+
+async def seed_dev_admins_if_missing(session: AsyncSession) -> bool:
+    admin_exists = (await session.execute(select(Admin))).scalars().first()
+    if admin_exists:
+        return False
+
+    pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+    session.add(
+        Admin(
+            username="admin",
+            password_hash=pwd_context.hash("admin"),
+            role=AdminRoleEnum.ADMIN,
+        )
+    )
+    session.add(
+        Admin(
+            username="support",
+            password_hash=pwd_context.hash("support"),
+            role=AdminRoleEnum.SUPPORT,
+        )
+    )
+    logger.info("dev_admin_accounts_created")
+    return True
+
+
+async def seed_admin_from_env_if_missing(session: AsyncSession) -> bool:
+    from app.infrastructure.config.config import APP_CONFIG
+
+    username = (APP_CONFIG.ADMIN_BOOTSTRAP_USERNAME or "").strip()
+    password = APP_CONFIG.ADMIN_BOOTSTRAP_PASSWORD or ""
+    if not username or not password:
+        return False
+
+    existing = (
+        await session.execute(select(Admin).where(Admin.username == username))
+    ).scalars().first()
+    if existing:
+        return False
+
+    pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+    session.add(
+        Admin(
+            username=username,
+            password_hash=pwd_context.hash(password),
+            role=AdminRoleEnum.ADMIN,
+        )
+    )
+    logger.info("production_admin_bootstrapped", username=username)
+    return True
+
+
 async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
     try:
-        admin_exists = (await session.execute(select(Admin))).scalars().first()
-        if not admin_exists:
-            pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
-            session.add(
-                Admin(
-                    username="admin",
-                    password_hash=pwd_context.hash("admin"),
-                    role=AdminRoleEnum.ADMIN,
-                )
-            )
-            session.add(
-                Admin(
-                    username="support",
-                    password_hash=pwd_context.hash("support"),
-                    role=AdminRoleEnum.SUPPORT,
-                )
-            )
-            logger.info("Admin accounts created")
-
-        filters_exist = (await session.execute(select(FilterCategory))).scalars().first()
-        if not filters_exist:
-            for cat_data in INITIAL_FILTERS:
-                category = FilterCategory(name=cat_data["name"], slug=cat_data["slug"])
-                session.add(category)
-                await session.flush()
-                for sub_data in cat_data["subcategories"]:
-                    subcategory = FilterSubcategory(
-                        category_id=category.id, name=sub_data["name"], slug=sub_data["slug"]
-                    )
-                    session.add(subcategory)
-                    await session.flush()
-                    for opt_data in sub_data["options"]:
-                        option = FilterOption(
-                            subcategory_id=subcategory.id, name=opt_data["name"], slug=opt_data["slug"]
-                        )
-                        session.add(option)
-            await session.flush()
-            logger.info("Filters seeded")
+        await seed_dev_admins_if_missing(session)
+        await seed_filters_if_missing(session)
 
         all_options = (await session.execute(select(FilterOption))).scalars().all()
         test_photo_paths = ensure_test_profile_photos_synced()

@@ -1,81 +1,11 @@
 version: '3.0'
 
-
-x-app-env: &app-env
-  - DATABASE_CONFIG__DB_NAME=postgrez
-  - DATABASE_CONFIG__DB_HOST=db
-  - DATABASE_CONFIG__DB_PORT=5432
-  - DATABASE_CONFIG__DB_USER=postgres123
-  - DATABASE_CONFIG__DB_PASS=postgres123
-
-  # Redis
-  - REDIS_CONFIG__REDIS_HOST=redis
-  - REDIS_CONFIG__REDIS_PORT=6379
-
-  # Elasticsearch
-  - ELASTICSEARCH_CONFIG__ES_HOST=elasticsearch
-  - ELASTICSEARCH_CONFIG__ES_PORT=9200
-  - ELASTICSEARCH_CONFIG__ES_SCHEME=http
-  - ELASTICSEARCH_CONFIG__ES_USER=
-  - ELASTICSEARCH_CONFIG__ES_PASSWORD=
-
-  # JWT
-  - JWT_CONFIG__SECRET_KEY=your-secret-key-change-in-production-4roads-2025
-  - JWT_CONFIG__ALGORITHM=HS256
-  - JWT_CONFIG__ACCESS_TOKEN_EXPIRE_MINUTES=30
-  - JWT_CONFIG__REFRESH_TOKEN_EXPIRE_DAYS=3
-  - JWT_CONFIG__SCOPE_USER=user
-  - JWT_CONFIG__SCOPE_ONBOARDING=onboarding
-  - JWT_CONFIG__ONBOARDING_ACCESS_TOKEN_EXPIRE_HOURS=2
-
-  # Telegram
-  - TELEGRAM_CONFIG__ADMIN_CHAT_ID=-1003670057573
-  - TELEGRAM_CONFIG__BOT_TOKEN=7792052665:AAH2JOi1_cduXPhqjXY6hbMLBmCoWzb0aew
-
-  # App
-  - APP_CONFIG__APP_NAME=lascovo-api
-  - APP_CONFIG__DEBUG=true
-  - APP_CONFIG__ENVIRONMENT=production
-  - APP_CONFIG__BASE_URL=https://api.lascovo.ru
-  - APP_CONFIG__STATIC_URL=https://api.lascovo.ru/static/images
-  - APP_CONFIG__SLOW_REQUEST_THRESHOLD=1.0
-
-  # Yandex Pay
-  - YANDEX_PAY_CONFIG__API_URL=https://pay.yandex.ru
-  - YANDEX_PAY_CONFIG__API_KEY=1a89262ed19e418f8049baaad98fbc32.nK53EUIhIdahvJZSSOsePcWljFk0rlJD
-  - YANDEX_PAY_CONFIG__ON_ERROR_REDIRECT_URL=https://www.lascovo.ru/
-  - YANDEX_PAY_CONFIG__ON_SUCCESS_REDIRECT_URL=https://www.lascovo.ru/
-  - YANDEX_PAY_CONFIG__ON_ABORT_REDIRECT_URL=https://www.lascovo.ru/
-  - YANDEX_PAY_CONFIG__CALLBACK_URL=https://api.lascovo.ru/api/v1/order/callback
-  - YANDEX_PAY_CONFIG__REQUEST_TIMEOUT=10
-  - YANDEX_PAY_CONFIG__MAX_RETRIES=3
-
-  # GigData (университеты)
-  - GIGDATA_CONFIG__API_URL_SUGGEST_EDUCATIONS=https://api.gigdata.ru/api/v2/suggest/educations
-  - GIGDATA_CONFIG__API_KEY_SUGGEST_EDUCATIONS=tqxccbn7lxjk4jqhuzrfh353f4cjtba0jkdeuozo
-  - GIGDATA_CONFIG__REQUEST_TIMEOUT_SUGGEST_EDUCATIONS=10
-
-  - OPENROUTER_CONFIG__API_URL=https://openrouter.ai/api/v1
-  - OPENROUTER_CONFIG__MODEL=openai/gpt-oss-20b:free
-  - OPENROUTER_CONFIG__REQUEST_TIMEOUT=90
-  - OPENROUTER_CONFIG__MAX_RETRIES=5
-  - OPENROUTER_CONFIG__API_KEY=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
-
-  - AI_SEARCH_CONFIG__MIN_RESULTS=30
-  - AI_SEARCH_CONFIG__CANDIDATE_BATCH_SIZE=40
-  - AI_SEARCH_CONFIG__MAX_LLM_CALLS_PER_HISTORY_ITEM=4
-  - AI_SEARCH_CONFIG__DAILY_LIMIT_FREE=1
-  - AI_SEARCH_CONFIG__DAILY_LIMIT_VIP=3
-  - AI_SEARCH_CONFIG__DAILY_LIMIT_PREMIUM=6
-
-  # CORS
-  - APP_CONFIG__CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:5174,https://www.lascovo.ru,https://lascovo.ru,https://admin.lascovo.ru,https://yammy-1dmmkun55-xddprogs-projects.vercel.app,https://yammy-nu.vercel.app,https://yammy-t8rv.vercel.app
-  
-  # Other
-  - APP_CONFIG__SITEMAP_PASSWORD=m_8jMpDsZ09yF1AphJnnEOg_zW0UOe4KXM4cvr_BkvY
-  - APP_CONFIG__MAX_IMAGE_SIZE_MB=10
-  - APP_CONFIG__WEBP_QUALITY=85
-  - HF_HOME=/app/model_cache
+x-app-env-file: &app-env-file
+  env_file:
+    - ./backend/.env
+  environment:
+    YAMMY_ENV: production
+    HF_HOME: /app/model_cache
 
 x-backend-build: &backend-build
   context: ./backend
@@ -89,8 +19,6 @@ services:
   redis:
     image: redis:7
     container_name: redis-store
-    ports:
-      - "6379:6379"
     networks:
       - app-network
 
@@ -103,8 +31,6 @@ services:
       - xpack.security.transport.ssl.enabled=false
       - xpack.security.http.ssl.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
     networks:
@@ -119,7 +45,7 @@ services:
     image: *backend-image
     container_name: taskiq-worker
     command: taskiq worker app.core.clients.taskiq_client:broker --fs-discover --no-parse
-    environment: *app-env
+    <<: *app-env-file
     depends_on:
       redis: { condition: service_started }
       db: { condition: service_healthy }
@@ -132,7 +58,7 @@ services:
     image: *backend-image
     container_name: taskiq-scheduler
     command: taskiq scheduler app.core.clients.taskiq_client:scheduler
-    environment: *app-env
+    <<: *app-env-file
     depends_on:
       redis: { condition: service_started }
     networks:
@@ -142,63 +68,26 @@ services:
     image: postgres:15
     container_name: db-store
     ports:
-      - 5433:5432
+      - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_USER: postgres123
       POSTGRES_PASSWORD: postgres123
       POSTGRES_DB: postgres123
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -d postgres -U postgres -h 127.0.0.1" ]
+      test: ["CMD-SHELL", "pg_isready -d postgres123 -U postgres123"]
       interval: 5s
       timeout: 3s
       retries: 5
     networks:
       - app-network
 
-  # frontend:
-  #   build:
-  #     context: ../yammy-frontend
-  #   container_name: frontend-store
-  #   ports:
-  #     - "3000:80"
-  #   depends_on:
-  #     - app
-  #   restart: unless-stopped
-  #   networks:
-  #     - app-network
-
-  # admin:
-  #   build:
-  #     context: ../yammy-admin
-  #   container_name: admin-store
-  #   ports:
-  #     - "5174:80"
-  #   restart: unless-stopped
-  #   networks:
-  #     - app-network
-
-  # nginx:
-  #   image: nginx:latest
-  #   container_name: nginx-proxy
-  #   volumes:
-  #     - /etc/nginx/sites-available/lascovo.ru:/etc/nginx/conf.d/lascovo.ru.conf
-  #     - /etc/letsencrypt:/etc/letsencrypt:ro
-  #     - ./static:/var/www/static
-  #   ports:
-  #     - "443:443"
-  #   depends_on:
-  #     - app
-  #   networks:
-  #     - app-network
-
   app:
     image: *backend-image
     build: *backend-build
     container_name: app-store
-    environment: *app-env
-    
+    <<: *app-env-file
     depends_on:
-      db: 
+      db:
         condition: service_healthy
       redis:
         condition: service_started
@@ -216,7 +105,7 @@ services:
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
-      - 9090:9090
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
@@ -229,7 +118,7 @@ services:
     depends_on:
       - prometheus
     ports:
-      - 3000:3000
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
     env_file:

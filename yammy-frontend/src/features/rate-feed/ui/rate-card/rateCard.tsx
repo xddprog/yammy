@@ -15,7 +15,6 @@ export interface RateCardProps {
   onSwipeLeft?: () => void
   onSwipeRight?: () => void
   onRate?: (rating: number) => void
-  onMessage?: () => void
   name?: string
   age?: number
   city?: string
@@ -30,7 +29,6 @@ const RateCardComponent = ({
   onSwipeLeft,
   onSwipeRight,
   onRate,
-  onMessage,
   name,
   age,
   city,
@@ -115,8 +113,8 @@ const RateCardComponent = ({
       </div>
 
       {isTop && (
-        <div className="shrink-0 pt-3 pb-1 z-20 w-full">
-          <RateCardActions onRate={onRate} onMessage={onMessage} />
+        <div className="mt-auto shrink-0 pt-1.5 z-20 w-full">
+          <RateCardActions onRate={onRate} />
         </div>
       )}
     </motion.div>

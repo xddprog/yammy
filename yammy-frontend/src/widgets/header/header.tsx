@@ -60,7 +60,7 @@ const Header = (): JSX.Element => {
             <Bot className="size-7" strokeWidth={2} />
           </Button>
         )}
-        {isFeedPage && (
+        {isFeedPage && isSwipeMode && (
           <Button
             type="button"
             variant="ghost"

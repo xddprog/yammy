@@ -201,7 +201,6 @@ class AuthService:
     async def _authenticate_telegram_stub(self) -> TokenSchema:
         telegram_id = TELEGRAM_CONFIG.DEV_STUB_TELEGRAM_ID
         user = await self.user_repository.get_by_telegram_id(telegram_id)
-        print(user)
         if user:
             return TokenSchema(
                 access_token=self.create_access_token(str(user.id)),

@@ -56,7 +56,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             return response
         
         except Exception as exc:
-            print(f"Error: {exc}")
             process_time = time.time() - start_time
             logger.error(
                 "request_error",

@@ -9,11 +9,9 @@ import { RateCard } from '../rate-card/rateCard'
 
 export interface RateFeedProps {
   items: AppearanceRatingUserDto[]
-  sessionKey?: string
   onSwipeLeft?: (item: AppearanceRatingUserDto) => void
   onSwipeRight?: (item: AppearanceRatingUserDto) => void
   onRate?: (item: AppearanceRatingUserDto, rating: number) => void
-  onMessage?: (item: AppearanceRatingUserDto) => void
   onEmpty?: () => void
   onNearEnd?: (remainingCount: number) => void
   nearEndThreshold?: number
@@ -25,11 +23,9 @@ export interface RateFeedProps {
 const RateFeedComponent = forwardRef<MatchFeedAppendHandle, RateFeedProps>(function RateFeed(
   {
     items: initialItems,
-    sessionKey,
     onSwipeLeft,
     onSwipeRight,
     onRate,
-    onMessage,
     onEmpty,
     onNearEnd,
     nearEndThreshold,
@@ -42,7 +38,6 @@ const RateFeedComponent = forwardRef<MatchFeedAppendHandle, RateFeedProps>(funct
   const { visibleItems, stackProgress, handleSwipeLeft, handleSwipeRight, appendItems } =
     useSwipeFeed<AppearanceRatingUserDto>({
     initialItems,
-    sessionKey,
     onSwipeLeft,
     onSwipeRight,
     onEmpty,
@@ -76,11 +71,6 @@ const RateFeedComponent = forwardRef<MatchFeedAppendHandle, RateFeedProps>(funct
             if (index === 0 && onRate) {
               onRate(item, rating)
               handleSwipeRight() // Proceed to next card on rate
-            }
-          }}
-          onMessage={() => {
-            if (index === 0 && onMessage) {
-              onMessage(item)
             }
           }}
         />

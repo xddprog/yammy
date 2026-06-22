@@ -1,10 +1,8 @@
 from pathlib import Path
 
 from dishka.integrations.fastapi import setup_dishka as setup_dishka_fastapi
-from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -19,13 +17,20 @@ from app.lifespan import lifespan
 configure_logging()
 logger = get_logger(__name__)
 
+_is_production = APP_CONFIG.ENVIRONMENT == "production"
 
 app = FastAPI(
     title=APP_CONFIG.APP_NAME,
     debug=APP_CONFIG.DEBUG,
     lifespan=lifespan,
+    docs_url=None if _is_production else "/docs",
+    redoc_url=None if _is_production else "/redoc",
+    openapi_url=None if _is_production else "/openapi.json",
 )
-Instrumentator().instrument(app).expose(app)
+
+instrumentator = Instrumentator().instrument(app)
+if not _is_production:
+    instrumentator.expose(app)
 
 
 di_container = setup_container()

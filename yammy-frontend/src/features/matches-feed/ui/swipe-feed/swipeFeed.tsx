@@ -10,8 +10,6 @@ import { SwipeCard } from '../swipe-card'
 
 export interface SwipeFeedProps {
   items: UserSearchApiUser[]
-  /** Восстановление позиции ленты при возврате на экран. */
-  sessionKey?: string
   onSwipeLeft?: (item: UserSearchApiUser) => void
   onSwipeRight?: (item: UserSearchApiUser) => void
   onSuperLike?: (item: UserSearchApiUser, message: string) => void
@@ -30,7 +28,6 @@ export interface SwipeFeedProps {
 const SwipeFeedComponent = forwardRef<MatchFeedAppendHandle, SwipeFeedProps>(function SwipeFeed(
   {
     items: initialItems,
-    sessionKey,
     onSwipeLeft,
     onSwipeRight,
     onSuperLike,
@@ -53,7 +50,6 @@ const SwipeFeedComponent = forwardRef<MatchFeedAppendHandle, SwipeFeedProps>(fun
     appendItems,
   } = useSwipeFeed<UserSearchApiUser>({
     initialItems,
-    sessionKey,
     onSwipeLeft,
     onSwipeRight,
     onSuperLike,

@@ -27,8 +27,6 @@ USER_MAPPING = {
     "mappings": {
         "properties": {
             "user_id": {"type": "keyword"},
-            "telegram_id": {"type": "long"},
-
             "username": {"type": "text"},
             "name": {"type": "text"},
             "age": {"type": "integer"},

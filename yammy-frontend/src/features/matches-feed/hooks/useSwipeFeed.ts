@@ -5,16 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FeedStackCardUser } from '@/entities/user/types/types'
 import { prefetchMediaSrc } from '@/shared/lib/media'
 
-import { readFeedSession, writeFeedSession } from '../lib/feedSessionStorage'
-
 const MAX_VISIBLE_CARDS = 3
 const DEFAULT_NEAR_END_THRESHOLD = 5
 const PREFETCH_AHEAD = 3
 
 export interface UseSwipeFeedOptions<T extends FeedStackCardUser = FeedStackCardUser> {
   initialItems: T[]
-  /** Ключ для восстановления позиции ленты между переходами по вкладкам. */
-  sessionKey?: string
   onSwipeLeft?: (item: T) => void
   onSwipeRight?: (item: T) => void
   onSuperLike?: (item: T, message: string) => void
@@ -36,6 +32,10 @@ export interface UseSwipeFeedResult<T extends FeedStackCardUser = FeedStackCardU
   appendItems: (newItems: FeedStackCardUser[]) => number
 }
 
+function feedBatchFingerprint(items: FeedStackCardUser[]): string {
+  return items.map((item) => item.user_id).join('\0')
+}
+
 function prefetchImages(urls: string[]): void {
   for (const url of urls) {
     if (url) {
@@ -47,17 +47,11 @@ function prefetchImages(urls: string[]): void {
 /**
  * Хук управления лентой свайпов.
  *
- * Вместо удаления верхнего элемента (`slice(1)`, O(n) аллокация на каждый свайп)
- * используем индексный подход: инкрементируем `currentIndex` (O(1)).
- * Это критично при тысячах загруженных карточек.
- *
- * Все callback-пропсы хранятся в ref для стабильных ссылок —
- * `handleSwipeLeft` / `handleSwipeRight` / `handleSuperLike` не пересоздаются
- * при изменении callback-ов родителя.
+ * Очередь карточек синхронизируется с `initialItems` (ответ API): при новой пачке
+ * с бэка сбрасывается позиция. Локально хранится только `currentIndex` для O(1) свайпов.
  */
 export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
   initialItems,
-  sessionKey,
   onSwipeLeft,
   onSwipeRight,
   onSuperLike,
@@ -65,17 +59,20 @@ export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
   onNearEnd,
   nearEndThreshold = DEFAULT_NEAR_END_THRESHOLD,
 }: UseSwipeFeedOptions<T>): UseSwipeFeedResult<T> {
-  const savedSession = sessionKey ? readFeedSession(sessionKey) : null
-  const [items, setItems] = useState<T[]>(() => {
-    if (savedSession?.items.length) {
-      return savedSession.items as T[]
-    }
-    return initialItems
-  })
-  const [currentIndex, setCurrentIndex] = useState(() => savedSession?.currentIndex ?? 0)
+  const [items, setItems] = useState<T[]>(initialItems)
+  const [currentIndex, setCurrentIndex] = useState(0)
   const stackProgress = useMotionValue(0)
 
-  // Ref-ы для стабильных callback-ов — не влияют на зависимости useCallback
+  const initialFingerprint = useMemo(
+    () => feedBatchFingerprint(initialItems),
+    [initialItems],
+  )
+
+  useEffect(() => {
+    setItems(initialItems)
+    setCurrentIndex(0)
+  }, [initialFingerprint, initialItems])
+
   const callbacksRef = useRef({ onSwipeLeft, onSwipeRight, onSuperLike, onEmpty, onNearEnd })
   callbacksRef.current = { onSwipeLeft, onSwipeRight, onSuperLike, onEmpty, onNearEnd }
 
@@ -87,26 +84,11 @@ export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
 
   const remainingCount = items.length - currentIndex
 
-  useEffect(() => {
-    if (!sessionKey) return
-    writeFeedSession(sessionKey, { currentIndex, items })
-  }, [sessionKey, currentIndex, items])
-
-  // После восстановления сессии: если лента уже была просмотрена до конца — подгрузить ещё
-  useEffect(() => {
-    if (currentIndex >= items.length && items.length > 0) {
-      callbacksRef.current.onEmpty?.()
-    }
-    // только при монтировании / восстановлении сессии
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const visibleItems = useMemo(
     () => items.slice(currentIndex, currentIndex + MAX_VISIBLE_CARDS),
     [items, currentIndex],
   )
 
-  // Предзагрузка изображений карточек за пределами видимого стека
   useEffect(() => {
     const prefetchStart = currentIndex + MAX_VISIBLE_CARDS
     const prefetchEnd = Math.min(prefetchStart + PREFETCH_AHEAD, items.length)
@@ -115,14 +97,12 @@ export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
     }
   }, [currentIndex, items])
 
-  // Уведомление о приближении к концу ленты
   useEffect(() => {
     if (remainingCount > 0 && remainingCount <= nearEndThreshold) {
       callbacksRef.current.onNearEnd?.(remainingCount)
     }
   }, [remainingCount, nearEndThreshold])
 
-  // O(1) продвижение — только инкремент индекса, без аллокации нового массива
   const advanceCard = useCallback(() => {
     setCurrentIndex((prev) => {
       const next = prev + 1
@@ -161,7 +141,6 @@ export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
     [advanceCard],
   )
 
-  /** Добавить новую порцию карточек (дедуп по `user_id`). */
   const appendItems = useCallback((newItems: FeedStackCardUser[]) => {
     let toAdd: T[] = []
     setItems((prev) => {
@@ -172,7 +151,6 @@ export function useSwipeFeed<T extends FeedStackCardUser = FeedStackCardUser>({
     return toAdd.length
   }, [])
 
-  // Сброс stackProgress при смене верхней карточки
   const topItemId = visibleItems[0]?.user_id
   useEffect(() => {
     stackProgress.set(0)

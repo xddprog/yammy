@@ -21,7 +21,7 @@ class DatabaseConnection:
     async def get_session(self) -> AsyncSession:
         return AsyncSession(bind=self._engine)
         
-    async def init_test_db(self, clear_db: bool = False) -> bool:
+    async def init_development_db(self, clear_db: bool = False) -> bool:
         async with self._engine.begin() as conn:
             if clear_db:
                 await conn.run_sync(Base.metadata.drop_all)

@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 from typing import Literal
 
 from pydantic import Field
@@ -7,8 +8,29 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
-_ENV_FILE = BASE_DIR / ".env"
-_ENV_FILE_STR = str(_ENV_FILE) if _ENV_FILE.exists() else None
+
+def resolve_env_file() -> Path | None:
+    explicit = os.getenv("YAMMY_ENV_FILE")
+    if explicit:
+        path = Path(explicit)
+        return path if path.is_file() else None
+
+    env_mode = (
+        os.getenv("YAMMY_ENV")
+        or os.getenv("APP_CONFIG__ENVIRONMENT")
+        or "development"
+    ).strip().lower()
+
+    if env_mode == "production":
+        candidate = BASE_DIR / ".env"
+    else:
+        candidate = BASE_DIR / ".env.dev"
+
+    return candidate if candidate.is_file() else None
+
+
+_ENV_FILE = resolve_env_file()
+_ENV_FILE_STR = str(_ENV_FILE) if _ENV_FILE else None
 
 
 def _settings_config(env_prefix: str | None = None) -> SettingsConfigDict:
@@ -92,12 +114,12 @@ class AppConfig(Config):
 
     CORS_ALLOWED_ORIGINS: str = Field(
         default=(
-            "http://localhost:3000,http://localhost:5173,"
-            "https://yammy-1dmmkun55-xddprogs-projects.vercel.app,"
-            "https://yammy-nu.vercel.app,"
-            "https://yammy-t8rv.vercel.app"
+            "http://localhost:3000,http://localhost:5173,http://localhost:5174"
         )
     )
+
+    ADMIN_BOOTSTRAP_USERNAME: str = Field(default="")
+    ADMIN_BOOTSTRAP_PASSWORD: str = Field(default="")
 
 
 
@@ -123,7 +145,7 @@ class ElasticsearchConfig(Config):
 class GigDataConfig(Config):
     model_config = _settings_config(env_prefix="GIGDATA_CONFIG__")
     API_URL_SUGGEST_EDUCATIONS: str = Field(default="https://api.gigdata.ru/api/v2/suggest/educations")
-    API_KEY_SUGGEST_EDUCATIONS: str = Field(default="tqxccbn7lxjk4jqhuzrfh353f4cjtba0jkdeuozo")
+    API_KEY_SUGGEST_EDUCATIONS: str = Field(default="")
     REQUEST_TIMEOUT_SUGGEST_EDUCATIONS: int = Field(default=10)
 
 

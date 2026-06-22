@@ -121,7 +121,6 @@ class UserSearchResponseSchema(BaseModel):
     model_config = ConfigDict(extra="ignore", json_schema_extra=USER_SEARCH_RESPONSE)
 
     id: UUID = Field(serialization_alias="user_id", validation_alias=AliasChoices("id", "user_id"))
-    telegram_id: int | None = None
     username: str = ""
     name: str
     age: int

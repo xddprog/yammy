@@ -50,7 +50,6 @@ const DashboardPage = (): JSX.Element => {
   const filterParams = useFiltersSearchParams()
   const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams])
   const feedResetKey = isSwipeMode ? filterKey : 'appearance'
-  const feedSessionKey = isSwipeMode ? `swipe:${feedResetKey}` : `rate:${feedResetKey}`
 
   const swipeSearch = useUsersSearch(filterParams, { enabled: isSwipeMode })
   const appearanceSearch = useAppearanceRatingUsers({ enabled: !isSwipeMode })
@@ -181,7 +180,7 @@ const DashboardPage = (): JSX.Element => {
   return (
     <div className={dashboardColumnClassName}>
       <Header />
-      <div className="relative isolate min-h-0 flex-1 overflow-x-hidden pb-5">
+      <div className="relative isolate min-h-0 flex-1 overflow-x-hidden">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={`${mode}-${feedResetKey}`}
@@ -195,7 +194,6 @@ const DashboardPage = (): JSX.Element => {
               <RateFeed
                 ref={feedRef}
                 items={rateUsers}
-                sessionKey={feedSessionKey}
                 fillHeight
                 onSwipeLeft={onDislike}
                 onRate={(item, rating) => {
@@ -203,14 +201,12 @@ const DashboardPage = (): JSX.Element => {
                     /* throwApiError уже показал тост */
                   })
                 }}
-                onMessage={(item) => console.log('Сообщение', item.user_id)}
                 onEmpty={handleFeedEmpty}
               />
             ) : (
               <SwipeFeed
                 ref={feedRef}
                 items={swipeUsers}
-                sessionKey={feedSessionKey}
                 fillHeight
                 onSwipeLeft={onDislike}
                 onSwipeRight={onLike}

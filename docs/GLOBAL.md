@@ -404,7 +404,7 @@ cd yammy-frontend && npm run dev
 cd yammy-backend/backend && python3 -m compileall app
 ```
 
-Секреты — только `.env`. Локально для dev-заглушки Telegram: **`APP_CONFIG__ENVIRONMENT=development`** (при `production` stub `initData` даёт 400).
+Секреты — в `yammy-backend/backend/.env` (prod / docker) или `.env.dev` (локальная разработка). Локально для dev-заглушки Telegram: **`APP_CONFIG__ENVIRONMENT=development`** в `.env.dev` (при `production` stub `initData` даёт 400).
 
 SQL для `likes.message` при старой БД: добавить колонку вручную, если модель уже с `message`.
 SQL/миграция для статистики профиля: `migrations/versions/20260619_add_profile_views_count.py` добавляет `users.profile_views_count`; локально после обновления кода применить миграцию или вручную добавить колонку.

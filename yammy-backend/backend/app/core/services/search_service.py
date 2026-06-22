@@ -151,16 +151,26 @@ class SearchService:
         viewer: User,
         semantic_search: bool = False,
     ) -> list[UserSearchResponseSchema]:
-        results: list[UserSearchResponseSchema] = []
+        all_results: list[UserSearchResponseSchema] = []
         for hit in all_hits:
             source = hit["_source"]
             match_percentage = self._match_percentage_for_candidate(
                 source, query_vector, my_specs, viewer, semantic_search=semantic_search
             )
-            if semantic_search or match_percentage >= self.MIN_MATCH_PERCENTAGE:
-                source["match_percentage"] = match_percentage
-                results.append(UserSearchResponseSchema.model_validate(source))
-        return results
+            source["match_percentage"] = match_percentage
+            all_results.append(UserSearchResponseSchema.model_validate(source))
+
+        if semantic_search:
+            return all_results
+
+        filtered = [
+            r for r in all_results
+            if (r.match_percentage or 0) >= self.MIN_MATCH_PERCENTAGE
+        ]
+        if all_results and not filtered:
+            return all_results
+
+        return filtered
     
     def _extract_user_specs(self, user: User) -> list[str]:
         if not user or not hasattr(user, "filters") or not user.filters:

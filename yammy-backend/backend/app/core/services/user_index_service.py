@@ -31,7 +31,6 @@ class UserIndexService:
         doc = es_data.model_dump(mode="json", by_alias=True, exclude_none=True)
         doc.update(
             {
-                "telegram_id": user.telegram_id,
                 "subscription_tier": user.subscription_tier,
                 "boost_expires_at": user.boost_expires_at,
                 "last_seen": user.last_seen,
