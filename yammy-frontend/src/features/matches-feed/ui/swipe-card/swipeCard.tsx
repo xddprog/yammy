@@ -87,6 +87,7 @@ const SwipeCardComponent = ({
 
   return (
     <motion.div
+      {...(isTop ? { 'data-app-guide': 'feed-card' } : {})}
       className={cn(
         'absolute inset-0 touch-none select-none overflow-hidden rounded-[48px] bg-card',
         className,
@@ -193,6 +194,7 @@ const SwipeCardComponent = ({
               onLikePointerLeave={superLike.handleLikePointerLeave}
               onSuperLikeClick={superLike.handleSuperLikeClick}
               onOpenDetails={onOpenDetails}
+              guideTargets={isTop}
             />
           </div>
         </div>

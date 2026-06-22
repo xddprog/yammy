@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
+import { hasCompletedAppGuide } from '@/features/app-guide'
 
 import { isProfileThinlyFilled } from '../lib/isProfileThinlyFilled'
 import {
@@ -25,7 +26,7 @@ export function useProfileFillPrompt(): {
   )
 
   const visible =
-    eligible && armedAfterSwipe && !wasProfileFillPromptHandledToday()
+    eligible && armedAfterSwipe && !wasProfileFillPromptHandledToday() && hasCompletedAppGuide()
 
   const notifyAfterSwipe = useCallback(() => {
     if (!profile || !isProfileThinlyFilled(profile)) return

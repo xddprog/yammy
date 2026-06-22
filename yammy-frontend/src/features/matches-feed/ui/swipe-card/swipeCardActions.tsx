@@ -18,6 +18,8 @@ export interface SwipeCardActionsProps {
    * Для высокой нагрузки колбэк желательно мемоизировать.
    */
   onOpenDetails?: () => void
+  /** Подсветка в app-guide только на верхней карточке. */
+  guideTargets?: boolean
 }
 
 const SwipeCardActionsComponent = ({
@@ -30,6 +32,7 @@ const SwipeCardActionsComponent = ({
   onLikePointerLeave,
   onSuperLikeClick,
   onOpenDetails,
+  guideTargets = false,
 }: SwipeCardActionsProps): React.JSX.Element => {
   const clamped = Math.max(0, Math.min(100, Math.round(compatibility)))
   const angle = (clamped / 100) * 360
@@ -56,6 +59,7 @@ const SwipeCardActionsComponent = ({
 
       <button
         type="button"
+        {...(guideTargets ? { 'data-app-guide': 'details' } : {})}
         className={cn(
           'relative h-auto w-[28%] min-w-[104px] max-w-[124px] aspect-square rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[#FF6BA4]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
           'transition-transform duration-200 active:scale-95',

@@ -16,6 +16,7 @@ import type {
   UserSearchApiUser,
 } from '@/entities/user/types/types'
 import { RateFeed, SwipeFeed } from '@/features'
+import { AppGuideOverlay, useAppGuide } from '@/features/app-guide'
 import type { MatchFeedAppendHandle } from '@/features/matches-feed/model/matchFeedAppendHandle'
 import { useFiltersSearchParams } from '@/features/matches-filter/model/useFiltersSearchParams'
 import { ProfileFillPromptBanner, useProfileFillPrompt } from '@/features/profile-fill-prompt'
@@ -62,6 +63,11 @@ const DashboardPage = (): JSX.Element => {
   const isSuccess = isSwipeMode ? swipeSearch.isSuccess : appearanceSearch.isSuccess
 
   const hasCards = isSwipeMode ? swipeUsers.length > 0 : rateUsers.length > 0
+
+  const appGuide = useAppGuide({
+    enabled: isSuccess && isSwipeMode,
+    hasCards: isSwipeMode && swipeUsers.length > 0,
+  })
 
   const refetchFeed = useCallback(async () => {
     if (isSwipeMode) {
@@ -160,6 +166,14 @@ const DashboardPage = (): JSX.Element => {
         <div className="relative isolate min-h-0 flex-1 overflow-x-hidden">
           <div className={emptyStateClassName}>{FEED_EMPTY_MESSAGE}</div>
         </div>
+        <AppGuideOverlay
+          open={appGuide.open}
+          step={appGuide.step}
+          stepNumber={appGuide.stepNumber}
+          totalSteps={appGuide.totalSteps}
+          isLast={appGuide.isLast}
+          onNext={appGuide.onNext}
+        />
       </div>
     )
   }
@@ -239,6 +253,14 @@ const DashboardPage = (): JSX.Element => {
           dismissForToday()
           navigate(`/${ERouteNames.PROFILE_ROUTE}`, { state: { openEdit: true } })
         }}
+      />
+      <AppGuideOverlay
+        open={appGuide.open}
+        step={appGuide.step}
+        stepNumber={appGuide.stepNumber}
+        totalSteps={appGuide.totalSteps}
+        isLast={appGuide.isLast}
+        onNext={appGuide.onNext}
       />
     </div>
   )

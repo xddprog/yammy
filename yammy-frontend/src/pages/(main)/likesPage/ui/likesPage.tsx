@@ -69,7 +69,6 @@ const LikesPage = (): JSX.Element => {
       openProfileDetails({
         item,
         onLike: () => handleLike(item),
-        onDislike: () => handleDislike(item),
       })
     },
     [handleDislike, handleLike, openProfileDetails],

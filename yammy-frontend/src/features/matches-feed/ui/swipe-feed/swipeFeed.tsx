@@ -80,7 +80,6 @@ const SwipeFeedComponent = forwardRef<MatchFeedAppendHandle, SwipeFeedProps>(fun
 
     openProfileDetails({
       item,
-      onDislike: handleSwipeLeft,
       onLike: handleSwipeRight,
       onSuperLike: (closeParent) => {
         openSuperLikeOverlay({

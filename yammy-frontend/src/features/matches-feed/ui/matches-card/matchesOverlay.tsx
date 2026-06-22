@@ -28,7 +28,6 @@ import { ProfilePeekCarousel } from './profilePeekCarousel'
 export interface MatchesOverlayProps {
   item: UserSearchApiUser
   onClose: () => void
-  onDislike?: () => void
   onLike?: () => void
   fromChat?: boolean
   /** Вызывается при клике на суперлайк; в аргументе — функция закрытия этого оверлея (для последующего закрытия после отправки огонька). */
@@ -38,7 +37,6 @@ export interface MatchesOverlayProps {
 const OverlayContent = ({
   item,
   onClose,
-  onDislike,
   onLike,
   fromChat,
   onSuperLike,
@@ -82,11 +80,6 @@ const OverlayContent = ({
   const handleSuperLikeClick = useCallback(() => {
     onSuperLike?.(onClose)
   }, [onSuperLike, onClose])
-
-  const handleDislike = useCallback(() => {
-    onDislike?.()
-    onClose()
-  }, [onDislike, onClose])
 
   const superLike = useSuperLikeInteractions({
     onLike: handleLike,
@@ -245,7 +238,7 @@ const OverlayContent = ({
                 onClick={handleIndicatorClick}
               />
             }
-            onDislike={handleDislike}
+            onClose={onClose}
             onSuperLikeClick={handleSuperLikeClick}
             superLikeHandlers={superLike}
           />
@@ -259,7 +252,6 @@ const OverlayContentMemo = memo(OverlayContent)
 
 type OpenProfileDetailsOptions = {
   item: UserSearchApiUser
-  onDislike?: () => void
   onLike?: () => void
   fromChat?: boolean
   onSuperLike?: (closeParent: () => void) => void
@@ -280,7 +272,6 @@ export const useMatchesOverlay = () => {
         content: (closeOverlay) => (
           <OverlayContentMemo
             item={options.item}
-            onDislike={options.onDislike}
             onLike={options.onLike}
             fromChat={options.fromChat}
             onSuperLike={options.onSuperLike}

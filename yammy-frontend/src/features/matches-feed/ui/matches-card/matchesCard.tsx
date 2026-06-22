@@ -31,7 +31,7 @@ interface MatchesCardContentProps {
   traitDisplaySections?: TraitDisplaySection[]
   fromChat?: boolean
   actionIndicator: React.ReactNode
-  onDislike: () => void
+  onClose: () => void
   onSuperLikeClick: () => void
   superLikeHandlers: UseSuperLikeInteractionsResult
 }
@@ -57,7 +57,7 @@ export const MatchesCardContent = ({
   traitDisplaySections = [],
   fromChat = false,
   actionIndicator,
-  onDislike,
+  onClose,
   onSuperLikeClick,
   superLikeHandlers,
 }: MatchesCardContentProps) => {
@@ -175,7 +175,7 @@ export const MatchesCardContent = ({
                   variant="black"
                   size="lg"
                   className="w-full rounded-full"
-                  onClick={onDislike}
+                  onClick={onClose}
                 >
                   Закрыть
                 </Button>
@@ -217,7 +217,13 @@ export const MatchesCardContent = ({
                 </Button>
               ) : (
                 <>
-                  <Button type="button" variant="black" size="icon-lg" onClick={onDislike}>
+                  <Button
+                    type="button"
+                    variant="black"
+                    size="icon-lg"
+                    onClick={onClose}
+                    aria-label="Закрыть"
+                  >
                     <X className="size-7" strokeWidth={1.4} />
                   </Button>
                   <div className="relative space-x-2">
@@ -253,7 +259,7 @@ export const MatchesCardContent = ({
                 variant="black"
                 size="lg"
                 className="w-full rounded-full"
-                onClick={onDislike}
+                onClick={onClose}
               >
                 Продолжить
               </Button>

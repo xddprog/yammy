@@ -33,6 +33,7 @@ const Header = (): JSX.Element => {
       {isFeedPage ? (
         <button
           type="button"
+          data-app-guide="mode-toggle"
           className="flex items-center transition-transform duration-200 active:scale-95"
           aria-label="Главная"
           onClick={handleLogoClick}
@@ -49,13 +50,14 @@ const Header = (): JSX.Element => {
             type="button"
             variant="ghost"
             size="icon-sm"
+            data-app-guide="ai-search"
             className={cn(
               'rounded-full p-0 transition-transform duration-200 active:scale-95 hover:bg-transparent',
             )}
             aria-label="AI поиск"
             onClick={() => navigate(`/${ERouteNames.AI_SEARCH_ROUTE}`)}
           >
-            <Bot className="size-7" strokeWidth={2  } />
+            <Bot className="size-7" strokeWidth={2} />
           </Button>
         )}
         {isFeedPage && (
@@ -63,6 +65,7 @@ const Header = (): JSX.Element => {
             type="button"
             variant="ghost"
             size="icon-sm"
+            data-app-guide="filters"
             className={cn(
               'rounded-full p-0 transition-transform duration-200 active:scale-95 hover:bg-transparent',
             )}
