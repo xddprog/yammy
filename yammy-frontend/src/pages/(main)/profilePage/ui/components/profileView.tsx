@@ -13,6 +13,11 @@ import {
 } from './profileViewSettingsSheets'
 import { SubscriptionCard } from './subscriptionCard'
 
+interface ProfileStatChip {
+  label: string
+  value: string
+}
+
 interface ProfileViewProps {
   avatarUrl: string
   profileTitle: string
@@ -30,8 +35,11 @@ interface ProfileViewProps {
   adequacyScore: number
   referralsCount: number
   receivedLikesCount: number
+  sentLikesCount: number
   matchesCount: number
   profileViewsCount: number
+  receivedAppearanceRatingsCount: number
+  appearanceRatingAverage: number | null
   onActivateBoost: () => void
   onBuyBoostsPackage: () => void
   onNotificationsChange: (enabled: boolean) => void
@@ -39,6 +47,26 @@ interface ProfileViewProps {
   settingsUpdating?: boolean
   boostActivating?: boolean
 }
+
+const formatCount = (value: number): string => value.toLocaleString('ru-RU')
+
+const formatAverageRating = (value: number | null): string =>
+  value != null
+    ? value.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : '—'
+
+const ProfileStatsRow = ({ stats }: { stats: ProfileStatChip[] }): JSX.Element => (
+  <section className="grid grid-cols-3 gap-2">
+    {stats.map((stat) => (
+      <div key={stat.label} className="min-w-0 rounded-[18px] bg-card px-3 py-3 text-center">
+        <p className="truncate text-[11px] font-[200] uppercase tracking-[0.04em] text-muted-foreground">
+          {stat.label}
+        </p>
+        <p className="mt-1 truncate text-[13px] font-[200] text-foreground">{stat.value}</p>
+      </div>
+    ))}
+  </section>
+)
 
 export const ProfileView = ({
   avatarUrl,
@@ -57,8 +85,11 @@ export const ProfileView = ({
   adequacyScore,
   referralsCount,
   receivedLikesCount,
+  sentLikesCount,
   matchesCount,
   profileViewsCount,
+  receivedAppearanceRatingsCount,
+  appearanceRatingAverage,
   onActivateBoost,
   onBuyBoostsPackage,
   onNotificationsChange,
@@ -66,28 +97,26 @@ export const ProfileView = ({
   settingsUpdating,
   boostActivating,
 }: ProfileViewProps): JSX.Element => {
-  const stats = [
-    { label: 'Лайкнули', value: receivedLikesCount },
-    { label: 'Мэтчи', value: matchesCount },
-    { label: 'Просмотры', value: profileViewsCount },
+  const primaryStats: ProfileStatChip[] = [
+    { label: 'Лайкнули', value: formatCount(receivedLikesCount) },
+    { label: 'Мэтчи', value: formatCount(matchesCount) },
+    { label: 'Просмотры', value: formatCount(profileViewsCount) },
+  ]
+
+  const secondaryStats: ProfileStatChip[] = [
+    { label: 'Ср. оценка', value: formatAverageRating(appearanceRatingAverage) },
+    { label: 'Оценки', value: formatCount(receivedAppearanceRatingsCount) },
+    { label: 'Мои лайки', value: formatCount(sentLikesCount) },
   ]
 
   return (
     <>
       <ProfileMainRow avatarUrl={avatarUrl} title={profileTitle} onOpenEdit={onOpenEdit} />
 
-      <section className="mt-2 grid grid-cols-3 gap-2">
-        {stats.map((stat) => (
-          <div key={stat.label} className="min-w-0 rounded-[18px] bg-card px-3 py-3 text-center">
-            <p className="truncate text-[11px] font-[200] uppercase tracking-[0.04em] text-muted-foreground">
-              {stat.label}
-            </p>
-            <p className="mt-1 truncate text-[13px] font-[200] text-foreground">
-              {stat.value.toLocaleString('ru-RU')}
-            </p>
-          </div>
-        ))}
-      </section>
+      <div className="mt-2 flex flex-col gap-2">
+        <ProfileStatsRow stats={primaryStats} />
+        <ProfileStatsRow stats={secondaryStats} />
+      </div>
 
       <section className="mt-5 flex flex-col gap-1.5">
         <SubscriptionCard

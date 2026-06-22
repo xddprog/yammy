@@ -138,8 +138,11 @@ const ProfilePage = (): JSX.Element => {
                     adequacyScore={profile.adequacy_score}
                     referralsCount={profile.referrals_count}
                     receivedLikesCount={profile.received_likes_count}
+                    sentLikesCount={profile.sent_likes_count}
                     matchesCount={profile.matches_count}
                     profileViewsCount={profile.profile_views_count}
+                    receivedAppearanceRatingsCount={profile.received_appearance_ratings_count}
+                    appearanceRatingAverage={profile.appearance_rating_average}
                     onActivateBoost={() => {
                       void activateBoostMutation.mutateAsync()
                     }}

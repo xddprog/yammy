@@ -1,18 +1,18 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 
+import { getReceivedAppearanceRatings } from '@/entities/user/api/appearanceRatingService'
 import { DEFAULT_PAGE_SIZE, getNextPageParam } from '@/shared/api/pagination'
 
-import { getReceivedLikes } from '../api/userService'
 import { usersQueryKeys } from '../lib/usersQueryKeys'
-import type { UserSearchApiUser } from '../types/types'
+import type { AppearanceRatingReceivedItem } from '../types/types'
 
-export function useReceivedLikes(
+export function useReceivedAppearanceRatings(
   pageSize: number = DEFAULT_PAGE_SIZE,
   options?: { enabled?: boolean },
 ) {
   return useInfiniteQuery({
-    queryKey: usersQueryKeys.receivedLikes(pageSize),
-    queryFn: ({ pageParam }) => getReceivedLikes(pageParam, pageSize),
+    queryKey: usersQueryKeys.receivedAppearanceRatings(pageSize),
+    queryFn: ({ pageParam }) => getReceivedAppearanceRatings(pageParam, pageSize),
     initialPageParam: 1,
     getNextPageParam,
     staleTime: 0,
@@ -21,9 +21,9 @@ export function useReceivedLikes(
   })
 }
 
-export function flattenLikesPages(
-  data: { pages: Array<{ items: UserSearchApiUser[] }> } | undefined,
-): UserSearchApiUser[] {
+export function flattenAppearanceRatingsPages(
+  data: { pages: Array<{ items: AppearanceRatingReceivedItem[] }> } | undefined,
+): AppearanceRatingReceivedItem[] {
   if (!data) {
     return []
   }

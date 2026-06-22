@@ -1,18 +1,26 @@
-import { Heart } from 'lucide-react'
 import { memo } from 'react'
 
 import type { UserSearchApiUser } from '@/entities/user/types/types'
+import { FeedScoreBadge } from '@/features/matches-feed/ui/feed-score-badge/feedScoreBadge'
 import { cn, Image } from '@/shared'
 
 export interface LikesCardProps {
   item: UserSearchApiUser
+  mode?: 'likes' | 'ratings'
+  score?: number
   onClick?: () => void
   onLike?: (e: React.MouseEvent) => void
   onDislike?: (e: React.MouseEvent) => void
   className?: string
 }
 
-const LikesCardComponent = ({ item, onClick, className }: LikesCardProps): React.JSX.Element => {
+const LikesCardComponent = ({
+  item,
+  mode = 'likes',
+  score,
+  onClick,
+  className,
+}: LikesCardProps): React.JSX.Element => {
   const { name, age, city, photos, match_percentage: matchPercentage } = item
   const photo = photos[0] ?? ''
 
@@ -32,16 +40,17 @@ const LikesCardComponent = ({ item, onClick, className }: LikesCardProps): React
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
 
-        <div className="absolute bottom-2 right-2 z-10 inline-flex h-9 items-center gap-1 rounded-full bg-black px-3 leading-none">
-          <Heart
-            size={16}
-            strokeWidth={1.8}
-            aria-hidden
-            className="block shrink-0 text-[#FF6BA4] -translate-y-px"
+        <div className="absolute bottom-2 right-2 z-10">
+          <FeedScoreBadge
+            variant={mode === 'ratings' ? 'rating' : 'match'}
+            value={
+              mode === 'ratings'
+                ? score != null
+                  ? `${score}/10`
+                  : '—'
+                : `${Math.round(matchPercentage)}%`
+            }
           />
-          <span className="text-[13px] font-[200] leading-none text-[#FF6BA4] tabular-nums">
-            {Math.round(matchPercentage)}%
-          </span>
         </div>
       </div>
 

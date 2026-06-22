@@ -154,6 +154,14 @@ class LikeRepository(SqlAlchemyRepository[Like]):
         result = await self.session.execute(query)
         return int(result.scalar_one())
 
+    async def count_sent_likes(self, user_from_id: UUID) -> int:
+        query = select(func.count(Like.user_to_id)).where(
+            Like.user_from_id == user_from_id,
+            Like.like_type.in_((LikeTypeEnum.LIKE, LikeTypeEnum.SUPERLIKE)),
+        )
+        result = await self.session.execute(query)
+        return int(result.scalar_one())
+
     async def count_matches(self, user_id: UUID) -> int:
         query = select(func.count(Match.id)).where(
             or_(

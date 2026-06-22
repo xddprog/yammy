@@ -10,6 +10,7 @@ import { z } from 'zod'
 import type { TraitDisplaySection } from '@/entities/user/lib/filterLabelByLanguage'
 import type { UseSuperLikeInteractionsResult } from '@/features/matches-feed/hooks/useSuperLikeInteractions'
 import { SheetCard } from '@/features/matches-feed/ui/sheet-card'
+import { RateCardActions } from '@/features/rate-feed/ui/rate-card/rateCardActions'
 import { Button, RadioGroup, RadioGroupItem } from '@/shared'
 import { Form, FormControl, FormField, FormItem } from '@/shared/ui/form/form'
 
@@ -30,6 +31,9 @@ interface MatchesCardContentProps {
   job?: string
   traitDisplaySections?: TraitDisplaySection[]
   fromChat?: boolean
+  fromRatings?: boolean
+  myScore?: number | null
+  onRate?: (score: number) => void
   actionIndicator: React.ReactNode
   onClose: () => void
   onSuperLikeClick: () => void
@@ -56,6 +60,9 @@ export const MatchesCardContent = ({
   job,
   traitDisplaySections = [],
   fromChat = false,
+  fromRatings = false,
+  myScore = null,
+  onRate,
   actionIndicator,
   onClose,
   onSuperLikeClick,
@@ -204,7 +211,15 @@ export const MatchesCardContent = ({
                 </div>
               )
             ) : !isReportMode ? (
-              fromChat ? (
+              fromRatings ? (
+                myScore != null ? (
+                  <p className="w-full text-center text-[15px] font-medium text-neutral-900">
+                    Вы оценили: {myScore}/10
+                  </p>
+                ) : (
+                  <RateCardActions tone="black" onRate={onRate} />
+                )
+              ) : fromChat ? (
                 <Button
                   type="button"
                   variant="black"

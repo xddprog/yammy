@@ -344,13 +344,13 @@ class SearchService:
             size=pagination.size,
             items=results,
         )
-    
+
     async def get_users_for_appearance_rating(self, current_user_id: UUID, limit: int = 20) -> list[AppearanceRatingSchema]:
         rated_key = AppearanceRatingCacheKeys.APPEARANCE_RATED_USERS.format(user_id=current_user_id)
         rated_ids = await self.redis_client.smembers(rated_key)
         
         if not rated_ids:
-            rated_ids = await self.appearance_rating_repository.get_all_rated_user_ids(current_user_id)
+            rated_ids = await self.appearance_rating_repository.get_rated_user_ids(current_user_id)
             if rated_ids:
                 await self.redis_client.sadd(rated_key, *rated_ids, ttl=self.APPEARANCE_RATED_TTL)
         

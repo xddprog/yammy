@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import UploadFile
-from app.core.repositories import LikeRepository, UserRepository
+from app.core.repositories import AppearanceRatingRepository, LikeRepository, UserRepository
 from app.core.dto.auth import OnboardingFinishRequest
 from app.core.dto.user import ImageOrderUpdateSchema, UserPhoto, UserProfileSchema, UserUpdateRequest
 from app.core.services.image_service import ImageService
@@ -18,12 +18,14 @@ class UserService:
         self,
         user_repository: UserRepository,
         like_repository: LikeRepository,
+        appearance_rating_repository: AppearanceRatingRepository,
         image_service: ImageService,
         moderation_service: ModerationService,
         user_index_service: UserIndexService,
     ):
         self.user_repository = user_repository
         self.like_repository = like_repository
+        self.appearance_rating_repository = appearance_rating_repository
         self.image_service = image_service
         self.moderation_service = moderation_service
         self.user_index_service = user_index_service
@@ -49,13 +51,18 @@ class UserService:
 
         user, referrals_count = row
         received_likes_count = await self.like_repository.count_received_likes(user_id)
+        sent_likes_count = await self.like_repository.count_sent_likes(user_id)
         matches_count = await self.like_repository.count_matches(user_id)
-        
+        rating_stats = await self.appearance_rating_repository.get_received_rating_stats(user_id)
+
         return UserProfileSchema.model_validate(user, from_attributes=True).model_copy(
             update={
                 "referrals_count": referrals_count,
                 "received_likes_count": received_likes_count,
+                "sent_likes_count": sent_likes_count,
                 "matches_count": matches_count,
+                "received_appearance_ratings_count": rating_stats.received_count,
+                "appearance_rating_average": rating_stats.average_score,
             }
         )
 

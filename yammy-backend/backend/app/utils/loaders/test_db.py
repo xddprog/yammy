@@ -12,6 +12,7 @@ from dishka import AsyncContainer
 
 from app.infrastructure.database.models.admin import Admin
 from app.infrastructure.database.models.ai_search_history import AiSearchHistory
+from app.infrastructure.database.models.appearance_rating_pair import AppearanceRatingPair
 from app.infrastructure.database.models.chat import Chat
 from app.infrastructure.database.models.like import Like
 from app.infrastructure.database.models.match import Match
@@ -146,6 +147,8 @@ SUPERLIKE_SEED_MESSAGES: tuple[str, str] = (
     "Не смог пройти мимо твоей анкеты — очень зацепила улыбка.",
     "Кажется, у нас может получиться классный разговор. Давай проверим?",
 )
+APPEARANCE_RATINGS_SEED_RECEIVED_PER_USER = 10
+APPEARANCE_RATINGS_SEED_MUTUAL_PAIRS = 6
 
 INITIAL_FILTERS = [
     {
@@ -464,6 +467,130 @@ async def seed_test_received_likes(session: AsyncSession) -> set[tuple[uuid.UUID
         per_user_target=LIKES_SEED_COUNT_PER_USER,
     )
     return skip_match_pairs
+
+
+async def seed_test_appearance_ratings(session: AsyncSession) -> int:
+    """Входящие и взаимные оценки внешности для вкладки «Оценки» и статистики профиля."""
+    user_ids = list((await session.execute(select(User.id).order_by(User.id))).scalars().all())
+    if len(user_ids) < 3:
+        logger.info("test_appearance_ratings_skip_few_users", user_count=len(user_ids))
+        return 0
+
+    existing_rows = await session.execute(select(AppearanceRatingPair))
+    pairs_by_key: dict[tuple[uuid.UUID, uuid.UUID], AppearanceRatingPair] = {
+        (row.user_a_id, row.user_b_id): row for row in existing_rows.scalars().all()
+    }
+
+    def count_received_for(user_id: uuid.UUID) -> int:
+        total = 0
+        for pair in pairs_by_key.values():
+            if (
+                pair.user_a_id == user_id
+                and pair.score_by_b is not None
+                and pair.score_by_a is None
+            ):
+                total += 1
+            elif (
+                pair.user_b_id == user_id
+                and pair.score_by_a is not None
+                and pair.score_by_b is None
+            ):
+                total += 1
+        return total
+
+    now = datetime.now(timezone.utc)
+    created = 0
+
+    def upsert_rating(rater_id: uuid.UUID, rated_id: uuid.UUID, score: int, rated_at: datetime) -> bool:
+        nonlocal created
+        user_a_id, user_b_id = _ordered_pair(rater_id, rated_id)
+        key = (user_a_id, user_b_id)
+        pair = pairs_by_key.get(key)
+        rater_is_a = rater_id == user_a_id
+
+        if pair is None:
+            if rater_is_a:
+                pair = AppearanceRatingPair(
+                    user_a_id=user_a_id,
+                    user_b_id=user_b_id,
+                    score_by_a=score,
+                    score_by_a_at=rated_at,
+                )
+            else:
+                pair = AppearanceRatingPair(
+                    user_a_id=user_a_id,
+                    user_b_id=user_b_id,
+                    score_by_b=score,
+                    score_by_b_at=rated_at,
+                )
+            session.add(pair)
+            pairs_by_key[key] = pair
+            created += 1
+            return True
+
+        if rater_is_a:
+            if pair.score_by_a is not None:
+                return False
+            pair.score_by_a = score
+            pair.score_by_a_at = rated_at
+        else:
+            if pair.score_by_b is not None:
+                return False
+            pair.score_by_b = score
+            pair.score_by_b_at = rated_at
+        created += 1
+        return True
+
+    recipients = user_ids
+    for recipient_id in recipients:
+        missing = APPEARANCE_RATINGS_SEED_RECEIVED_PER_USER - count_received_for(recipient_id)
+        if missing <= 0:
+            continue
+
+        candidates = [uid for uid in user_ids if uid != recipient_id]
+        random.shuffle(candidates)
+        added = 0
+        for offset, rater_id in enumerate(candidates):
+            if added >= missing:
+                break
+            score = random.randint(6, 10)
+            rated_at = now - timedelta(hours=offset + added + 1)
+            if upsert_rating(rater_id, recipient_id, score, rated_at):
+                added += 1
+
+    mutual_candidates = [
+        _ordered_pair(user_ids[i], user_ids[i + 1])
+        for i in range(0, min(len(user_ids) - 1, APPEARANCE_RATINGS_SEED_MUTUAL_PAIRS * 2), 2)
+    ][:APPEARANCE_RATINGS_SEED_MUTUAL_PAIRS]
+
+    for user_a_id, user_b_id in mutual_candidates:
+        pair = pairs_by_key.get((user_a_id, user_b_id))
+        needs_mutual = pair is None or pair.score_by_a is None or pair.score_by_b is None
+        if not needs_mutual:
+            continue
+        score_a_to_b = random.randint(7, 10)
+        score_b_to_a = random.randint(7, 10)
+        upsert_rating(user_a_id, user_b_id, score_a_to_b, now - timedelta(hours=2))
+        upsert_rating(user_b_id, user_a_id, score_b_to_a, now - timedelta(hours=1))
+
+    if created == 0:
+        logger.info(
+            "test_appearance_ratings_already_sufficient",
+            recipients=len(recipients),
+            total_pairs=len(pairs_by_key),
+        )
+        return 0
+
+    await session.flush()
+
+    logger.info(
+        "test_appearance_ratings_seeded",
+        pairs_touched=created,
+        recipients=len(recipients),
+        mutual_pairs=len(mutual_candidates),
+        total_pairs=len(pairs_by_key),
+    )
+    return created
 
 
 async def seed_test_matches(
@@ -1055,6 +1182,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
                 target_count=count,
             )
             await seed_test_matches(session)
+            await seed_test_appearance_ratings(session)
             await seed_admin_demo_data(session, test_photo_paths)
             await _redistribute_clustered_messages(session)
             await session.commit()
@@ -1134,6 +1262,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
         await seed_match_calibration_users(session, photo_paths=test_photo_paths)
         likes_skip_pairs = await seed_test_received_likes(session)
         await seed_test_matches(session, skip_pairs=likes_skip_pairs)
+        await seed_test_appearance_ratings(session)
         await seed_admin_demo_data(session, test_photo_paths)
 
         await session.commit()

@@ -56,7 +56,7 @@ const RateCardComponent = ({
   return (
     <motion.div
       className={cn(
-        'absolute inset-0 touch-none select-none flex flex-col bg-background',
+        'absolute inset-0 touch-none select-none overflow-hidden rounded-[48px] bg-card',
         className,
       )}
       style={{
@@ -78,7 +78,7 @@ const RateCardComponent = ({
       }}
       initial={false}
     >
-      <div className="relative flex-1 min-h-0 bg-card rounded-[48px] overflow-hidden shadow-lg">
+      <div className="relative h-full w-full">
         <ImageCarousel
           enabledImageSwiping={true}
           images={photos}
@@ -89,34 +89,35 @@ const RateCardComponent = ({
 
         {!isDragging && (
           <motion.div
-            className="pointer-events-none absolute -inset-x-px -bottom-px z-0 h-[55%] bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+            className="pointer-events-none absolute -inset-x-px -bottom-px z-0 h-[45%] bg-gradient-to-t from-black/80 via-black/40 to-transparent"
             style={{ opacity: bottomBlurOpacity }}
           />
         )}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col justify-end z-10 w-full">
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 sm:bottom-8 flex flex-col justify-end z-10 w-full">
           {(name != null || age != null || city != null) && (
-            <div className="flex flex-col gap-1 text-white px-7">
+            <div className="flex flex-col gap-2 text-white px-7 pb-4">
               {city != null && (
-                <span className="text-sm font-light leading-[120%] tracking-[0] opacity-90">
-                  {city}
-                </span>
+                <span className="text-base font-light leading-[120%] tracking-[0]">{city}</span>
               )}
               {(name != null || age != null) && (
-                <span className="text-[28px] leading-[120%] tracking-[0] font-semibold">
+                <span
+                  className="text-[32px] leading-[120%] tracking-[0]"
+                  style={{ fontWeight: 566 }}
+                >
                   {[name, age != null ? `${age}` : null].filter(Boolean).join(', ')}
                 </span>
               )}
             </div>
           )}
+
+          {isTop && (
+            <div className="w-full">
+              <RateCardActions onRate={onRate} />
+            </div>
+          )}
         </div>
       </div>
-
-      {isTop && (
-        <div className="mt-auto shrink-0 pt-1.5 z-20 w-full">
-          <RateCardActions onRate={onRate} />
-        </div>
-      )}
     </motion.div>
   )
 }

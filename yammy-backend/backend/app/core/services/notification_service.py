@@ -26,3 +26,13 @@ class NotificationService:
         if not recipient.notifications_enabled:
             return
         await self._telegram.send_message(recipient.telegram_id, "У вас новый метч!")
+
+    async def notify_mutual_appearance_rating(self, recipient: User, other: User) -> None:
+        if not recipient.notifications_enabled:
+            return
+        link = f'<a href="tg://user?id={other.telegram_id}">Написать в Telegram</a>'
+        await self._telegram.send_message(
+            recipient.telegram_id,
+            f"Взаимная оценка внешности! {link}",
+        )
+    

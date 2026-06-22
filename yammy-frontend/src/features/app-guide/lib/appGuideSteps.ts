@@ -5,6 +5,7 @@ export type AppGuideStepId =
   | 'ai-search'
   | 'filters'
   | 'mode-toggle'
+  | 'mutual-rating'
   | 'finish'
 
 export type AppGuidePlacement = 'top' | 'bottom' | 'center'
@@ -18,6 +19,10 @@ export type AppGuideStep = {
   requiresFeed?: boolean
   borderRadius?: number
   padding?: number
+  /** Элемент `[data-app-guide]` для подсветки; по умолчанию совпадает с `id` шага. */
+  targetId?: string
+  /** Форма выреза в блюре: круг для кнопки совместимости. */
+  spotlightShape?: 'rect' | 'circle'
 }
 
 export const APP_GUIDE_STEPS: AppGuideStep[] = [
@@ -38,6 +43,7 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     requiresFeed: true,
     borderRadius: 9999,
     padding: 6,
+    spotlightShape: 'circle',
   },
   {
     id: 'profile-details',
@@ -47,6 +53,7 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     requiresFeed: true,
     borderRadius: 9999,
     padding: 6,
+    spotlightShape: 'circle',
   },
   {
     id: 'ai-search',
@@ -69,6 +76,15 @@ export const APP_GUIDE_STEPS: AppGuideStep[] = [
     title: 'Режим оценки',
     body: 'Нажми на лого — переключишь режим оценки внешности.',
     placement: 'bottom',
+    borderRadius: 12,
+    padding: 6,
+  },
+  {
+    id: 'mutual-rating',
+    title: 'Взаимная оценка',
+    body: 'При взаимной оценке вы сможете написать пользователю напрямую в Telegram!',
+    placement: 'bottom',
+    targetId: 'mode-toggle',
     borderRadius: 12,
     padding: 6,
   },

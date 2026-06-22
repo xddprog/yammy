@@ -81,10 +81,15 @@ class RequestProvider(Provider):
         )
     
     @provide(scope=Scope.REQUEST)
-    def get_appearance_rating_service(self, session: AsyncSession, redis_client: RedisClient) -> services.AppearanceRatingService:
+    def get_appearance_rating_service(
+        self,
+        session: AsyncSession,
+        redis_client: RedisClient,
+    ) -> services.AppearanceRatingService:
         return services.AppearanceRatingService(
             appearance_rating_repository=repositories.AppearanceRatingRepository(session=session),
-            redis_client=redis_client
+            user_repository=repositories.UserRepository(session=session),
+            redis_client=redis_client,
         )
 
     @provide(scope=Scope.REQUEST)
@@ -156,6 +161,7 @@ class RequestProvider(Provider):
         return services.UserService(
             user_repository=repositories.UserRepository(session=session),
             like_repository=repositories.LikeRepository(session=session),
+            appearance_rating_repository=repositories.AppearanceRatingRepository(session=session),
             image_service=image_service,
             moderation_service=moderation_service,
             user_index_service=user_index_service,

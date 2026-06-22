@@ -10,7 +10,7 @@ from .chat import Chat
 from .message import Message
 from .payment import Payment
 from .report import Report
-from .rating import Rating
+from .appearance_rating_pair import AppearanceRatingPair
 from .ai_search_history import AiSearchHistory
 
 
@@ -29,6 +29,6 @@ __all__ = [
     "Message",
     "Payment",
     "Report",
-    "Rating",
+    "AppearanceRatingPair",
     "AiSearchHistory",
 ]

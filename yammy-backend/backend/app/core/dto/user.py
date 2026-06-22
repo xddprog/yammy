@@ -89,8 +89,11 @@ class UserProfileSchema(BaseUserSchema):
     adequacy_score: float = 10.0
     referrals_count: int = 0
     received_likes_count: int = 0
+    sent_likes_count: int = 0
     matches_count: int = 0
     profile_views_count: int = 0
+    received_appearance_ratings_count: int = 0
+    appearance_rating_average: float | None = None
     referral_code: str = ""
     filter_option_ids: list[UUID] = Field(default_factory=list, validation_alias="filters")
 

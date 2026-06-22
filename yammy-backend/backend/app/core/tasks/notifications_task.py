@@ -5,7 +5,7 @@ from app.core.clients.taskiq_client import broker
 from app.core.repositories.user_repository import UserRepository
 from app.core.services.notification_service import NotificationService
 from app.infrastructure.logging.logger import get_logger
-from app.utils.constants.cache_keys import LikeCacheKeys
+from app.utils.constants.cache_keys import AppearanceRatingCacheKeys, LikeCacheKeys
 
 
 logger = get_logger(__name__)
@@ -67,4 +67,34 @@ async def send_match_notification(
         return
 
     await notification_service.notify_new_match(recipient)
+
+
+@broker.task("send_mutual_appearance_rating_notification", retry_on_error=True, max_retries=10, delay=15)
+@inject(patch_module=True)
+async def send_mutual_appearance_rating_notification(
+    user_a_id: str,
+    user_b_id: str,
+    pair_id: str,
+    user_repository: FromDishka[UserRepository],
+    notification_service: FromDishka[NotificationService],
+    redis_client: FromDishka[RedisClient],
+) -> None:
+    dedup_key = AppearanceRatingCacheKeys.NOTIFY_MUTUAL_RATING_SENT.format(pair_id=pair_id)
+    allowed = await redis_client.set_if_not_exists(dedup_key, "1", ttl=NOTIFICATION_DEDUP_TTL)
+    if not allowed:
+        logger.info("mutual_appearance_rating_notification_skipped_duplicate", pair_id=pair_id)
+        return
+
+    user_a = await user_repository.get_item(user_a_id)
+    user_b = await user_repository.get_item(user_b_id)
+    if not user_a or not user_b:
+        logger.warning(
+            "mutual_appearance_rating_notification_users_not_found",
+            user_a_id=user_a_id,
+            user_b_id=user_b_id,
+        )
+        return
+
+    await notification_service.notify_mutual_appearance_rating(user_a, user_b)
+    await notification_service.notify_mutual_appearance_rating(user_b, user_a)
     

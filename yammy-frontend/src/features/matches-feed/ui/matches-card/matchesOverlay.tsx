@@ -30,6 +30,10 @@ export interface MatchesOverlayProps {
   onClose: () => void
   onLike?: () => void
   fromChat?: boolean
+  fromRatings?: boolean
+  receivedScore?: number
+  myScore?: number | null
+  onRate?: (score: number) => void
   /** Вызывается при клике на суперлайк; в аргументе — функция закрытия этого оверлея (для последующего закрытия после отправки огонька). */
   onSuperLike?: (closeParent: () => void) => void
 }
@@ -39,6 +43,10 @@ const OverlayContent = ({
   onClose,
   onLike,
   fromChat,
+  fromRatings,
+  receivedScore,
+  myScore,
+  onRate,
   onSuperLike,
 }: MatchesOverlayProps): React.JSX.Element => {
   const { data: filtersMetadata } = useFiltersMetadata()
@@ -71,6 +79,14 @@ const OverlayContent = ({
     job_sphere,
     job,
   } = item
+
+  const handleRate = useCallback(
+    (score: number) => {
+      onRate?.(score)
+      onClose()
+    },
+    [onClose, onRate],
+  )
 
   const handleLike = useCallback(() => {
     onLike?.()
@@ -192,10 +208,12 @@ const OverlayContent = ({
             </div>
             <div className="flex min-w-0 flex-col leading-[1.1]">
               <span className="text-[14px] font-bold text-white tracking-tight">
-                {match_percentage}% Мэтч
+                {fromRatings && receivedScore != null
+                  ? `${receivedScore}/10 Оценка`
+                  : `${match_percentage}% Мэтч`}
               </span>
               <span className="text-[10px] text-neutral-400 font-medium tracking-wide leading-none">
-                Вы на одной волне
+                {fromRatings ? 'Оценил вас' : 'Вы на одной волне'}
               </span>
             </div>
           </motion.div>
@@ -232,6 +250,9 @@ const OverlayContent = ({
             job={job}
             traitDisplaySections={traitDisplaySections}
             fromChat={fromChat}
+            fromRatings={fromRatings}
+            myScore={myScore}
+            onRate={handleRate}
             actionIndicator={
               <DragIndicator
                 onPointerDown={(e) => dragControls.start(e)}
@@ -254,6 +275,10 @@ type OpenProfileDetailsOptions = {
   item: UserSearchApiUser
   onLike?: () => void
   fromChat?: boolean
+  fromRatings?: boolean
+  receivedScore?: number
+  myScore?: number | null
+  onRate?: (score: number) => void
   onSuperLike?: (closeParent: () => void) => void
 }
 
@@ -274,6 +299,10 @@ export const useMatchesOverlay = () => {
             item={options.item}
             onLike={options.onLike}
             fromChat={options.fromChat}
+            fromRatings={options.fromRatings}
+            receivedScore={options.receivedScore}
+            myScore={options.myScore}
+            onRate={options.onRate}
             onSuperLike={options.onSuperLike}
             onClose={closeOverlay}
           />

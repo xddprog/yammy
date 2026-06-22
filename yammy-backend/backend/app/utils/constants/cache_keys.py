@@ -27,6 +27,7 @@ class LikeCacheKeys:
 class AppearanceRatingCacheKeys:
     APPEARANCE_RATING_BUFFER = "appearance_rating:buffer"
     APPEARANCE_RATED_USERS = "user:{user_id}:appearance_rated_users"
+    NOTIFY_MUTUAL_RATING_SENT = "notify:mutual_rating:{pair_id}"
 
 
 class CityCacheKeys:

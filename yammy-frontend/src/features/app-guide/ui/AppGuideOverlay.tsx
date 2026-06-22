@@ -47,6 +47,19 @@ const clipPathTransition =
 const backdropPanelClassName =
   'pointer-events-auto fixed bg-black/50 backdrop-blur-sm [transform:translateZ(0)]'
 
+function buildCircleHoleClipPath(
+  rect: TargetRect,
+  viewport: ReturnType<typeof getViewportBounds>,
+): string {
+  const cx = rect.left + rect.width / 2
+  const cy = rect.top + rect.height / 2
+  const radius = Math.min(rect.width, rect.height) / 2
+  const vw = viewport.width
+  const vh = viewport.height
+
+  return `path(evenodd, 'M 0 0 H ${vw} V ${vh} H 0 Z M ${cx + radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx - radius} ${cy} A ${radius} ${radius} 0 1 1 ${cx + radius} ${cy} Z')`
+}
+
 function buildHoleClipPath(
   rect: TargetRect,
   viewport: ReturnType<typeof getViewportBounds>,
@@ -76,7 +89,13 @@ function getViewportBounds(): {
   }
 }
 
-function GuideBackdrop({ targetRect }: { targetRect: TargetRect | null }): JSX.Element {
+function GuideBackdrop({
+  targetRect,
+  spotlightShape = 'rect',
+}: {
+  targetRect: TargetRect | null
+  spotlightShape?: 'rect' | 'circle'
+}): JSX.Element {
   const viewport = getViewportBounds()
 
   if (targetRect == null) {
@@ -91,7 +110,10 @@ function GuideBackdrop({ targetRect }: { targetRect: TargetRect | null }): JSX.E
     )
   }
 
-  const clipPath = buildHoleClipPath(targetRect, viewport)
+  const clipPath =
+    spotlightShape === 'circle'
+      ? buildCircleHoleClipPath(targetRect, viewport)
+      : buildHoleClipPath(targetRect, viewport)
 
   return (
     <div
@@ -113,10 +135,15 @@ function GuideBackdrop({ targetRect }: { targetRect: TargetRect | null }): JSX.E
 function GuideSpotlightRing({
   targetRect,
   borderRadius,
+  spotlightShape = 'rect',
 }: {
   targetRect: TargetRect
   borderRadius: number
+  spotlightShape?: 'rect' | 'circle'
 }): JSX.Element {
+  const resolvedBorderRadius =
+    spotlightShape === 'circle' ? Math.min(targetRect.width, targetRect.height) / 2 : borderRadius
+
   return (
     <motion.div
       className="pointer-events-none fixed ring-2 ring-white/35"
@@ -128,7 +155,7 @@ function GuideSpotlightRing({
         left: targetRect.left,
         width: targetRect.width,
         height: targetRect.height,
-        borderRadius,
+        borderRadius: resolvedBorderRadius,
       }}
       exit={{ opacity: 0, scale: 0.92 }}
       transition={spotlightTransition}
@@ -146,6 +173,7 @@ function clamp(value: number, min: number, max: number): number {
 
 function getStepTargetId(step: AppGuideStep): string | null {
   if (step.id === 'finish') return null
+  if (step.targetId != null) return step.targetId
   if (step.id === 'match-score' || step.id === 'profile-details') return 'details'
   return step.id
 }
@@ -324,6 +352,7 @@ export function AppGuideOverlay({
 
   const isPositioned = tooltipPosition != null
   const borderRadius = step.borderRadius ?? 16
+  const spotlightShape = step.spotlightShape ?? 'rect'
 
   return createPortal(
     <AnimatePresence>
@@ -338,13 +367,14 @@ export function AppGuideOverlay({
           transition={overlayFadeTransition}
           style={{ transform: 'none' }}
         >
-          <GuideBackdrop targetRect={targetRect} />
+          <GuideBackdrop targetRect={targetRect} spotlightShape={spotlightShape} />
           <AnimatePresence mode="wait" initial={false}>
             {targetRect ? (
               <GuideSpotlightRing
                 key="spotlight"
                 targetRect={targetRect}
                 borderRadius={borderRadius}
+                spotlightShape={spotlightShape}
               />
             ) : null}
           </AnimatePresence>

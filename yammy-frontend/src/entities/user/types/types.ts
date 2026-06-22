@@ -89,6 +89,12 @@ export interface FeedStackCardUser {
 /** Очередь GET appearance rating — тот же контракт, что минимальная карточка. */
 export type AppearanceRatingUserDto = FeedStackCardUser
 
+export interface AppearanceRatingReceivedItem extends UserSearchApiUser {
+  score: number
+  my_score: number | null
+  is_mutual: boolean
+}
+
 /** Ответ GET /api/v1/users/ (свой профиль). */
 export interface UserProfileDto {
   name: string
@@ -115,8 +121,11 @@ export interface UserProfileDto {
   adequacy_score: number
   referrals_count: number
   received_likes_count: number
+  sent_likes_count: number
   matches_count: number
   profile_views_count: number
+  received_appearance_ratings_count: number
+  appearance_rating_average: number | null
   /** Реферальная ссылка (Telegram deep link); ключ API — `referral_code`. */
   referral_code: string
   /** UUID выбранных `FilterOption` (как в PUT `filters`). */
