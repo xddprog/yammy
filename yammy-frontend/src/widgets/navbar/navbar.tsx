@@ -50,16 +50,23 @@ interface NavContentProps {
 }
 
 const NavContent = ({ icon: Icon, isActive }: NavContentProps): JSX.Element => (
-  <span
-    className={cn(
-      'flex shrink-0 items-center justify-center rounded-full bg-transparent',
-      'transition-all duration-100 ease-out group-active:scale-[0.92]',
-      isActive
-        ? 'h-[77px] w-[77px] bg-black text-[#FF6BA4] scale-100'
-        : 'h-14 w-14 text-black/70 group-hover:text-black',
-    )}
-  >
-    <Icon size={ICON_SIZE} className="shrink-0 transition-colors duration-200" aria-hidden="true" />
+  <span className="relative flex h-[77px] w-[77px] shrink-0 items-center justify-center">
+    <span
+      aria-hidden
+      className={cn(
+        'absolute rounded-full bg-black',
+        'transition-[width,height,opacity] duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)]',
+        isActive ? 'h-[77px] w-[77px] opacity-100' : 'h-14 w-14 opacity-0',
+      )}
+    />
+    <Icon
+      size={ICON_SIZE}
+      className={cn(
+        'relative z-10 shrink-0 transition-colors duration-300 ease-[cubic-bezier(0.22,0.61,0.36,1)]',
+        isActive ? 'text-[#FF6BA4]' : 'text-black/70 group-hover:text-black',
+      )}
+      aria-hidden="true"
+    />
   </span>
 )
 
