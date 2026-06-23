@@ -34,7 +34,7 @@ function ShufflingDeckText(): JSX.Element {
   }, [])
 
   return (
-    <p className="text-center text-[13px] font-[200] text-muted-foreground">
+    <p className="text-center text-[13px] font-[200] break-words text-muted-foreground">
       Колода перемешивается{'.'.repeat(dotCount)}
       <br />
       Можно закрыть — расклад продолжится в фоне.
@@ -92,15 +92,15 @@ const TarotCompatibilitySheetContent = ({
     item?.status !== 'searching'
 
   return (
-    <div className="w-full max-w-md rounded-t-[28px] border-t border-border/30 bg-background px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] shadow-[0_-8px_32px_rgba(0,0,0,0.35)]">
+    <div className="w-full min-w-0 max-w-md rounded-t-[28px] border-t border-border/30 bg-background px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] shadow-[0_-8px_32px_rgba(0,0,0,0.35)]">
       <div className="mb-4 min-w-0">
         <h2 className="text-[15px] font-[200] text-foreground">Расклад таро</h2>
-        <p className="mt-1 text-[12px] font-[200] text-muted-foreground">
+        <p className="mt-1 break-words text-[12px] font-[200] text-muted-foreground">
           Совместимость с {partnerName}
         </p>
       </div>
 
-      <div className="max-h-[min(70vh,560px)] overflow-y-auto no-scrollbar">
+      <div className="max-h-[min(70vh,560px)] min-w-0 overflow-x-hidden overflow-y-auto no-scrollbar">
         {isError && (
           <p className="mb-4 text-[13px] font-[200] text-red-400">
             Не удалось загрузить расклад. Попробуйте позже.
@@ -134,29 +134,31 @@ const TarotCompatibilitySheetContent = ({
         )}
 
         {isReady && item.result && (
-          <div className="space-y-5 pb-2">
-            <p className="text-center text-[14px] font-medium text-foreground">{item.result.summary}</p>
+          <div className="min-w-0 space-y-5 pb-2">
+            <p className="break-words text-center text-[14px] font-medium leading-snug text-foreground">
+              {item.result.summary}
+            </p>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               {item.result.cards.map((card) => (
                 <div
                   key={card.position}
-                  className="rounded-[20px] bg-card px-2 py-3 text-center ring-1 ring-inset ring-border/30"
+                  className="min-w-0 rounded-[20px] bg-card px-4 py-3 ring-1 ring-inset ring-border/30"
                 >
-                  <p className="mb-1 text-[10px] font-[200] uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-1 break-words text-[10px] font-[200] uppercase tracking-wide text-muted-foreground">
                     {POSITION_LABELS[card.position] ?? card.position}
                   </p>
-                  <p className="mb-2 text-[12px] font-medium leading-tight text-foreground">
+                  <p className="mb-2 break-words text-[13px] font-medium leading-snug text-foreground">
                     {card.name}
                   </p>
-                  <p className="text-[11px] font-[200] leading-snug text-muted-foreground">
+                  <p className="break-words text-[12px] font-[200] leading-snug text-muted-foreground">
                     {card.meaning}
                   </p>
                 </div>
               ))}
             </div>
 
-            <p className="text-[13px] font-[200] leading-relaxed text-foreground">
+            <p className="break-words text-[13px] font-[200] leading-relaxed text-foreground">
               {item.result.reading_text}
             </p>
 
