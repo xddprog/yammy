@@ -137,19 +137,6 @@ class AppearanceRatingRepository(SqlAlchemyRepository[AppearanceRatingPair]):
         await self.session.commit()
         return marked
 
-    async def batch_upsert_scores(
-        self, rating_buffer: list[dict[str, str | int]]
-    ) -> list[AppearanceRatingPairState]:
-        pairs: list[AppearanceRatingPairState] = []
-        for rating in rating_buffer:
-            pair = await self.upsert_score(
-                rater_user_id=UUID(str(rating["rater_user_id"])),
-                rated_user_id=UUID(str(rating["rated_user_id"])),
-                score=int(rating["score"]),
-            )
-            pairs.append(pair)
-        return pairs
-
     async def get_rated_user_ids(self, user_id: UUID) -> list[str]:
         query = select(AppearanceRatingPair).where(
             or_(
@@ -173,9 +160,25 @@ class AppearanceRatingRepository(SqlAlchemyRepository[AppearanceRatingPair]):
                 other_ids.append(str(row.user_a_id))
         return other_ids
 
+    async def count_sent_ratings(self, user_id: UUID) -> int:
+        query = select(func.count()).select_from(AppearanceRatingPair).where(
+            or_(
+                and_(
+                    AppearanceRatingPair.user_a_id == user_id,
+                    AppearanceRatingPair.score_by_a.is_not(None),
+                ),
+                and_(
+                    AppearanceRatingPair.user_b_id == user_id,
+                    AppearanceRatingPair.score_by_b.is_not(None),
+                ),
+            )
+        )
+        result = await self.session.execute(query)
+        return int(result.scalar_one())
+
     async def get_received_rating_stats(self, user_id: UUID) -> AppearanceRatingStatsSchema:
         received_score = self._received_score_expr(user_id)
-        count_query = select(func.count()).where(self._pending_received_filter(user_id))
+        count_query = select(func.count()).where(self._received_filter(user_id))
         avg_query = select(func.avg(received_score)).where(self._received_filter(user_id))
 
         count_result = await self.session.execute(count_query)

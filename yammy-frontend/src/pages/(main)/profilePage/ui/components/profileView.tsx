@@ -1,6 +1,9 @@
 import type { JSX } from 'react'
+import { memo } from 'react'
 
 import type { UserLanguage } from '@/entities/user/types/types'
+import { cn, useOverlay } from '@/shared'
+import { bottomSheetPanelClassNames } from '@/widgets'
 
 import { ProfileMainRow } from './profileMainRow'
 import {
@@ -9,6 +12,7 @@ import {
   ProfileLanguageSheetRow,
   ProfileNotificationsSheetRow,
   ProfileReferralSheetRow,
+  ProfileStatInfoSheetContent,
   ProfileSuperlikesSheetRow,
 } from './profileViewSettingsSheets'
 import { SubscriptionCard } from './subscriptionCard'
@@ -16,6 +20,7 @@ import { SubscriptionCard } from './subscriptionCard'
 interface ProfileStatChip {
   label: string
   value: string
+  description: string
 }
 
 interface ProfileViewProps {
@@ -35,7 +40,7 @@ interface ProfileViewProps {
   adequacyScore: number
   referralsCount: number
   receivedLikesCount: number
-  sentLikesCount: number
+  sentAppearanceRatingsCount: number
   matchesCount: number
   profileViewsCount: number
   receivedAppearanceRatingsCount: number
@@ -55,18 +60,48 @@ const formatAverageRating = (value: number | null): string =>
     ? value.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
     : '—'
 
-const ProfileStatsRow = ({ stats }: { stats: ProfileStatChip[] }): JSX.Element => (
-  <section className="grid grid-cols-3 gap-2">
-    {stats.map((stat) => (
-      <div key={stat.label} className="min-w-0 rounded-[18px] bg-card px-3 py-3 text-center">
-        <p className="truncate text-[11px] font-[200] uppercase tracking-[0.04em] text-muted-foreground">
-          {stat.label}
-        </p>
-        <p className="mt-1 truncate text-[13px] font-[200] text-foreground">{stat.value}</p>
-      </div>
-    ))}
-  </section>
-)
+const ProfileStatsRow = memo(function ProfileStatsRow({
+  stats,
+}: {
+  stats: ProfileStatChip[]
+}): JSX.Element {
+  const { open } = useOverlay()
+
+  return (
+    <section className="grid grid-cols-3 gap-2">
+      {stats.map((stat) => (
+        <button
+          key={stat.label}
+          type="button"
+          aria-label={stat.label}
+          onClick={() =>
+            open({
+              backdropClassName: 'bg-black/50 backdrop-blur-sm',
+              panelClassName: bottomSheetPanelClassNames,
+              content: (close) => (
+                <ProfileStatInfoSheetContent
+                  title={stat.label}
+                  value={stat.value}
+                  description={stat.description}
+                  close={close}
+                />
+              ),
+            })
+          }
+          className={cn(
+            'min-w-0 rounded-[18px] bg-card px-3 py-3 text-center transition-colors',
+            'hover:bg-card/85 active:scale-[0.99]',
+          )}
+        >
+          <p className="truncate text-[11px] font-[200] uppercase tracking-[0.04em] text-muted-foreground">
+            {stat.label}
+          </p>
+          <p className="mt-1 truncate text-[13px] font-[200] text-foreground">{stat.value}</p>
+        </button>
+      ))}
+    </section>
+  )
+})
 
 export const ProfileView = ({
   avatarUrl,
@@ -85,7 +120,7 @@ export const ProfileView = ({
   adequacyScore,
   referralsCount,
   receivedLikesCount,
-  sentLikesCount,
+  sentAppearanceRatingsCount,
   matchesCount,
   profileViewsCount,
   receivedAppearanceRatingsCount,
@@ -98,15 +133,40 @@ export const ProfileView = ({
   boostActivating,
 }: ProfileViewProps): JSX.Element => {
   const primaryStats: ProfileStatChip[] = [
-    { label: 'Лайкнули', value: formatCount(receivedLikesCount) },
-    { label: 'Мэтчи', value: formatCount(matchesCount) },
-    { label: 'Просмотры', value: formatCount(profileViewsCount) },
+    {
+      label: 'Лайкнули',
+      value: formatCount(receivedLikesCount),
+      description:
+        'Сколько лайков и суперлайков вы получили от других пользователей за всё время.',
+    },
+    {
+      label: 'Мэтчи',
+      value: formatCount(matchesCount),
+      description: 'Взаимные лайки — когда вы и другой человек лайкнули друг друга.',
+    },
+    {
+      label: 'Просмотры',
+      value: formatCount(profileViewsCount),
+      description: 'Сколько раз другие пользователи открывали вашу анкету.',
+    },
   ]
 
   const secondaryStats: ProfileStatChip[] = [
-    { label: 'Ср. оценка', value: formatAverageRating(appearanceRatingAverage) },
-    { label: 'Оценки', value: formatCount(receivedAppearanceRatingsCount) },
-    { label: 'Мои лайки', value: formatCount(sentLikesCount) },
+    {
+      label: 'Ср. оценка',
+      value: formatAverageRating(appearanceRatingAverage),
+      description: 'Средний балл внешности по всем полученным оценкам от других пользователей.',
+    },
+    {
+      label: 'Оценки',
+      value: formatCount(receivedAppearanceRatingsCount),
+      description: 'Сколько оценок внешности вы получили от других пользователей за всё время.',
+    },
+    {
+      label: 'Мои оценки',
+      value: formatCount(sentAppearanceRatingsCount),
+      description: 'Сколько оценок внешности вы поставили другим пользователям.',
+    },
   ]
 
   return (

@@ -90,6 +90,7 @@ class UserProfileSchema(BaseUserSchema):
     referrals_count: int = 0
     received_likes_count: int = 0
     sent_likes_count: int = 0
+    sent_appearance_ratings_count: int = 0
     matches_count: int = 0
     profile_views_count: int = 0
     received_appearance_ratings_count: int = 0

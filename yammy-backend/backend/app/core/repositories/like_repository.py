@@ -136,20 +136,9 @@ class LikeRepository(SqlAlchemyRepository[Like]):
         return total, liker_ids
 
     async def count_received_likes(self, user_to_id: UUID) -> int:
-        already_matched = exists(
-            select(1)
-            .select_from(Match)
-            .where(
-                or_(
-                    and_(Match.user1_id == user_to_id, Match.user2_id == Like.user_from_id),
-                    and_(Match.user2_id == user_to_id, Match.user1_id == Like.user_from_id),
-                )
-            )
-        )
         query = select(func.count(Like.user_from_id)).where(
             Like.user_to_id == user_to_id,
             Like.like_type.in_((LikeTypeEnum.LIKE, LikeTypeEnum.SUPERLIKE)),
-            ~already_matched,
         )
         result = await self.session.execute(query)
         return int(result.scalar_one())

@@ -54,6 +54,7 @@ class UserService:
         sent_likes_count = await self.like_repository.count_sent_likes(user_id)
         matches_count = await self.like_repository.count_matches(user_id)
         rating_stats = await self.appearance_rating_repository.get_received_rating_stats(user_id)
+        sent_appearance_ratings_count = await self.appearance_rating_repository.count_sent_ratings(user_id)
 
         return UserProfileSchema.model_validate(user, from_attributes=True).model_copy(
             update={
@@ -63,6 +64,7 @@ class UserService:
                 "matches_count": matches_count,
                 "received_appearance_ratings_count": rating_stats.received_count,
                 "appearance_rating_average": rating_stats.average_score,
+                "sent_appearance_ratings_count": sent_appearance_ratings_count,
             }
         )
 

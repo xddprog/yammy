@@ -68,9 +68,8 @@ const RateFeedComponent = forwardRef<MatchFeedAppendHandle, RateFeedProps>(funct
           onSwipeRight={handleSwipeRight}
           stackProgress={stackProgress}
           onRate={(rating) => {
-            if (index === 0 && onRate) {
-              onRate(item, rating)
-              handleSwipeRight() // Proceed to next card on rate
+            if (index === 0) {
+              onRate?.(item, rating)
             }
           }}
         />

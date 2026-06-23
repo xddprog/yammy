@@ -1,5 +1,5 @@
-import { motion, type MotionValue, useTransform } from 'framer-motion'
-import { memo, useState } from 'react'
+import { animate, motion, type MotionValue, useTransform } from 'framer-motion'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 import { useSwipeCardDrag } from '@/features/matches-feed/hooks/useSwipeCardDrag'
 import { useSwipeCardMotion } from '@/features/matches-feed/hooks/useSwipeCardMotion'
@@ -7,6 +7,9 @@ import { cn } from '@/shared'
 import { ImageCarousel } from '@/shared/ui/image/imageCarousel'
 
 import { RateCardActions } from './rateCardActions'
+
+const RATE_CARD_TRANSITION_DURATION = 0.22
+const RATE_CARD_TRANSITION_EASE = [0.22, 0.61, 0.36, 1] as const
 
 export interface RateCardProps {
   /** Массив URL фотографий для слайдера. */
@@ -50,13 +53,58 @@ const RateCardComponent = ({
   })
 
   const [isDragging, setIsDragging] = useState(false)
+  const [isExiting, setIsExiting] = useState(false)
+  const [isEntering, setIsEntering] = useState(false)
+  const wasBehindRef = useRef(stackIndex > 0)
+  const exitStartedRef = useRef(false)
+
+  useEffect(() => {
+    if (isTop && wasBehindRef.current) {
+      wasBehindRef.current = false
+      setIsEntering(true)
+      const timer = window.setTimeout(() => setIsEntering(false), RATE_CARD_TRANSITION_DURATION * 1000)
+      return () => window.clearTimeout(timer)
+    }
+    if (!isTop) {
+      wasBehindRef.current = true
+    }
+    return undefined
+  }, [isTop, stackIndex])
+
+  const handleRate = useCallback(
+    (rating: number) => {
+      if (isExiting || !isTop) return
+      exitStartedRef.current = true
+      setIsExiting(true)
+      onRate?.(rating)
+      void animate(progress, 1, {
+        duration: RATE_CARD_TRANSITION_DURATION,
+        ease: RATE_CARD_TRANSITION_EASE,
+      })
+    },
+    [isExiting, isTop, onRate, progress],
+  )
+
+  const handlePhotoAnimationComplete = useCallback(() => {
+    if (!exitStartedRef.current) return
+    exitStartedRef.current = false
+    onSwipeRight?.()
+  }, [onSwipeRight])
 
   const bottomBlurOpacity = useTransform(x, [-50, -15, 0, 15, 50], [0, 1, 1, 1, 0])
+
+  const photoAnimate = isExiting
+    ? { opacity: 0, scale: 0.94, y: -10 }
+    : isEntering
+      ? { opacity: 1, scale: 1, y: 0 }
+      : { opacity: 1, scale: 1, y: 0 }
+
+  const photoInitial = isEntering ? { opacity: 0.72, scale: 0.97, y: 12 } : false
 
   return (
     <motion.div
       className={cn(
-        'absolute inset-0 touch-none select-none overflow-hidden rounded-[48px] bg-card',
+        'absolute inset-0 touch-none select-none flex flex-col bg-background',
         className,
       )}
       style={{
@@ -65,9 +113,9 @@ const RateCardComponent = ({
         y,
         zIndex: 100 - stackIndex,
         scale,
-        cursor: isTop ? 'grab' : 'default',
+        cursor: isTop && !isExiting ? 'grab' : 'default',
       }}
-      drag={isTop ? 'x' : false}
+      drag={isTop && !isExiting ? 'x' : false}
       dragDirectionLock
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.6}
@@ -78,46 +126,53 @@ const RateCardComponent = ({
       }}
       initial={false}
     >
-      <div className="relative h-full w-full">
-        <ImageCarousel
-          enabledImageSwiping={true}
-          images={photos}
-          imageAlt={name ?? ''}
-          blur={false}
-          isTop={isTop}
-        />
-
-        {!isDragging && (
-          <motion.div
-            className="pointer-events-none absolute -inset-x-px -bottom-px z-0 h-[45%] bg-gradient-to-t from-black/80 via-black/40 to-transparent"
-            style={{ opacity: bottomBlurOpacity }}
+      <motion.div
+        className="min-h-0 flex-1"
+        initial={photoInitial}
+        animate={photoAnimate}
+        transition={{ duration: RATE_CARD_TRANSITION_DURATION, ease: RATE_CARD_TRANSITION_EASE }}
+        onAnimationComplete={isExiting ? handlePhotoAnimationComplete : undefined}
+      >
+        <div className="relative h-full min-h-0 overflow-hidden rounded-[48px] bg-card shadow-lg">
+          <ImageCarousel
+            enabledImageSwiping={!isExiting}
+            images={photos}
+            imageAlt={name ?? ''}
+            blur={false}
+            isTop={isTop}
           />
-        )}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 sm:bottom-8 flex flex-col justify-end z-10 w-full">
-          {(name != null || age != null || city != null) && (
-            <div className="flex flex-col gap-2 text-white px-7 pb-4">
-              {city != null && (
-                <span className="text-base font-light leading-[120%] tracking-[0]">{city}</span>
-              )}
-              {(name != null || age != null) && (
-                <span
-                  className="text-[32px] leading-[120%] tracking-[0]"
-                  style={{ fontWeight: 566 }}
-                >
-                  {[name, age != null ? `${age}` : null].filter(Boolean).join(', ')}
-                </span>
-              )}
-            </div>
+          {!isDragging && (
+            <motion.div
+              className="pointer-events-none absolute -inset-x-px -bottom-px z-0 h-[55%] bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+              style={{ opacity: bottomBlurOpacity }}
+            />
           )}
 
-          {isTop && (
-            <div className="w-full">
-              <RateCardActions onRate={onRate} />
-            </div>
-          )}
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex w-full flex-col justify-end">
+            {(name != null || age != null || city != null) && (
+              <div className="flex flex-col gap-1 px-7 text-white">
+                {city != null && (
+                  <span className="text-sm font-light leading-[120%] tracking-[0] opacity-90">
+                    {city}
+                  </span>
+                )}
+                {(name != null || age != null) && (
+                  <span className="text-[28px] font-semibold leading-[120%] tracking-[0]">
+                    {[name, age != null ? `${age}` : null].filter(Boolean).join(', ')}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </motion.div>
+
+      {isTop && (
+        <div className="z-20 w-full shrink-0 pb-1 pt-3">
+          <RateCardActions onRate={handleRate} disabled={isExiting} />
+        </div>
+      )}
     </motion.div>
   )
 }

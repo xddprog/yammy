@@ -74,9 +74,6 @@ class AppearanceRatingService:
         )
 
     async def add_appearance_rating(self, rater_user_id: UUID, rated_user_id: UUID, score: int):
-        field = f"{rater_user_id}:{rated_user_id}:{score}"
-        await self.redis_client.sadd(AppearanceRatingCacheKeys.APPEARANCE_RATING_BUFFER, field)
-
         rated_key = AppearanceRatingCacheKeys.APPEARANCE_RATED_USERS.format(user_id=rater_user_id)
         await self.redis_client.sadd(rated_key, str(rated_user_id), ttl=self.RATED_TTL)
 
@@ -94,56 +91,6 @@ class AppearanceRatingService:
             rated_user_id=str(rated_user_id),
             score=score,
         )
-
-    async def flush_appearance_ratings_to_db(self) -> dict[str, int]:
-        processing_key = f"{AppearanceRatingCacheKeys.APPEARANCE_RATING_BUFFER}:processing"
-        all_ratings = await self.redis_client.smembers(processing_key)
-        if not all_ratings:
-            swapped = await self.redis_client.rename_key(
-                AppearanceRatingCacheKeys.APPEARANCE_RATING_BUFFER,
-                processing_key,
-            )
-            if not swapped:
-                return {"flushed": 0}
-            all_ratings = await self.redis_client.smembers(processing_key)
-
-        if not all_ratings:
-            await self.redis_client.delete_by_key(processing_key)
-            return {"flushed": 0}
-
-        values = []
-        for field in all_ratings:
-            parts = field.split(":")
-            if len(parts) != 3:
-                logger.warning("Invalid appearance rating buffer entry", entry=field)
-                continue
-
-            rater_id, rated_id, score = parts
-            values.append({
-                "rater_user_id": rater_id,
-                "rated_user_id": rated_id,
-                "score": int(score),
-            })
-
-        if not values:
-            await self.redis_client.delete_by_key(processing_key)
-            return {"flushed": 0}
-
-        pairs = await self.appearance_rating_repository.batch_upsert_scores(values)
-        await self.redis_client.delete_by_key(processing_key)
-
-        notified = 0
-        for rating, pair in zip(values, pairs):
-            if await self._maybe_notify_mutual(
-                pair,
-                UUID(str(rating["rater_user_id"])),
-                UUID(str(rating["rated_user_id"])),
-            ):
-                notified += 1
-
-        logger.info("Appearance ratings flushed to DB", count=len(values), mutual_notified=notified)
-
-        return {"flushed": len(values), "mutual_notified": notified}
 
     async def _maybe_notify_mutual(
         self,

@@ -6,12 +6,14 @@ export interface RateCardActionsProps {
   onRate?: (rating: number) => void
   className?: string
   tone?: 'card' | 'black'
+  disabled?: boolean
 }
 
 const RateCardActionsComponent = ({
   onRate,
   className,
   tone = 'card',
+  disabled = false,
 }: RateCardActionsProps): React.JSX.Element => {
   const ratings = Array.from({ length: 10 }, (_, i) => i + 1)
 
@@ -24,6 +26,7 @@ const RateCardActionsComponent = ({
             type="button"
             variant={tone === 'black' ? 'black' : 'ghost'}
             size="icon"
+            disabled={disabled}
             className={cn(
               'aspect-square h-auto w-full p-0 flex items-center justify-center font-normal transition-all duration-200 active:scale-95 rounded-[16px]',
               tone === 'black'

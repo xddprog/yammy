@@ -65,6 +65,13 @@ USER_PROFILE_RESPONSE = {
         "language": "ru",
         "adequacy_score": 9.8,
         "referrals_count": 3,
+        "received_likes_count": 12,
+        "sent_likes_count": 8,
+        "sent_appearance_ratings_count": 15,
+        "matches_count": 4,
+        "profile_views_count": 120,
+        "received_appearance_ratings_count": 3,
+        "appearance_rating_average": 8.4,
         "referral_code": "https://t.me/yammy_bot?start=REFABCDEF12",
         "last_seen": "2023-11-20T15:30:00Z",
         "boost_expires_at": "2023-11-20T18:30:00Z"

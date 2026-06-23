@@ -560,3 +560,34 @@ export const ProfileAdequacySheetRow = memo(function ProfileAdequacySheetRow({
     </button>
   )
 })
+
+export const ProfileStatInfoSheetContent = memo(function ProfileStatInfoSheetContent({
+  title,
+  value,
+  description,
+  close,
+}: {
+  title: string
+  value: string
+  description: string
+  close: () => void
+}): JSX.Element {
+  return (
+    <SheetShell title={title} close={close}>
+      <p className="mb-3 text-[13px] font-[200] leading-snug text-muted-foreground">{description}</p>
+      <div className="pb-1">
+        <div className="flex min-h-[48px] items-center rounded-[24px] bg-card/60 px-4 py-2 ring-1 ring-inset ring-border/30">
+          <input
+            disabled
+            value={value}
+            aria-label={title}
+            className={cn(
+              'w-full cursor-not-allowed border-none bg-transparent py-1 text-[13px] font-[100] outline-none',
+              value === '—' ? 'text-muted-foreground' : 'text-foreground',
+            )}
+          />
+        </div>
+      </div>
+    </SheetShell>
+  )
+})

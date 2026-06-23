@@ -1,5 +1,4 @@
 from app.core.tasks.flush_dislikes_task import flush_dislikes_to_database
-from app.core.tasks.flush_appearance_ratings_task import flush_appearance_ratings_to_database
 from app.core.tasks.notifications_task import send_like_notification, send_match_notification, send_mutual_appearance_rating_notification
 from app.core.tasks.process_ai_search_history_task import process_ai_search_history
 from app.core.tasks.user_index_tasks import (
@@ -11,7 +10,6 @@ from app.core.tasks.user_index_tasks import (
 
 __all__ = [
     "flush_dislikes_to_database",
-    "flush_appearance_ratings_to_database",
     "send_like_notification",
     "send_match_notification",
     "send_mutual_appearance_rating_notification",
