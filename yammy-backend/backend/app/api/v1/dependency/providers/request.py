@@ -157,6 +157,19 @@ class RequestProvider(Provider):
         )
 
     @provide(scope=Scope.REQUEST)
+    def get_tarot_compatibility_service(
+        self,
+        session: AsyncSession,
+        openrouter_client: OpenRouterClient,
+    ) -> services.TarotCompatibilityService:
+        return services.TarotCompatibilityService(
+            tarot_history_repository=repositories.TarotCompatibilityHistoryRepository(session=session),
+            user_repository=repositories.UserRepository(session=session),
+            like_repository=repositories.LikeRepository(session=session),
+            openrouter_client=openrouter_client,
+        )
+
+    @provide(scope=Scope.REQUEST)
     def get_university_service(self, redis_client: RedisClient) -> services.UniversityService:
         return services.UniversityService(redis_client=redis_client)
 

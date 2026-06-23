@@ -7,6 +7,7 @@ from app.core.tasks.notifications_task import (
     send_mutual_appearance_rating_notification,
 )
 from app.core.tasks.process_ai_search_history_task import process_ai_search_history
+from app.core.tasks.process_tarot_compatibility_task import process_tarot_compatibility
 from app.core.tasks.user_index_tasks import (
     flush_presence_last_seen_to_es,
     reindex_user_in_es,
@@ -22,6 +23,7 @@ __all__ = [
     "send_match_notification",
     "send_mutual_appearance_rating_notification",
     "process_ai_search_history",
+    "process_tarot_compatibility",
     "reindex_user_in_es",
     "sync_user_ban_status_to_es",
     "flush_presence_last_seen_to_es",

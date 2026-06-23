@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCheck, Copy, Edit2, Reply, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { cn, showErrorToast } from '@/shared'
+import { cn, showErrorToast, useOverlay } from '@/shared'
 import { ERouteNames } from '@/shared/lib/routeVariables'
 
 import { useChatWebSocket, usePresence, usePresenceSubscription } from '@/entities/chat'
@@ -11,6 +11,7 @@ import type { ChatMessage } from '@/entities/chat'
 import { ChatHeader, MessageInput, MessageList } from '@/features/chats'
 import { AppPageLoader } from '@/app/ui/AppPageLoader'
 import { useMatchesOverlay } from '@/features/matches-feed/ui/matches-card/matchesOverlay'
+import { TarotCompatibilitySheetContentMemo } from '@/features/tarot-compatibility/ui/tarotCompatibilitySheet'
 
 const CHAT_AVATAR_FALLBACK = '/images/i.webp'
 
@@ -104,6 +105,23 @@ const ChatDetailPage = () => {
   const [menuMessage, setMenuMessage] = useState<ChatMessage | null>(null)
   const [menuRect, setMenuRect] = useState<DOMRect | null>(null)
   const { openProfileDetails } = useMatchesOverlay()
+  const { open: openOverlay } = useOverlay()
+
+  const openTarotCompatibility = useCallback(
+    (partnerUserId: string, partnerName: string) => {
+      openOverlay({
+        panelClassName: 'relative w-full max-w-md flex items-end',
+        content: (close) => (
+          <TarotCompatibilitySheetContentMemo
+            partnerUserId={partnerUserId}
+            partnerName={partnerName}
+            close={close}
+          />
+        ),
+      })
+    },
+    [openOverlay],
+  )
   const subscribedPeerIds = useMemo(() => (peer ? [peer.id] : []), [peer])
 
   usePresenceSubscription(subscribedPeerIds)
@@ -351,7 +369,12 @@ const ChatDetailPage = () => {
             profileLocked={isPeerBanned}
             onAvatarClick={() => {
               if (!peerProfile || isPeerBanned) return
-              openProfileDetails({ item: peerProfile, fromChat: true })
+              openProfileDetails({
+                item: peerProfile,
+                fromChat: true,
+                onTarotClick: () =>
+                  openTarotCompatibility(peerProfile.user_id, peerProfile.name),
+              })
             }}
           />
 

@@ -170,6 +170,11 @@ class AiSearchConfig(Config):
     DAILY_LIMIT_PREMIUM: int = Field(default=6)
 
 
+class TarotCompatibilityConfig(Config):
+    model_config = _settings_config(env_prefix="TAROT_COMPATIBILITY_CONFIG__")
+    DAILY_LIMIT: int = Field(default=1)
+
+
 class Settings(Config):
     telegram_config: TelegramConfig = Field(default_factory=TelegramConfig)
     database_config: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -181,6 +186,7 @@ class Settings(Config):
     gigdata_config: GigDataConfig = Field(default_factory=GigDataConfig)
     openrouter_config: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
     ai_search_config: AiSearchConfig = Field(default_factory=AiSearchConfig)
+    tarot_compatibility_config: TarotCompatibilityConfig = Field(default_factory=TarotCompatibilityConfig)
 
 
 settings = Settings()
@@ -196,10 +202,11 @@ ELASTICSEARCH_CONFIG = settings.elasticsearch_config
 GIGDATA_CONFIG = settings.gigdata_config
 OPENROUTER_CONFIG = settings.openrouter_config
 AI_SEARCH_CONFIG = settings.ai_search_config
+TAROT_COMPATIBILITY_CONFIG = settings.tarot_compatibility_config
 
 
 __all__ = [
     "BASE_DIR", "TELEGRAM_CONFIG", "DB_CONFIG",
     "JWT_CONFIG", "APP_CONFIG", "YANDEX_PAY_CONFIG", "ELASTICSEARCH_CONFIG",
-    "GIGDATA_CONFIG", "OPENROUTER_CONFIG", "AI_SEARCH_CONFIG",
+    "GIGDATA_CONFIG", "OPENROUTER_CONFIG", "AI_SEARCH_CONFIG", "TAROT_COMPATIBILITY_CONFIG",
 ]

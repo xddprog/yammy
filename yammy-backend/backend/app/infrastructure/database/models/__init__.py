@@ -12,6 +12,7 @@ from .payment import Payment
 from .report import Report
 from .appearance_rating_pair import AppearanceRatingPair
 from .ai_search_history import AiSearchHistory
+from .tarot_compatibility_history import TarotCompatibilityHistory
 
 
 __all__ = [
@@ -31,4 +32,5 @@ __all__ = [
     "Report",
     "AppearanceRatingPair",
     "AiSearchHistory",
+    "TarotCompatibilityHistory",
 ]

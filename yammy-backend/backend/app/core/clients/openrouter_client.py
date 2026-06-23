@@ -109,6 +109,155 @@ class OpenRouterClient:
 
         raise RuntimeError("OpenRouter request failed after retries")
 
+    async def generate_tarot_compatibility_reading(
+        self,
+        *,
+        seeker_profile: dict,
+        partner_profile: dict,
+    ) -> dict:
+        api_key = (OPENROUTER_CONFIG.API_KEY or "").strip()
+        if not api_key:
+            raise RuntimeError("OPENROUTER_CONFIG__API_KEY is not set")
+
+        prompt = (
+            "Сделай расклад таро на совместимость двух людей в dating-приложении.\n\n"
+            "Используй классический трёхкарточный расклад:\n"
+            "- past — что объединяет или отделяет их в прошлом опыте\n"
+            "- present — текущая энергия между ними\n"
+            "- future — потенциал отношений\n\n"
+            "Учитывай анкеты обоих (имя, возраст, пол, город, цель знакомства, bio, работа, характеристики).\n"
+            "Тон — лёгкий, романтичный, поддерживающий, на русском.\n"
+            "compatibility_score — целое число 0–100.\n"
+            "summary — короткий итог до 200 символов.\n"
+            "reading_text — развёрнутый текст расклада (3–6 предложений).\n"
+            "cards — ровно 3 объекта с полями name (название аркана на русском), "
+            'position ("past"|"present"|"future"), meaning (1–2 предложения).\n\n'
+            "Анкета пользователя (JSON):\n"
+            f"{json.dumps(seeker_profile, ensure_ascii=False)}\n\n"
+            "Анкета партнёра (JSON):\n"
+            f"{json.dumps(partner_profile, ensure_ascii=False)}\n\n"
+            'Верни только JSON-объект с полями compatibility_score, summary, cards, reading_text.'
+        )
+        payload = {
+            "model": OPENROUTER_CONFIG.MODEL,
+            "temperature": 0.7,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Ты таролог в dating-приложении. "
+                        "Верни только валидный JSON без markdown."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        timeout = ClientTimeout(total=OPENROUTER_CONFIG.REQUEST_TIMEOUT)
+        url = f"{OPENROUTER_CONFIG.API_URL.rstrip('/')}/chat/completions"
+        max_attempts = OPENROUTER_CONFIG.MAX_RETRIES + 1
+
+        for attempt in range(max_attempts):
+            try:
+                async with ClientSession(timeout=timeout) as session:
+                    async with session.post(url, json=payload, headers=headers) as response:
+                        body_text = await response.text()
+                        data = self._parse_response_body(body_text)
+                        if response.status >= 400:
+                            retry_after = self._retry_after_seconds(data, response.status)
+                            logger.warning(
+                                "openrouter_tarot_request_failed",
+                                status=response.status,
+                                attempt=attempt,
+                                retry_after_seconds=retry_after,
+                                model=OPENROUTER_CONFIG.MODEL,
+                                body_preview=body_text[:500],
+                            )
+                            if retry_after is not None and attempt < max_attempts - 1:
+                                await asyncio.sleep(retry_after)
+                            continue
+                        content = data["choices"][0]["message"]["content"]
+                        return self._parse_tarot_result(content)
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "openrouter_tarot_request_exception",
+                    attempt=attempt,
+                    exc_type="TimeoutError",
+                    model=OPENROUTER_CONFIG.MODEL,
+                )
+            except ClientError as exc:
+                logger.warning(
+                    "openrouter_tarot_request_exception",
+                    attempt=attempt,
+                    exc_type=type(exc).__name__,
+                    error=str(exc) or repr(exc),
+                    model=OPENROUTER_CONFIG.MODEL,
+                )
+            except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                logger.warning(
+                    "openrouter_tarot_request_exception",
+                    attempt=attempt,
+                    exc_type=type(exc).__name__,
+                    error=str(exc) or repr(exc),
+                    model=OPENROUTER_CONFIG.MODEL,
+                )
+
+        raise RuntimeError("OpenRouter tarot request failed after retries")
+
+    def _parse_tarot_result(self, raw: str) -> dict:
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        parsed = json.loads(cleaned)
+        if not isinstance(parsed, dict):
+            raise ValueError("Tarot response must be a JSON object")
+
+        score_raw = parsed.get("compatibility_score")
+        try:
+            compatibility_score = int(score_raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("invalid compatibility_score") from exc
+        compatibility_score = max(0, min(100, compatibility_score))
+
+        summary = str(parsed.get("summary", "")).strip()
+        reading_text = str(parsed.get("reading_text", "")).strip()
+        if not summary or not reading_text:
+            raise ValueError("summary and reading_text are required")
+
+        cards_raw = parsed.get("cards")
+        if not isinstance(cards_raw, list) or len(cards_raw) != 3:
+            raise ValueError("cards must contain exactly 3 items")
+
+        allowed_positions = {"past", "present", "future"}
+        cards: list[dict] = []
+        seen_positions: set[str] = set()
+        for card in cards_raw:
+            if not isinstance(card, dict):
+                raise ValueError("each card must be an object")
+            name = str(card.get("name", "")).strip()
+            position = str(card.get("position", "")).strip().lower()
+            meaning = str(card.get("meaning", "")).strip()
+            if not name or position not in allowed_positions or not meaning:
+                raise ValueError("invalid card fields")
+            if position in seen_positions:
+                raise ValueError("duplicate card position")
+            seen_positions.add(position)
+            cards.append({"name": name[:80], "position": position, "meaning": meaning[:500]})
+
+        if seen_positions != allowed_positions:
+            raise ValueError("cards must include past, present and future")
+
+        return {
+            "compatibility_score": compatibility_score,
+            "summary": summary[:200],
+            "cards": cards,
+            "reading_text": reading_text[:4000],
+        }
+
     @staticmethod
     def _retry_after_seconds(data: dict, status: int) -> float | None:
         if status != 429:

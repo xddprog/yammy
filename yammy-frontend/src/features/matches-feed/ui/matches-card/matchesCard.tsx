@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Flag, Flame, Heart, UserX, X } from 'lucide-react'
+import { Flag, Flame, Heart, Sparkles, UserX, X } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -34,6 +34,7 @@ interface MatchesCardContentProps {
   fromRatings?: boolean
   myScore?: number | null
   onRate?: (score: number) => void
+  onTarotClick?: () => void
   actionIndicator: React.ReactNode
   onClose: () => void
   onSuperLikeClick: () => void
@@ -63,6 +64,7 @@ export const MatchesCardContent = ({
   fromRatings = false,
   myScore = null,
   onRate,
+  onTarotClick,
   actionIndicator,
   onClose,
   onSuperLikeClick,
@@ -220,16 +222,36 @@ export const MatchesCardContent = ({
                   <RateCardActions tone="black" onRate={onRate} />
                 )
               ) : fromChat ? (
-                <Button
-                  type="button"
-                  variant="black"
-                  size="lg"
-                  className="w-full rounded-full"
-                  onClick={handleOpenBlock}
-                >
-                  <UserX className="mr-1 size-5" strokeWidth={1.8} />
-                  Заблокировать
-                </Button>
+                <div className="-mx-7 w-[calc(100%+3.5rem)] overflow-x-auto no-scrollbar snap-x snap-mandatory">
+                  <div className="flex gap-2 px-7">
+                    <div className="w-3 shrink-0 snap-start" aria-hidden />
+                    <div className="shrink-0 snap-start min-w-[calc(100%-3.5rem)]">
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="lg"
+                        className="w-full rounded-full shadow-lg shadow-[#FF6BA4]/25"
+                        onClick={onTarotClick}
+                      >
+                        <Sparkles className="mr-2 size-5" strokeWidth={1.6} />
+                        Расклад таро
+                      </Button>
+                    </div>
+                    <div className="shrink-0 snap-start min-w-[calc(100%-3.5rem)]">
+                      <Button
+                        type="button"
+                        variant="black"
+                        size="lg"
+                        className="w-full rounded-full"
+                        onClick={handleOpenBlock}
+                      >
+                        <UserX className="mr-1 size-5" strokeWidth={1.8} />
+                        Заблокировать
+                      </Button>
+                    </div>
+                    <div className="w-3 shrink-0 snap-end" aria-hidden />
+                  </div>
+                </div>
               ) : (
                 <>
                   <Button

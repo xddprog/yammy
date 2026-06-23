@@ -12,6 +12,7 @@ from app.api.v1.routers.client.report import router as report_router
 from app.api.v1.routers.client.universities import router as universities_router
 from app.api.v1.routers.client.cities import router as cities_router
 from app.api.v1.routers.client.filters import router as filters_router
+from app.api.v1.routers.client.tarot import router as tarot_router
 
 
 api_v1_routers = APIRouter(prefix="/api/v1")
@@ -28,3 +29,4 @@ api_v1_routers.include_router(presence_router, prefix="/presence", tags=["presen
 api_v1_routers.include_router(report_router, prefix="/reports", tags=["reports"])
 api_v1_routers.include_router(cities_router, prefix="/cities", tags=["cities"], dependencies=[PROTECTED])
 api_v1_routers.include_router(filters_router, prefix="/filters", tags=["filters"], dependencies=[PROTECTED])
+api_v1_routers.include_router(tarot_router, prefix="/tarot", tags=["tarot"], dependencies=[PROTECTED])

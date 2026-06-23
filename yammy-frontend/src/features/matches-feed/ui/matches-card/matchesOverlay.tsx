@@ -34,6 +34,7 @@ export interface MatchesOverlayProps {
   receivedScore?: number
   myScore?: number | null
   onRate?: (score: number) => void
+  onTarotClick?: () => void
   /** Вызывается при клике на суперлайк; в аргументе — функция закрытия этого оверлея (для последующего закрытия после отправки огонька). */
   onSuperLike?: (closeParent: () => void) => void
 }
@@ -47,6 +48,7 @@ const OverlayContent = ({
   receivedScore,
   myScore,
   onRate,
+  onTarotClick,
   onSuperLike,
 }: MatchesOverlayProps): React.JSX.Element => {
   const { data: filtersMetadata } = useFiltersMetadata()
@@ -253,6 +255,7 @@ const OverlayContent = ({
             fromRatings={fromRatings}
             myScore={myScore}
             onRate={handleRate}
+            onTarotClick={onTarotClick}
             actionIndicator={
               <DragIndicator
                 onPointerDown={(e) => dragControls.start(e)}
@@ -279,6 +282,7 @@ type OpenProfileDetailsOptions = {
   receivedScore?: number
   myScore?: number | null
   onRate?: (score: number) => void
+  onTarotClick?: () => void
   onSuperLike?: (closeParent: () => void) => void
 }
 
@@ -303,6 +307,7 @@ export const useMatchesOverlay = () => {
             receivedScore={options.receivedScore}
             myScore={options.myScore}
             onRate={options.onRate}
+            onTarotClick={options.onTarotClick}
             onSuperLike={options.onSuperLike}
             onClose={closeOverlay}
           />
