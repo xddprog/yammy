@@ -61,7 +61,7 @@ class ImageOrderUpdateSchema(BaseModel):
 
 class UserUpdateRequest(BaseModel):
     name: str | None = None
-    age: int | None = Field(default=None, ge=13, le=100)
+    age: int | None = Field(default=None, ge=16, le=100)
     gender: GenderEnum | None = None
     relationship_goal: RelationshipGoalEnum | None = None
     bio: str | None = None

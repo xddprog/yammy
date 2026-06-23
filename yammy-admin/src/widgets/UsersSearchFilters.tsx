@@ -88,7 +88,7 @@ export function UsersSearchFilters({
         </select>
         <Input
           type="number"
-          min={13}
+          min={16}
           max={100}
           value={value.ageMin}
           onChange={(e) => patch({ ageMin: e.target.value })}
@@ -96,7 +96,7 @@ export function UsersSearchFilters({
         />
         <Input
           type="number"
-          min={13}
+          min={16}
           max={100}
           value={value.ageMax}
           onChange={(e) => patch({ ageMax: e.target.value })}
