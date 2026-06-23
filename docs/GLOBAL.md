@@ -10,7 +10,7 @@
 | Правила слоёв бэкенда | Рефакторинг «ради чистоты», новые абстракции |
 
 **Подключение:** `@docs/GLOBAL.md`  
-**Репозиторий:** `/Users/mago/yammy` · **Обновлено:** 2026-06-19
+**Репозиторий:** `/Users/mago/yammy` · **Обновлено:** 2026-06-23
 
 ---
 
@@ -67,10 +67,10 @@ infrastructure/database/models/  → ORM без логики
 
 | Компонент | Назначение |
 |-----------|------------|
-| **Postgres** | users, photos, likes, matches, chats, messages, filters, reports, ratings, ai_search_history, payments (модель), subscriptions |
-| **Redis** | seen-лента, буфер дизлайков, буфер appearance ratings, кэш user vector |
+| **Postgres** | users, photos, likes, matches, chats, messages, filters, reports, `appearance_rating_pairs`, ai_search_history, payments (модель), subscriptions |
+| **Redis** | seen-лента, буфер дизлайков, кэш `appearance_rated_users`, idempotency уведомлений, presence last_seen buffer, кэш user vector |
 | **Elasticsearch** | поиск анкет в ленте, скоринг, trait boosts |
-| **Taskiq** | `flush_dislikes`, `flush_appearance_ratings`, `process_ai_search_history` |
+| **Taskiq** | `flush_dislikes`, `flush_presence_last_seen_to_es`, `reconcile_users_index_daily`, `process_ai_search_history`, уведомления (like/match/mutual rating), reindex ES |
 | **ML** (`ml_service`) | эмбеддинги bio, модерация текста/фото, детекция лиц |
 | **OpenRouter** | AI search (LLM отбор кандидатов) |
 | **Telegram Bot** | push: лайк, новый матч (`notification_service`) |
@@ -116,11 +116,14 @@ infrastructure/database/models/  → ORM без логики
 
 **Статистика профиля (`UserProfileSchema`):**
 
-- `received_likes_count` — все активные входящие like/superlike, как `GET /users/likes`: без дизлайков и без пар, уже ставших match; не зависит от того, открывалась ли страница лайков.
+- `received_likes_count` — **все** входящие like/superlike за всё время (включая уже ставших match).
 - `matches_count` — количество текущих матчей пользователя.
-- `profile_views_count` — простой инкремент в `users`; история просмотров и “кто смотрел” не хранятся.
+- `profile_views_count` — простой инкремент в `users`; история просмотров и «кто смотрел» не хранятся.
+- `appearance_rating_average` — средний балл по **всем** полученным оценкам внешности.
+- `received_appearance_ratings_count` — **все** полученные оценки за всё время (для чипа «Оценки» в профиле).
+- `sent_appearance_ratings_count` — сколько оценок пользователь поставил другим.
 
-**Фронт:** `pages/(main)/profilePage/` — просмотр/редактирование, фото, характеристики из каталога фильтров; отображение баланса суперлайков/бустов; под верхним блоком с именем — 3 чипа в одну строку: «Лайкнули», «Матчи», «Просмотры».
+**Фронт:** `pages/(main)/profilePage/` — просмотр/редактирование, фото, характеристики из каталога фильтров; отображение баланса суперлайков/бустов. Под `ProfileMainRow` — **две строки** по 3 чипа: «Лайкнули» / «Мэтчи» / «Просмотры» и «Ср. оценка» / «Оценки» / «Мои оценки». По клику на чип — нижний sheet с описанием метрики (как у рейтинга адекватности).
 
 ---
 
@@ -160,9 +163,9 @@ infrastructure/database/models/  → ORM без логики
 
 Пагинация `PaginationRequestModel` → список **`UserSearchResponseSchema`** (кто лайкнул, с match %).
 
-Исключаются пары, уже ставшие **Match**.
+Исключаются пары, уже ставшие **Match** — только **неотвеченные** входящие (в отличие от `received_likes_count` в профиле, который считает все лайки за всё время).
 
-**Фронт:** `pages/(main)/likesPage/`, сетка `LikesCard`, ответ взаимным like/dislike из оверлея профиля.
+**Фронт:** `pages/(main)/likesPage/` — переключатель **«Лайки» / «Оценки»**; lazy-загрузка активной вкладки (`enabled` в react-query). Лайки: сетка `LikesCard` + секция «Огоньки» для суперлайков. Оценки: `GET /appearance-ratings/received`, бейдж `score/10`, оверлей `fromRatings` с `RateCardActions`. Ответ взаимным like/dislike или оценкой из оверлея.
 
 **Суперлайк в API списка:** есть `like_type` и `like_message` (оба optional в `UserSearchResponseSchema` / `UserSearchApiUser`).
 
@@ -229,10 +232,15 @@ infrastructure/database/models/  → ORM без логики
 
 | Метод | Назначение |
 |-------|------------|
-| GET | Кандидаты для оценки (`get_users_for_appearance_rating`, limit 20) |
-| POST | Оценка 1–10 (`AppearanceRatingRequest`) → буфер Redis, flush таской |
+| GET `/appearance-ratings` | Кандидаты для оценки в ленте (`search_service.get_users_for_appearance_rating`, limit 20); exclude уже оцененных (Redis `appearance_rated_users` + fallback в PG) |
+| GET `/appearance-ratings/received` | Входящие оценки **без ответа** (как `GET /users/likes`): пагинация, профиль из Postgres + `score` / `my_score` / `is_mutual` |
+| POST `/appearance-ratings` | Оценка 1–10 → **сразу** `upsert` в `appearance_rating_pairs`; при взаимной оценке — Taskiq `send_mutual_appearance_rating_notification` (Telegram deep link) |
 
-**Фронт:** дашборд `?mode=rate`, `RateFeed`, `appearanceRatingService`.
+**Модель:** одна строка `appearance_rating_pairs` на пару пользователей (`user_a_id < user_b_id`), поля `score_by_a` / `score_by_b` и timestamps. Повторная оценка перезаписывает свой столбец.
+
+**Сервисы:** `AppearanceRatingService` — POST, GET `/received`, mutual notify; `SearchService` — только выдача кандидатов для rate-ленты.
+
+**Фронт:** дашборд `?mode=rate`, `RateFeed` / `RateCard` (фото отдельно, кнопки 1–10 снизу; fade-переход между карточками после оценки), `appearanceRatingService`, app-guide шаги `mode-toggle` и `mutual-rating`.
 
 ---
 
@@ -302,10 +310,17 @@ Dev: `admin/admin`, `support/support` · миграция `20260619_admin_panel`
 | Task | Назначение |
 |------|------------|
 | `flush_dislikes_to_database` | Redis dislike buffer → `likes` с `DISLIKE` |
-| `flush_appearance_ratings_to_database` | Redis ratings → `ratings` |
+| `flush_presence_last_seen_to_es` | Redis presence buffer → `last_seen` в ES |
+| `reconcile_users_index_daily` | Nightly backstop синхронизации users → ES |
 | `process_ai_search_history` | Pipeline OpenRouter в `AiSearchService.process_history_item` |
+| `send_like_notification` | Telegram: входящий лайк/суперлайк |
+| `send_match_notification` | Telegram: новый матч |
+| `send_mutual_appearance_rating_notification` | Telegram: взаимная оценка внешности (`tg://user?id=`) |
+| `reindex_user_in_es`, `sync_user_ban_status_to_es` | Event-driven синхронизация ES |
 
-Регистрация: импорт `app.core.tasks` в `taskiq_client.py`.
+Оценки внешности **не** буферизуются в Redis — POST пишет в Postgres синхронно.
+
+Регистрация: импорт `app.core.tasks` в `taskiq_client.py`. Подробнее: [TASKIQ_TASKS_EXPLANATION.md](./TASKIQ_TASKS_EXPLANATION.md).
 
 ---
 
@@ -318,7 +333,7 @@ Dev: `admin/admin`, `support/support` · миграция `20260619_admin_panel`
 | `matches` | Взаимный интерес |
 | `chats`, `messages` | Переписка после матча |
 | `filter_*`, `user_filter_association` | Характеристики анкеты |
-| `ratings` | Оценки внешности |
+| `appearance_rating_pairs` | Оценки внешности (пара пользователей, два направленных score) |
 | `reports` | Жалобы |
 | `ai_search_history` | Jobs AI поиска |
 | `blocks` | Модель есть, **публичного API нет** |
@@ -332,8 +347,8 @@ Dev: `admin/admin`, `support/support` · миграция `20260619_admin_panel`
 
 | Маршрут | Страница | Функционал |
 |---------|----------|------------|
-| `/dashboard` | `dashboardPage` | Свайп-лента (`SwipeFeed`) или рейтинг (`RateFeed`, `?mode=rate`); like/dislike; оверлей профиля; суперлайк UI |
-| `/likes` | `likesPage` | Входящие лайки: секция полноширинных суперлайков + отдельная сетка обычных лайков |
+| `/dashboard` | `dashboardPage` | Свайп-лента (`SwipeFeed`) или рейтинг (`RateFeed`, `?mode=rate`); like/dislike; оверлей профиля; суперлайк UI; app-guide |
+| `/likes` | `likesPage` | Вкладки **Лайки** / **Оценки**; входящие лайки и неотвеченные оценки; lazy API |
 | `/chats` | `chatsPage` | Список матчей/чатов |
 | `/chats/:id` | `chatDetailPage` | WS-чат, сообщения, typing, presence |
 | `/profile` | `profilePage` | Просмотр/редактирование анкеты и фото |
@@ -352,7 +367,7 @@ Dev: `admin/admin`, `support/support` · миграция `20260619_admin_panel`
 
 Финиш: `completeOnboarding` → `POST /auth/onboarding/finish` → очистка session storage → **`replace` на `/dashboard`** (экрана «Готово» нет). `notifications_enabled: true` по умолчанию.
 
-**Профиль (`profilePage`):** просмотр / редактирование; под `ProfileMainRow` — чипы `received_likes_count`, `matches_count`, `profile_views_count`; `ProfilePhotosEditor` на сервере (upload с rollback при ошибке модерации/API); меню главного фото как в чате (portal, blur). После успешного `PUT /users/` — `filters.persist(draft)` синхронизирует пересекающиеся поля ленты в `yammy_feed_filters_v1`.
+**Профиль (`profilePage`):** просмотр / редактирование; две строки stat-чипов с sheet-описаниями; `ProfileMainRow` без розового кольца вокруг аватарки; `ProfilePhotosEditor` на сервере (upload с rollback при ошибке модерации/API); меню главного фото как в чате (portal, blur). После успешного `PUT /users/` — `filters.persist(draft)` синхронизирует пересекающиеся поля ленты в `yammy_feed_filters_v1`.
 
 **Просмотр детальной анкеты:** `matchesOverlay.tsx` вызывает `recordProfileView(user_id)` при монтировании `OverlayContent`; карточка в ленте сама по себе просмотр не пишет. Backend endpoint — `POST /users/{user_id}/view`.
 
@@ -373,7 +388,7 @@ Dev: `admin/admin`, `support/support` · миграция `20260619_admin_panel`
 | AI search | `ai_search_service` |
 | Фильтры (каталог) | `filter_service` |
 | Города / вузы | `city_service`, `university_service` |
-| Appearance rating | `appearance_rating_service` (+ выдача кандидатов в `search_service`) |
+| Appearance rating | `appearance_rating_service` (POST, GET `/received`, mutual notify); кандидаты rate-ленты — `search_service` |
 | Чаты | `chat_service` |
 | Сообщения | `message_service` |
 | WebSocket hub | `websocket_service` |
@@ -411,7 +426,15 @@ SQL/миграция для статистики профиля: `migrations/ver
 
 ---
 
-*Последнее (2026-06-19):*
+*Последнее (2026-06-23):*
+
+- *Оценки внешности:* таблица `appearance_rating_pairs` (взаимные пары); POST сразу в PG (Redis-буфер и `flush_appearance_ratings_to_database` **удалены**); GET `/appearance-ratings/received` — только неотвеченные входящие; взаимная оценка → Taskiq + Telegram.
+- *Страница лайков:* вкладки «Лайки» / «Оценки», lazy queries, оверлей оценок с `RateCardActions`.
+- *Профиль:* две строки stat-чипов (лайки/мэтчи/просмотры + оценки); `received_likes_count` и `received_appearance_ratings_count` — за всё время; sheet с описанием по клику на чип.
+- *Rate-лента:* кнопки 1–10 под фото; fade-анимация смены карточки после оценки (без свайпа).
+- *App guide:* круглый spotlight для % метча; `mutual-rating` фокусирует `mode-toggle`.
+
+*Ранее (2026-06-19):*
 
 - *Семантический поиск в фильтрах ленты:* `search_text` в `POST /users/search` — эмбеддинг запроса vs `personality_vector` (bio); UI — поле «Поиск по описанию» в оверлее фильтров, `searchText` в `yammy_feed_filters_v1`.
 - *Profile stats (backend):* `GET /users/` возвращает `received_likes_count`, `matches_count`, `profile_views_count`; лайки/матчи считаются в `LikeRepository`; просмотры инкрементятся через `POST /users/{user_id}/view`.

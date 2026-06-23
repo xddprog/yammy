@@ -21,7 +21,8 @@ def configure_logging() -> None:
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             structlog.processors.UnicodeDecoder(),
-            structlog.processors.JSONRenderer() if not APP_CONFIG.DEBUG 
+            structlog.processors.JSONRenderer()
+            if not (APP_CONFIG.DEBUG or APP_CONFIG.PRETTY_LOGS)
             else structlog.dev.ConsoleRenderer(),
         ],
         wrapper_class=structlog.stdlib.BoundLogger,

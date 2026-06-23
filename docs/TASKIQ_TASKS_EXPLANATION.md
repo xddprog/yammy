@@ -25,15 +25,15 @@
 ### Periodic (cron) задачи
 
 1. `flush_dislikes_to_database` (каждые 15 минут)
-2. `flush_appearance_ratings_to_database` (каждые 15 минут)
-3. `flush_presence_last_seen_to_es` (каждые 5 минут)
-4. `reconcile_users_index_daily` (ежедневно в 04:00)
+2. `flush_presence_last_seen_to_es` (каждые 5 минут)
+3. `reconcile_users_index_daily` (ежедневно в 04:00)
 
 ### Event-driven (по enqueue из кода)
 
-5. `process_ai_search_history`
-6. `send_like_notification`
-7. `send_match_notification`
+4. `process_ai_search_history`
+5. `send_like_notification`
+6. `send_match_notification`
+7. `send_mutual_appearance_rating_notification`
 8. `reindex_user_in_es`
 9. `sync_user_ban_status_to_es`
 
@@ -64,18 +64,25 @@
 
 ---
 
-## `flush_appearance_ratings_to_database`
+## `send_mutual_appearance_rating_notification`
 
-**Файл:** `app/core/tasks/flush_appearance_ratings_task.py`  
-**Сервис:** `AppearanceRatingService.flush_appearance_ratings_to_db()`
+**Файл:** `app/core/tasks/notifications_task.py`  
+**Точка enqueue:** `AppearanceRatingService._maybe_notify_mutual(...)` после `upsert_score`, когда оба `score_by_a` и `score_by_b` заполнены
 
 ### Что делает
 
-- Аналогично дизлайкам, переносит ratings из Redis в БД пачкой.
+- Отправляет обоим пользователям Telegram-сообщение о взаимной оценке внешности.
+- В тексте — ссылка `tg://user?id=` на собеседника (`NotificationService.notify_mutual_appearance_rating`).
 
-### Важный принцип
+### Idempotency
 
-- Используется тот же паттерн `buffer -> processing` для защиты от потерь при конкурентной записи.
+- Перед enqueue вызывается `mark_mutual_notified` в PG (`mutual_notified_at`).
+- В задаче дополнительная проверка Redis-ключа `notify:mutual_rating:{pair_id}` (`SET NX EX`, TTL 1 час).
+
+### Почему не flush в Redis
+
+- Оценки пишутся **сразу** в `appearance_rating_pairs` при `POST /appearance-ratings`.
+- Буфер `appearance_rating:buffer` и cron `flush_appearance_ratings_to_database` **удалены** (2026-06-23).
 
 ---
 
@@ -210,8 +217,9 @@
 
 - `process_ai_search_history` — из `client/users` router после создания AI history item.
 - `send_like_notification`, `send_match_notification` — из `LikeService` после записи лайка/матча.
+- `send_mutual_appearance_rating_notification` — из `AppearanceRatingService` при взаимной оценке внешности.
 - `reindex_user_in_es` — из `UserService`.
-- `flush_*` и `reconcile_*` — запускаются scheduler по cron.
+- `flush_dislikes_to_database`, `flush_presence_last_seen_to_es`, `reconcile_users_index_daily` — scheduler по cron.
 
 ---
 
@@ -220,7 +228,7 @@
 ## Что уже гарантируется
 
 - Flush буферов без потерь на read/delete гонке.
-- Дедупликация уведомлений при retry.
+- Дедупликация уведомлений при retry (лайк, матч, взаимная оценка).
 - Один reindex task покрывает и обычный upsert, и пересчет vector (через флаг).
 - Nightly reconcile как backstop.
 - Retry задач на worker через встроенный middleware Taskiq.
@@ -244,6 +252,7 @@
    - `process_ai_search_history_started/finished`
    - `like_notification_skipped_duplicate`
    - `match_notification_skipped_duplicate`
+   - `mutual_appearance_rating_notification_skipped_duplicate`
    - `presence_last_seen_sync_failed`
 5. Если очередь недоступна, смотреть fallback ветки:
    - AI search: синхронная обработка в router.

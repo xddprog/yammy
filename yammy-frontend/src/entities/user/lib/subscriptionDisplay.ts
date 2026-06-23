@@ -11,3 +11,6 @@ export function formatSubscriptionExpiresAt(iso: string | null | undefined): str
 
 export const SUBSCRIPTION_PITCH =
   'Больше лайков, приоритет в ленте и расширенные фильтры — оформите подписку, чтобы находить людей быстрее!'
+
+export const SUBSCRIPTION_STUB_TOAST_MESSAGE =
+  'Пока доступен расширенный функционал без подписок!'

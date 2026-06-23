@@ -2,8 +2,8 @@ import { Crown } from 'lucide-react'
 import type { JSX } from 'react'
 
 
-import { Button } from '@/shared'
-import { formatSubscriptionExpiresAt, SUBSCRIPTION_PITCH } from '@/entities/user/lib/subscriptionDisplay'
+import { Button, showErrorToast } from '@/shared'
+import { formatSubscriptionExpiresAt, SUBSCRIPTION_PITCH, SUBSCRIPTION_STUB_TOAST_MESSAGE } from '@/entities/user/lib/subscriptionDisplay'
 
 interface SubscriptionCardProps {
   hasActiveSubscription: boolean
@@ -34,7 +34,17 @@ export const SubscriptionCard = ({
       <p className="text-[13px] font-[200] leading-snug text-muted-foreground">{SUBSCRIPTION_PITCH}</p>
     )}
     <div className="mt-4">
-      <Button type="button" variant="black" size="default" className="w-full rounded-full">
+      <Button
+        type="button"
+        variant="black"
+        size="default"
+        className="w-full rounded-full"
+        onClick={() => {
+          if (!hasActiveSubscription) {
+            showErrorToast(SUBSCRIPTION_STUB_TOAST_MESSAGE)
+          }
+        }}
+      >
         {hasActiveSubscription ? 'Управлять' : 'Подробнее'}
       </Button>
     </div>
