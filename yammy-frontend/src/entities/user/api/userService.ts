@@ -1,8 +1,9 @@
-import { isOnboardingSession } from '@/entities/token/lib/isOnboardingSession'
 import { authApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
-import { compressImageForUpload } from '@/shared/lib/compressImageForUpload'
 import type { PaginatedResponse } from '@/shared/api/pagination'
+import { compressImageForUpload } from '@/shared/lib/compressImageForUpload'
+
+const IMAGE_UPLOAD_TIMEOUT_MS = 180_000
 
 import type {
   FiltersMetadataResponse,
@@ -19,11 +20,10 @@ const FILTERS_ENDPOINT = 'api/v1/filters/'
 const PROFILE_ENDPOINT = 'api/v1/users/'
 const USER_IMAGE_ENDPOINT = 'api/v1/users/image'
 const USER_MAIN_IMAGE_ENDPOINT = 'api/v1/users/image/main'
-const USER_BOOST_ACTIVATE_ENDPOINT = 'api/v1/users/boosts/activate'
+const BOOST_ACTIVATE_ENDPOINT = 'api/v1/users/boosts/activate'
 
-const userImageOrderEndpoint = (imageId: string): string =>
-  `${USER_IMAGE_ENDPOINT}/${imageId}/order`
-const profileViewEndpoint = (userId: string): string => `api/v1/users/${userId}/view`
+const userImageOrderEndpoint = (imageId: string) => `${USER_IMAGE_ENDPOINT}/${imageId}/order`
+const profileViewEndpoint = (userId: string) => `api/v1/users/${userId}/view`
 
 export class UserService {
   public async getUsersSearch(body: SearchUsersRequest): Promise<UserSearchApiUser[]> {
@@ -52,8 +52,7 @@ export class UserService {
   }
 
   public async getFilters(): Promise<FiltersMetadataResponse> {
-    const path = isOnboardingSession() ? 'api/v1/auth/onboarding/filters' : FILTERS_ENDPOINT
-    const response = await authApi.get(path)
+    const response = await authApi.get(FILTERS_ENDPOINT)
 
     if (!response.ok) {
       await throwApiError(response, 'Ошибка загрузки фильтров')
@@ -90,12 +89,22 @@ export class UserService {
     }
   }
 
+  public async activateBoost(): Promise<void> {
+    const response = await authApi.post(BOOST_ACTIVATE_ENDPOINT)
+    if (!response.ok) {
+      await throwApiError(response, 'Активация буста')
+    }
+  }
+
   /** Доп. фото: модерация + сохранение (POST). */
   public async uploadUserGalleryPhoto(file: File): Promise<UserProfilePhotoDto> {
     const prepared = await compressImageForUpload(file)
     const formData = new FormData()
     formData.append('image', prepared)
-    const response = await authApi.post(USER_IMAGE_ENDPOINT, { body: formData })
+    const response = await authApi.post(USER_IMAGE_ENDPOINT, {
+      body: formData,
+      timeout: IMAGE_UPLOAD_TIMEOUT_MS,
+    })
     if (!response.ok) {
       await throwApiError(response, 'Загрузка фото')
     }
@@ -118,7 +127,10 @@ export class UserService {
     const prepared = await compressImageForUpload(file)
     const formData = new FormData()
     formData.append('image', prepared)
-    const response = await authApi.patch(USER_MAIN_IMAGE_ENDPOINT, { body: formData })
+    const response = await authApi.patch(USER_MAIN_IMAGE_ENDPOINT, {
+      body: formData,
+      timeout: IMAGE_UPLOAD_TIMEOUT_MS,
+    })
     if (!response.ok) {
       await throwApiError(response, 'Главное фото')
     }
@@ -147,13 +159,6 @@ export class UserService {
       await throwApiError(response, 'Удаление фото')
     }
   }
-
-  public async activateBoost(): Promise<void> {
-    const response = await authApi.post(USER_BOOST_ACTIVATE_ENDPOINT)
-    if (!response.ok) {
-      await throwApiError(response, 'Активация буста')
-    }
-  }
 }
 
 export const userService = new UserService()
@@ -164,10 +169,10 @@ export const {
   getUserProfile,
   updateUserProfile,
   recordProfileView,
+  activateBoost,
   uploadUserGalleryPhoto,
   uploadUserMainPhoto,
   setMainFromGalleryPhoto,
   updateUserPhotosOrder,
   deleteUserGalleryPhoto,
-  activateBoost,
 } = userService

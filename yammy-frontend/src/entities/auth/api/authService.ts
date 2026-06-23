@@ -1,6 +1,7 @@
 import { authApi, publicApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
 import { compressImageForUpload } from '@/shared/lib/compressImageForUpload'
+import { rememberTelegramInitData } from '@/app/providers/readTelegramInitData'
 import {
   deleteRefreshToken,
   setAccessToken,
@@ -14,6 +15,8 @@ import type { CurrentUser } from '../types/types'
 const CURRENT_USER_ENDPOINT = 'api/v1/auth/current_user'
 const TELEGRAM_LOGIN_ENDPOINT = 'api/v1/auth/telegram'
 const ONBOARDING_FINISH_ENDPOINT = 'api/v1/auth/onboarding/finish'
+/** Загрузка фото с телефона через ngrok может занимать несколько минут. */
+const ONBOARDING_FINISH_TIMEOUT_MS = 300_000
 
 type TokenPair = {
   access_token: string
@@ -31,6 +34,7 @@ function applyTokenPair(data: TokenPair): void {
 
 export class AuthService {
   public async loginTelegram(initData: string): Promise<TokenPair> {
+    rememberTelegramInitData(initData)
     const response = await publicApi.post(TELEGRAM_LOGIN_ENDPOINT, {
       json: { init_data: initData },
     })
@@ -56,7 +60,10 @@ export class AuthService {
       formData.append('images', file)
     }
 
-    const response = await authApi.post(ONBOARDING_FINISH_ENDPOINT, { body: formData })
+    const response = await authApi.post(ONBOARDING_FINISH_ENDPOINT, {
+      body: formData,
+      timeout: ONBOARDING_FINISH_TIMEOUT_MS,
+    })
     if (!response.ok) {
       await throwApiError(response, 'Регистрация')
     }

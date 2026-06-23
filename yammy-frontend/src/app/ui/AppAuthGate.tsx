@@ -29,13 +29,32 @@ function BannedScreen(): JSX.Element {
   )
 }
 
+function ProfileLoadErrorScreen({ onRetry }: { onRetry: () => void }): JSX.Element {
+  return (
+    <div className="mx-auto flex h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
+      <h1 className="text-lg font-semibold text-white">Не удалось загрузить профиль</h1>
+      <p className="text-sm font-light text-muted-foreground">
+        Проверьте интернет и попробуйте снова. Если только что завершили регистрацию — подождите
+        немного и обновите.
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black"
+      >
+        Повторить
+      </button>
+    </div>
+  )
+}
+
 export function AppAuthGate(): JSX.Element {
   const location = useLocation()
   const hasToken = Boolean(getAccessToken())
   const onboardingSession = isOnboardingSession()
   const isOnboardingRoute = location.pathname.includes(ERouteNames.ONBOARDING_ROUTE)
 
-  const { data: profile, isLoading, isError } = useUserProfile({
+  const { data: profile, isLoading, isError, refetch } = useUserProfile({
     enabled: hasToken && !onboardingSession,
     retry: 1,
   })
@@ -66,7 +85,7 @@ export function AppAuthGate(): JSX.Element {
     if (import.meta.env.DEV) {
       return <Outlet />
     }
-    return <TelegramRequiredScreen />
+    return <ProfileLoadErrorScreen onRetry={() => void refetch()} />
   }
 
   if (profile.is_banned) {

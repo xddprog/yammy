@@ -2,6 +2,7 @@ import { loginTelegram } from '@/entities/auth/api/authService'
 import {
   deleteAccessToken,
   deleteRefreshToken,
+  getAccessToken,
   getRefreshToken,
   setAccessToken,
   setRefreshToken,
@@ -17,6 +18,9 @@ type TokenPair = {
   access_token: string
   refresh_token: string
 }
+
+const INIT_DATA_POLL_MS = 100
+const INIT_DATA_POLL_ATTEMPTS = 50
 
 async function tryRestoreSessionFromRefresh(): Promise<boolean> {
   const refresh = getRefreshToken()
@@ -42,16 +46,24 @@ async function tryRestoreSessionFromRefresh(): Promise<boolean> {
   return true
 }
 
-async function getTelegramInitData(): Promise<string | null> {
-  const fromLaunch = readTelegramInitDataFromLaunch()
-  if (fromLaunch) {
-    return fromLaunch
+async function waitForTelegramInitData(): Promise<string | null> {
+  let initData = readTelegramInitDataFromLaunch()
+  if (initData) {
+    return initData
   }
 
   try {
     await loadTelegramWebAppScript()
   } catch {
     return readTelegramInitDataFromLaunch()
+  }
+
+  for (let attempt = 0; attempt < INIT_DATA_POLL_ATTEMPTS; attempt += 1) {
+    initData = readTelegramInitDataFromLaunch()
+    if (initData) {
+      return initData
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, INIT_DATA_POLL_MS))
   }
 
   return readTelegramInitDataFromLaunch()
@@ -66,8 +78,6 @@ export async function ensureAppAuth(): Promise<void> {
     deleteAccessToken()
     deleteRefreshToken()
 
-    // В dev всегда заглушка / dev/onboarding — не loginTelegram(initData): в TMA initData
-    // часто без hash, а при ENVIRONMENT=production бэк отвечает 400.
     if (import.meta.env.VITE_DEV_AUTH === 'onboarding') {
       await ensureDevOnboardingToken()
       return
@@ -77,18 +87,30 @@ export async function ensureAppAuth(): Promise<void> {
     return
   }
 
-  const initData = await getTelegramInitData()
-  if (!initData) {
-    deleteAccessToken()
-    deleteRefreshToken()
+  if (await tryRestoreSessionFromRefresh()) {
     return
   }
 
-  try {
-    await loginTelegram(initData)
-  } catch (error) {
-    deleteAccessToken()
-    deleteRefreshToken()
-    console.warn('[auth] telegram login failed', error)
+  const existingAccess = getAccessToken()
+  const initData = await waitForTelegramInitData()
+
+  if (initData) {
+    try {
+      await loginTelegram(initData)
+    } catch (error) {
+      if (!existingAccess) {
+        deleteAccessToken()
+        deleteRefreshToken()
+      }
+      console.warn('[auth] telegram login failed', error)
+    }
+    return
   }
+
+  if (existingAccess) {
+    return
+  }
+
+  deleteAccessToken()
+  deleteRefreshToken()
 }

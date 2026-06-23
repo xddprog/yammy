@@ -1,11 +1,19 @@
-import { readTelegramInitDataFromLaunch } from './readTelegramInitData'
-
 const TELEGRAM_WEB_APP_SCRIPT = 'https://telegram.org/js/telegram-web-app.js'
 
-/** Не вешать загрузку на index.html — иначе main.tsx не стартует, пока telegram.org не ответит. */
+function telegramBridgeInitData(): string | null {
+  const initData = (
+    window as Window & { Telegram?: { WebApp?: { initData?: string } } }
+  ).Telegram?.WebApp?.initData?.trim()
+  return initData || null
+}
+
+function isScriptOnPage(): boolean {
+  return Boolean(document.querySelector(`script[src="${TELEGRAM_WEB_APP_SCRIPT}"]`))
+}
+
+/** Дожидается telegram-web-app.js (из index.html или подгружает). */
 export function loadTelegramWebAppScript(): Promise<void> {
-  // Desktop/Web: нативный stub WebApp без initData — всё равно грузим SDK, он прочитает #tgWebAppData.
-  if (readTelegramInitDataFromLaunch()) {
+  if (telegramBridgeInitData()) {
     return Promise.resolve()
   }
 
@@ -14,6 +22,10 @@ export function loadTelegramWebAppScript(): Promise<void> {
   )
   if (existing) {
     return new Promise((resolve, reject) => {
+      if (telegramBridgeInitData()) {
+        resolve()
+        return
+      }
       existing.addEventListener('load', () => resolve(), { once: true })
       existing.addEventListener('error', () => reject(new Error('telegram-web-app.js')), {
         once: true,
@@ -29,4 +41,8 @@ export function loadTelegramWebAppScript(): Promise<void> {
     script.onerror = () => reject(new Error('telegram-web-app.js'))
     document.head.appendChild(script)
   })
+}
+
+export function isTelegramWebAppScriptPresent(): boolean {
+  return isScriptOnPage() || Boolean(telegramBridgeInitData())
 }
