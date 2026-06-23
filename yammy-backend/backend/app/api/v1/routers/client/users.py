@@ -81,7 +81,7 @@ async def record_profile_view(
 @router.post(
     "/search",
     dependencies=[
-        Depends(RateLimited(4, Duration.MINUTE))
+        Depends(RateLimited(7, Duration.MINUTE))
     ]
 )
 @inject

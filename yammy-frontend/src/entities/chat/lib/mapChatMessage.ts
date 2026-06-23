@@ -1,7 +1,7 @@
 import type { ChatMessageDto } from '../types/chatSocket'
 import type { ChatMessage } from '../types/message'
 
-function formatMessageTimestamp(iso: string): string {
+export function formatMessageTimestamp(iso: string): string {
   const date = new Date(iso)
   const now = new Date()
 

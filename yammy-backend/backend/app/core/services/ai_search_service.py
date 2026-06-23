@@ -24,6 +24,9 @@ logger = get_logger(__name__)
 
 MSG_AI_SEARCH_FAILED = "Не удалось выполнить поиск. Попробуйте позже."
 MSG_AI_SEARCH_NO_CANDIDATES = "Не удалось подобрать анкеты по запросу"
+MSG_AI_SEARCH_NO_VIEWABLE_CANDIDATES = (
+    "Подобранные анкеты уже были оценены ранее. Запустите поиск ещё раз."
+)
 
 
 class AiSearchService:
@@ -101,10 +104,15 @@ class AiSearchService:
             )
 
         raw_results = item.results_json or []
+        interacted_ids = {
+            str(uid) for uid in await self.like_repository.get_outgoing_interaction_user_ids(user.id)
+        }
+        viewable_results = self._filter_viewable_results(raw_results, interacted_ids)
+
         ordered_ids: list[UUID] = []
         highlights: dict[str, str] = {}
         match_percentages: dict[str, int] = {}
-        for result in raw_results:
+        for result in viewable_results:
             cid = result.get("id")
             if not cid:
                 continue
@@ -118,11 +126,6 @@ class AiSearchService:
                 match_percentages[str(uid)] = int(result.get("match_percentage", 0))
             except (TypeError, ValueError):
                 match_percentages[str(uid)] = 0
-
-        interacted_ids = {
-            str(uid) for uid in await self.like_repository.get_outgoing_interaction_user_ids(user.id)
-        }
-        ordered_ids = [uid for uid in ordered_ids if str(uid) not in interacted_ids]
 
         users = await self.user_repository.get_users_for_search_feed_by_ids(ordered_ids)
         user_map = {str(u.id): u for u in users}
@@ -184,7 +187,7 @@ class AiSearchService:
             if not results:
                 await self._mark_failed(item_id, MSG_AI_SEARCH_NO_CANDIDATES)
                 return
-            await self._mark_ready(item_id, results)
+            await self._mark_ready(item_id, user_id, results)
             logger.info(
                 "ai_search_history_completed",
                 history_id=history_id_str,
@@ -194,7 +197,7 @@ class AiSearchService:
         except Exception:
             logger.exception("ai_search_history_processing_error", history_id=history_id_str)
             if results:
-                await self._mark_ready(item_id, results)
+                await self._mark_ready(item_id, user_id, results)
                 logger.warning(
                     "ai_search_history_completed_after_error",
                     history_id=history_id_str,
@@ -207,12 +210,30 @@ class AiSearchService:
     def _has_feed_results(item) -> bool:
         return bool(item.results_json) and (item.result_count or 0) > 0
 
-    async def _mark_ready(self, history_id: UUID, results: list[dict]) -> None:
+    @staticmethod
+    def _filter_viewable_results(results: list[dict], interacted_ids: set[str]) -> list[dict]:
+        viewable: list[dict] = []
+        for result in results:
+            candidate_id = result.get("id")
+            if not candidate_id or str(candidate_id) in interacted_ids:
+                continue
+            viewable.append(result)
+        return viewable
+
+    async def _mark_ready(self, history_id: UUID, user_id: UUID, results: list[dict]) -> None:
+        interacted_ids = {
+            str(uid) for uid in await self.like_repository.get_outgoing_interaction_user_ids(user_id)
+        }
+        viewable_results = self._filter_viewable_results(results, interacted_ids)
+        if not viewable_results:
+            await self._mark_failed(history_id, MSG_AI_SEARCH_NO_VIEWABLE_CANDIDATES)
+            return
+
         await self.ai_search_history_repository.update_item(
             str(history_id),
             status=AiSearchHistoryStatusEnum.READY,
-            result_count=len(results),
-            results_json=results,
+            result_count=len(viewable_results),
+            results_json=viewable_results,
             completed_at=datetime.now(timezone.utc),
             error_message=None,
         )
@@ -252,7 +273,7 @@ class AiSearchService:
         query_text: str,
     ) -> list[dict]:
         unique: dict[str, dict] = {}
-        excluded_ids = {user_id}
+        excluded_ids = await self._get_excluded_candidate_ids(user_id)
         user_id_str = str(user_id)
         llm_calls = 0
 
@@ -285,7 +306,9 @@ class AiSearchService:
 
             for item in selected:
                 cid = str(item["id"])
-                if cid in unique:
+                if cid in unique or cid in {str(uid) for uid in excluded_ids if str(uid) != user_id_str}:
+                    continue
+                if cid == user_id_str:
                     continue
                 unique[cid] = {
                     "id": cid,

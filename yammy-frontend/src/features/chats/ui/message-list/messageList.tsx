@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 
 import { AppLogoLoader } from '@/app/ui/AppLogoLoader'
 import type { ChatMessage } from '@/entities/chat'
 
+import { buildMessageLayoutMeta } from '../../lib/messageGrouping'
 import { MessageBubble } from '../message-bubble/messageBubble'
 
 interface MessageListProps {
@@ -44,7 +45,14 @@ export const MessageList = ({
     if (!el) {
       return
     }
+    const input = document.querySelector<HTMLTextAreaElement>('textarea[data-message-input]')
+    const shouldRefocus = input != null && document.activeElement === input
+
     el.scrollTop = el.scrollHeight
+
+    if (shouldRefocus) {
+      requestAnimationFrame(() => input.focus())
+    }
   }, [scrollToBottomKey, messages.length])
 
   // Подгрузка старых сообщений: остаёмся на том же месте (стандартный приём для prepend).
@@ -137,39 +145,51 @@ export const MessageList = ({
     onLoadOlderMessages()
   }
 
+  const layoutMeta = useMemo(() => buildMessageLayoutMeta(messages), [messages])
+
   return (
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="flex flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto px-4 py-2 no-scrollbar"
+      className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto px-4 py-2 no-scrollbar"
     >
       {isLoadingMessages && messages.length > 0 && (
         <div className="flex shrink-0 justify-center py-2" aria-busy aria-label="Подгрузка сообщений">
           <AppLogoLoader size="small" />
         </div>
       )}
-      {messages.map((msg) => (
-        <div key={msg.id} data-message-id={msg.id}>
-          <MessageBubble
-            id={msg.id}
-            text={msg.text}
-            images={msg.images}
-            senderId={msg.senderId}
-            timestamp={msg.timestamp}
-            isRead={msg.isRead}
-            isEdited={msg.isEdited}
-            isDeleted={msg.isDeleted}
-            uploadStatus={msg.uploadStatus}
-            replyToId={msg.replyToId}
-            replyToText={msg.replyToText}
-            replyToName={msg.replyToName}
-            onOpenMenu={onOpenMenu}
-            onSwipeReply={
-              interactionsLocked || isMenuOpen ? undefined : () => onReplyMessage(msg.id)
-            }
-          />
-        </div>
-      ))}
+      {messages.map((msg, index) => {
+        const meta = layoutMeta[index]
+        return (
+          <div
+            key={msg.id}
+            data-message-id={msg.id}
+            className={meta.isGroupedWithPrev ? 'mt-0.5' : 'mt-3'}
+          >
+            <MessageBubble
+              id={msg.id}
+              text={msg.text}
+              images={msg.images}
+              senderId={msg.senderId}
+              timestamp={meta.displayTimestamp}
+              showTimestamp={meta.showTimestamp}
+              groupPosition={meta.groupPosition}
+              isGroupedWithPrev={meta.isGroupedWithPrev}
+              isRead={msg.isRead}
+              isEdited={msg.isEdited}
+              isDeleted={msg.isDeleted}
+              uploadStatus={msg.uploadStatus}
+              replyToId={msg.replyToId}
+              replyToText={msg.replyToText}
+              replyToName={msg.replyToName}
+              onOpenMenu={onOpenMenu}
+              onSwipeReply={
+                interactionsLocked || isMenuOpen ? undefined : () => onReplyMessage(msg.id)
+              }
+            />
+          </div>
+        )
+      })}
     </div>
   )
 }

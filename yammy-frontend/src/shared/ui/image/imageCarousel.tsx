@@ -20,6 +20,8 @@ export interface ImageCarouselProps {
   enabledImageSwiping?: boolean
   /** Вызывается при смене слайда. Рекомендуется мемоизировать (useCallback) при высокой нагрузке. */
   onImageChange?: (index: number) => void
+  /** Открыть фото на весь экран по тапу в центральную зону. */
+  onImageTap?: (index: number) => void
   showIndicators?: boolean
   /** Расположение индикаторов: сверху (по умолчанию) или снизу. */
   align?: 'top' | 'bottom'
@@ -109,6 +111,7 @@ const ImageCarouselComponent = ({
   blur = false,
   isTop = false,
   onImageChange,
+  onImageTap,
   showIndicators = true,
   enabledImageSwiping = true,
   align = 'top',
@@ -137,10 +140,10 @@ const ImageCarouselComponent = ({
         else goNext()
       },
       onCenter: () => {
-        // Центральная зона: можно подключить callback через props при необходимости
+        onImageTap?.(currentIndex)
       },
     }),
-    [currentIndex, totalImages, goNext, goPrevious, strip.startWrapNext, strip.startWrapPrev],
+    [currentIndex, totalImages, goNext, goPrevious, onImageTap, strip.startWrapNext, strip.startWrapPrev],
   )
 
   const zones = useCarouselZones({ isTop, callbacks: zoneCallbacks })
@@ -162,6 +165,14 @@ const ImageCarouselComponent = ({
           className={cn('h-full w-full object-cover', blur && 'blur-[2px]')}
           loading="eager"
         />
+        {isTop && onImageTap && (
+          <button
+            type="button"
+            className="absolute inset-0 z-[1]"
+            aria-label="Открыть фото"
+            onClick={() => onImageTap(0)}
+          />
+        )}
       </div>
     )
   }

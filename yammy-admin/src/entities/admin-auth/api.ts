@@ -96,6 +96,54 @@ export async function fetchFilterCatalog() {
   return adminFetch<import('@/shared/api/types').FilterCategory[]>('filters/')
 }
 
+export async function createFilterCategory(body: { slug: string; name: string }) {
+  return adminFetch<import('@/shared/api/types').FilterCategory>('filters/categories', {
+    method: 'POST',
+    json: body,
+  })
+}
+
+export async function createFilterSubcategory(
+  categoryId: string,
+  body: { slug: string; name: string },
+) {
+  return adminFetch<import('@/shared/api/types').FilterCategory['subcategories'][number]>(
+    `filters/categories/${categoryId}/subcategories`,
+    { method: 'POST', json: body },
+  )
+}
+
+export async function createFilterOption(
+  subcategoryId: string,
+  body: { slug: string; name: string },
+) {
+  return adminFetch<import('@/shared/api/types').FilterCategory['subcategories'][number]['options'][number]>(
+    `filters/subcategories/${subcategoryId}/options`,
+    { method: 'POST', json: body },
+  )
+}
+
+export async function deleteFilterCategory(categoryId: string) {
+  return adminFetch<import('@/shared/api/types').FilterDeleteResult>(
+    `filters/categories/${categoryId}`,
+    { method: 'DELETE' },
+  )
+}
+
+export async function deleteFilterSubcategory(subcategoryId: string) {
+  return adminFetch<import('@/shared/api/types').FilterDeleteResult>(
+    `filters/subcategories/${subcategoryId}`,
+    { method: 'DELETE' },
+  )
+}
+
+export async function deleteFilterOption(optionId: string) {
+  return adminFetch<import('@/shared/api/types').FilterDeleteResult>(
+    `filters/options/${optionId}`,
+    { method: 'DELETE' },
+  )
+}
+
 export async function searchUsers(params: Record<string, string | number | boolean | string[] | undefined>) {
   const qs = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {

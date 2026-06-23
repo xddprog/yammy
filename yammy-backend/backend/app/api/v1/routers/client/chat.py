@@ -130,7 +130,10 @@ async def chat_websocket(
                 continue
 
             if response is not None and outgoing_event is not None:
-                await ws_service.broadcast(match_id, response, outgoing_event)
+                if outgoing_event in (ChatEvents.OPEN_CHAT, ChatEvents.MESSAGES):
+                    await ws_service.send_to(match_id, websocket, response, outgoing_event)
+                else:
+                    await ws_service.broadcast(match_id, response, outgoing_event)
     except WebSocketDisconnect:
         pass
     except HTTPException as e:

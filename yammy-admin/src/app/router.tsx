@@ -8,6 +8,7 @@ import { ReportedUsersPage } from '@/pages/moderation/ReportedUsersPage'
 import { ReportedUserDetailPage } from '@/pages/moderation/ReportedUserDetailPage'
 import { UsersSearchPage } from '@/pages/users/UsersSearchPage'
 import { UserDetailPage } from '@/pages/users/UserDetailPage'
+import { FiltersPage } from '@/pages/filters/FiltersPage'
 
 export function AppRouter() {
   return (
@@ -20,6 +21,7 @@ export function AppRouter() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/users" element={<UsersSearchPage />} />
             <Route path="/users/:userId" element={<UserDetailPage />} />
+            <Route path="/filters" element={<FiltersPage />} />
           </Route>
           <Route path="/moderation/profiles" element={<ProfilesModerationPage />} />
           <Route path="/moderation/profiles/:userId" element={<ProfileDetailPage />} />

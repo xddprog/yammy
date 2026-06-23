@@ -16,6 +16,7 @@ from app.core.services.notification_service import NotificationService
 from app.core.services.presence_service import PresenceService
 from app.core.services.report_service import ReportService
 from app.core.services.ai_search_service import AiSearchService
+from app.core.services.adequacy_score_service import AdequacyScoreService
 from app.core.services.user_index_service import UserIndexService
 
 from app.core.services.admin_stats_service import AdminStatsService
@@ -40,6 +41,7 @@ __all__ = [
     "PresenceService",
     "ReportService",
     "AiSearchService",
+    "AdequacyScoreService",
     "UserIndexService",
     "AdminStatsService",
     "AdminUserService",

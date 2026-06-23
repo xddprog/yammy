@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import and_, exists, func, or_, select, update
+from sqlalchemy import and_, case, exists, func, or_, select, update
 from app.infrastructure.database.models.chat import Chat
 from app.infrastructure.database.models.like import Like
 from app.infrastructure.database.models.match import Match
@@ -160,6 +160,34 @@ class LikeRepository(SqlAlchemyRepository[Like]):
         )
         result = await self.session.execute(query)
         return int(result.scalar_one())
+
+    async def get_matched_user_ids(self, user_id: UUID) -> list[UUID]:
+        peer_id = case(
+            (Match.user1_id == user_id, Match.user2_id),
+            else_=Match.user1_id,
+        )
+        result = await self.session.execute(
+            select(peer_id).where(
+                or_(
+                    Match.user1_id == user_id,
+                    Match.user2_id == user_id,
+                )
+            )
+        )
+        return list(result.scalars().all())
+
+    async def has_match(self, user_a_id: UUID, user_b_id: UUID) -> bool:
+        result = await self.session.execute(
+            select(func.count())
+            .select_from(Match)
+            .where(
+                or_(
+                    and_(Match.user1_id == user_a_id, Match.user2_id == user_b_id),
+                    and_(Match.user1_id == user_b_id, Match.user2_id == user_a_id),
+                )
+            )
+        )
+        return int(result.scalar_one()) > 0
 
     async def create_match(self, user_from_id: UUID, user_to_id: UUID):
         query = (

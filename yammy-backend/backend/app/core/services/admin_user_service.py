@@ -18,6 +18,7 @@ from app.core.repositories.admin_user_repository import AdminUserRepository
 from app.core.repositories.like_repository import LikeRepository
 from app.core.repositories.report_repository import ReportRepository
 from app.core.services.user_index_service import UserIndexService
+from app.core.services.adequacy_score_service import AdequacyScoreService
 from app.infrastructure.database.models.subscription import SubscriptionHistory
 from app.infrastructure.errors.base import NotFoundException
 from app.infrastructure.logging import get_logger
@@ -33,11 +34,13 @@ class AdminUserService:
         like_repository: LikeRepository,
         report_repository: ReportRepository,
         user_index_service: UserIndexService,
+        adequacy_score_service: AdequacyScoreService,
     ):
         self.admin_user_repository = admin_user_repository
         self.like_repository = like_repository
         self.report_repository = report_repository
         self.user_index_service = user_index_service
+        self.adequacy_score_service = adequacy_score_service
 
     def _preview(self, user) -> AdminUserPreviewSchema:
         return AdminUserPreviewSchema(
@@ -240,12 +243,32 @@ class AdminUserService:
         report = await self.report_repository.get_item(str(report_id))
         if not report:
             raise NotFoundException("Жалоба не найдена")
+
+        old_status = report.status
+        reported_id = report.reported_id
+        penalty_applied = report.adequacy_penalty_applied
+
         await self.report_repository.update_item(
             str(report_id),
             status=status,
             review_note=review_note,
             reviewed_at=datetime.now(timezone.utc),
         )
+
+        if status == ReportStatusEnum.DISMISSED and old_status != ReportStatusEnum.DISMISSED:
+            if penalty_applied:
+                await self.adequacy_score_service.restore_report_penalty(reported_id)
+                await self.report_repository.update_item(
+                    str(report_id),
+                    adequacy_penalty_applied=False,
+                )
+        elif status != ReportStatusEnum.DISMISSED and old_status == ReportStatusEnum.DISMISSED:
+            await self.adequacy_score_service.apply_report_penalty(reported_id)
+            await self.report_repository.update_item(
+                str(report_id),
+                adequacy_penalty_applied=True,
+            )
+
         logger.info(
             "admin_report_updated",
             staff_id=str(staff_id),

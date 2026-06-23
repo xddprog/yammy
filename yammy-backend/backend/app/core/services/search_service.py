@@ -353,8 +353,10 @@ class SearchService:
             rated_ids = await self.appearance_rating_repository.get_rated_user_ids(current_user_id)
             if rated_ids:
                 await self.redis_client.sadd(rated_key, *rated_ids, ttl=self.APPEARANCE_RATED_TTL)
+
+        matched_ids = await self.like_repository.get_matched_user_ids(current_user_id)
         
-        exclude_list = [current_user_id] + [UUID(rid) for rid in rated_ids]
+        exclude_list = [current_user_id] + [UUID(rid) for rid in rated_ids] + matched_ids
         
         users = await self.user_repository.get_random_users_with_photos(exclude_list, limit)
         

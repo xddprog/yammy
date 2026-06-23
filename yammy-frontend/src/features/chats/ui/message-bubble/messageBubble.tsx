@@ -5,6 +5,42 @@ import { useRef } from 'react'
 import { cn, Image, useOverlay } from '@/shared'
 import { triggerHaptic } from '@/shared/lib/haptics'
 
+import type { MessageGroupPosition } from '../../lib/messageGrouping'
+
+function getBubbleRadiusClass(
+  isMe: boolean,
+  groupPosition: MessageGroupPosition,
+  hasPhotoMessage: boolean,
+): string {
+  if (hasPhotoMessage) {
+    return 'rounded-xl'
+  }
+
+  if (isMe) {
+    switch (groupPosition) {
+      case 'first':
+        return 'rounded-2xl rounded-br-[6px]'
+      case 'middle':
+        return 'rounded-2xl rounded-tr-[6px] rounded-br-[6px]'
+      case 'last':
+        return 'rounded-2xl rounded-tr-[6px] rounded-br-none'
+      default:
+        return 'rounded-2xl rounded-br-none'
+    }
+  }
+
+  switch (groupPosition) {
+    case 'first':
+      return 'rounded-2xl rounded-tl-none rounded-bl-[6px]'
+    case 'middle':
+      return 'rounded-2xl rounded-tl-[6px] rounded-bl-[6px]'
+    case 'last':
+      return 'rounded-2xl rounded-tl-[6px] rounded-bl-none'
+    default:
+      return 'rounded-2xl rounded-tl-none'
+  }
+}
+
 function MessageImageUploadOverlay({ visible }: { visible: boolean }) {
   if (!visible) {
     return null
@@ -27,6 +63,9 @@ interface MessageBubbleProps {
   images?: string[]
   senderId: string
   timestamp: string
+  showTimestamp?: boolean
+  groupPosition?: MessageGroupPosition
+  isGroupedWithPrev?: boolean
   isRead?: boolean
   isEdited?: boolean
   isDeleted?: boolean
@@ -44,6 +83,9 @@ export const MessageBubble = ({
   images,
   senderId,
   timestamp,
+  showTimestamp = true,
+  groupPosition = 'single',
+  isGroupedWithPrev = false,
   isRead,
   isEdited,
   isDeleted,
@@ -204,12 +246,13 @@ export const MessageBubble = ({
           data-message-bubble
           data-message-sender={isMe ? 'me' : 'other'}
           className={cn(
-            'overflow-hidden rounded-2xl flex flex-col shadow-sm transition-all active:scale-[0.98] select-none',
+            'overflow-hidden flex flex-col shadow-sm transition-all active:scale-[0.98] select-none',
+            getBubbleRadiusClass(isMe, groupPosition, hasPhotoMessage),
             hasPhotoMessage
               ? 'bg-transparent shadow-none'
               : isMe
-              ? 'bg-[#FF6BA4] text-white rounded-br-none'
-              : 'bg-card text-card-foreground rounded-tl-none',
+              ? 'bg-[#FF6BA4] text-white'
+              : 'bg-card text-card-foreground',
           )}
           >
         {/* Reply Reference Section */}
@@ -285,22 +328,34 @@ export const MessageBubble = ({
         )}
           </div>
         </div>
-        <div
-          className={cn(
-            'mt-1 flex items-start gap-1.5 px-1 text-[11px] font-[100] text-card-foreground/50',
-            isMe ? 'self-end text-right' : 'self-start text-left',
-          )}
-        >
-          {statusLabel && <span>{statusLabel}</span>}
-          <span>{timestamp}</span>
-          {isMe && (
-            isRead ? (
-              <CheckCheck className="size-3.5 shrink-0" strokeWidth={1.9} />
-            ) : (
-              <Check className="size-3.5 shrink-0" strokeWidth={1.9} />
-            )
-          )}
-        </div>
+        {showTimestamp && (
+          <div
+            className={cn(
+              'mt-1 flex items-start gap-1.5 px-1 text-[11px] font-[100] text-card-foreground/50',
+              isMe ? 'self-end text-right' : 'self-start text-left',
+              isGroupedWithPrev && 'mt-0.5',
+            )}
+          >
+            {statusLabel && <span>{statusLabel}</span>}
+            <span>{timestamp}</span>
+            {isMe &&
+              (isRead ? (
+                <CheckCheck className="size-3.5 shrink-0" strokeWidth={1.9} />
+              ) : (
+                <Check className="size-3.5 shrink-0" strokeWidth={1.9} />
+              ))}
+          </div>
+        )}
+        {!showTimestamp && statusLabel && (
+          <div
+            className={cn(
+              'mt-0.5 flex items-start gap-1.5 px-1 text-[11px] font-[100] text-card-foreground/50',
+              isMe ? 'self-end text-right' : 'self-start text-left',
+            )}
+          >
+            <span>{statusLabel}</span>
+          </div>
+        )}
       </motion.div>
     </div>
   )

@@ -66,6 +66,11 @@ export type ReportedUserDetail = {
   reports: AdminReportItem[]
 }
 
+export type FilterDeleteResult = {
+  affected_users: number
+  reindexed_users: number
+}
+
 export type FilterCategory = {
   id: string
   slug: string

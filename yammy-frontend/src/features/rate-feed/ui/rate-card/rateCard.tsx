@@ -3,7 +3,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 import { useSwipeCardDrag } from '@/features/matches-feed/hooks/useSwipeCardDrag'
 import { useSwipeCardMotion } from '@/features/matches-feed/hooks/useSwipeCardMotion'
-import { cn } from '@/shared'
+import { cn, Image, useOverlay } from '@/shared'
 import { ImageCarousel } from '@/shared/ui/image/imageCarousel'
 
 import { RateCardActions } from './rateCardActions'
@@ -57,6 +57,27 @@ const RateCardComponent = ({
   const [isEntering, setIsEntering] = useState(false)
   const wasBehindRef = useRef(stackIndex > 0)
   const exitStartedRef = useRef(false)
+  const { open } = useOverlay()
+
+  const openImagesPreview = useCallback(
+    (index: number) => {
+      if (photos.length === 0 || isExiting) return
+      open({
+        backdropClassName: 'bg-black/85 backdrop-blur-0',
+        panelClassName: '!h-full !w-full !max-w-none flex items-center justify-center p-4 pointer-events-none',
+        content: () => (
+          <div className="pointer-events-auto overflow-hidden rounded-[24px] bg-black">
+            <Image
+              src={photos[index]}
+              alt={`${name ?? 'Фото'} ${index + 1}`}
+              className="block h-auto max-h-[88vh] w-auto max-w-[92vw] object-contain"
+            />
+          </div>
+        ),
+      })
+    },
+    [isExiting, name, open, photos],
+  )
 
   useEffect(() => {
     if (isTop && wasBehindRef.current) {
@@ -140,6 +161,7 @@ const RateCardComponent = ({
             imageAlt={name ?? ''}
             blur={false}
             isTop={isTop}
+            onImageTap={isTop && !isExiting ? openImagesPreview : undefined}
           />
 
           {!isDragging && (

@@ -165,7 +165,7 @@ class AiSearchConfig(Config):
     MIN_RESULTS: int = Field(default=30)
     CANDIDATE_BATCH_SIZE: int = Field(default=100)
     MAX_LLM_CALLS_PER_HISTORY_ITEM: int = Field(default=4)
-    DAILY_LIMIT_FREE: int = Field(default=100)
+    DAILY_LIMIT_FREE: int = Field(default=2)
     DAILY_LIMIT_VIP: int = Field(default=3)
     DAILY_LIMIT_PREMIUM: int = Field(default=6)
 

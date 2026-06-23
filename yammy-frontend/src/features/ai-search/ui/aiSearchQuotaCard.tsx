@@ -79,7 +79,7 @@ export const AiSearchQuotaCard = ({
         <Sparkles className="size-10 shrink-0 text-[#FF6BA4]" strokeWidth={1.5} />
       </div>
 
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] font-[300] uppercase tracking-[0.04em] text-muted-foreground">
           Осталось сегодня
         </p>

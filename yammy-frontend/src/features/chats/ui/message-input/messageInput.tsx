@@ -62,6 +62,17 @@ export const MessageInput = ({
     el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
   }
 
+  const refocusTextarea = () => {
+    requestAnimationFrame(() => {
+      autosizeTextarea()
+      textareaRef.current?.focus()
+    })
+  }
+
+  const keepInputFocus = (event: React.PointerEvent) => {
+    event.preventDefault()
+  }
+
   useEffect(() => {
     autosizeTextarea()
   }, [value])
@@ -114,7 +125,7 @@ export const MessageInput = ({
         onSaveEdit?.(trimmed)
         setValue('')
         onCancelEdit?.()
-        requestAnimationFrame(autosizeTextarea)
+        refocusTextarea()
       }
       return
     }
@@ -126,7 +137,7 @@ export const MessageInput = ({
       imagePreviews.forEach((url) => URL.revokeObjectURL(url))
       setImagePreviews([])
       onCancelReply?.()
-      requestAnimationFrame(autosizeTextarea)
+      refocusTextarea()
     }
   }
 
@@ -288,6 +299,7 @@ export const MessageInput = ({
         <div className="flex min-h-[48px] flex-1 items-center rounded-[24px] bg-card px-4 py-2 transition-all focus-within:ring-2 focus-within:ring-[#FF6BA4]/50">
           <textarea
             ref={textareaRef}
+            data-message-input
             value={value}
             onChange={(e) => {
               setValue(e.target.value)
@@ -309,6 +321,7 @@ export const MessageInput = ({
           size="icon"
           variant="ghost"
           disabled={!canSubmit}
+          onPointerDown={keepInputFocus}
           onClick={handleSend}
           className={cn(
             'h-12 w-12 shrink-0 rounded-full !p-0 transition-all active:scale-95',

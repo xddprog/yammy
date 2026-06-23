@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from app.core.repositories.appearance_rating_repository import AppearanceRatingRepository
+from app.core.repositories.like_repository import LikeRepository
 from app.core.repositories.user_repository import UserRepository
 from app.core.clients.redis_client import RedisClient
 from app.core.services.notification_service import NotificationService
@@ -11,6 +12,7 @@ from app.core.dto.appearance_rating import (
 from app.core.dto.pagination import PaginationRequestModel, PaginationResponseModel
 from app.core.dto.user import UserSearchResponseSchema
 from app.infrastructure.database.models.user import User
+from app.infrastructure.errors.base import BadRequestException
 from app.utils.constants.cache_keys import AppearanceRatingCacheKeys
 from app.infrastructure.logging.logger import get_logger
 
@@ -25,11 +27,13 @@ class AppearanceRatingService:
         self,
         appearance_rating_repository: AppearanceRatingRepository,
         user_repository: UserRepository,
+        like_repository: LikeRepository,
         redis_client: RedisClient,
         notification_service: NotificationService,
     ):
         self.appearance_rating_repository = appearance_rating_repository
         self.user_repository = user_repository
+        self.like_repository = like_repository
         self.redis_client = redis_client
         self.notification_service = notification_service
 
@@ -77,6 +81,12 @@ class AppearanceRatingService:
         )
 
     async def add_appearance_rating(self, rater_user_id: UUID, rated_user_id: UUID, score: int):
+        if rater_user_id == rated_user_id:
+            raise BadRequestException("Нельзя оценить внешность самого себя")
+
+        if await self.like_repository.has_match(rater_user_id, rated_user_id):
+            raise BadRequestException("Нельзя оценивать внешность пользователя, с которым у вас метч")
+
         rated_key = AppearanceRatingCacheKeys.APPEARANCE_RATED_USERS.format(user_id=rater_user_id)
         await self.redis_client.sadd(rated_key, str(rated_user_id), ttl=self.RATED_TTL)
 

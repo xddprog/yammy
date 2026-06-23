@@ -4,6 +4,7 @@ from uuid import UUID
 from app.core.dto.report import ReportCreateRequest
 from app.core.repositories.report_repository import ReportRepository
 from app.core.repositories.user_repository import UserRepository
+from app.core.services.adequacy_score_service import AdequacyScoreService
 from app.infrastructure.errors.base import BadRequestException, NotFoundException
 
 
@@ -14,9 +15,11 @@ class ReportService:
         self,
         report_repository: ReportRepository,
         user_repository: UserRepository,
+        adequacy_score_service: AdequacyScoreService,
     ):
         self.report_repository = report_repository
         self.user_repository = user_repository
+        self.adequacy_score_service = adequacy_score_service
 
     async def create_report(
         self,
@@ -39,10 +42,15 @@ class ReportService:
         if already:
             raise BadRequestException("Вы уже отправляли жалобу этому пользователю недавно")
 
-        await self.report_repository.add_item(
+        report = await self.report_repository.add_item(
             reporter_id=reporter_id,
             reported_id=request.reported_id,
             reason=request.reason,
             comment=request.comment,
         )
 
+        await self.adequacy_score_service.apply_report_penalty(request.reported_id)
+        await self.report_repository.update_item(
+            str(report.id),
+            adequacy_penalty_applied=True,
+        )

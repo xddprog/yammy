@@ -269,7 +269,11 @@ export function useChatWebSocket(matchId: string | undefined) {
 
   const applyOpenChat = useCallback(
     (data: ChatOpenData) => {
+      const userId = currentUserIdRef.current
       const { profile, header } = mapChatPeerDetailDto(data.user_to)
+      if (userId && header.id === userId) {
+        return
+      }
       chatIdRef.current = data.id
       peerRef.current = header
       setPeer(header)

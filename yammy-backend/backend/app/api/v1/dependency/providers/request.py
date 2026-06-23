@@ -39,10 +39,16 @@ class RequestProvider(Provider):
         )
 
     @provide(scope=Scope.REQUEST)
-    def get_filter_service(self, session: AsyncSession, redis_client: RedisClient) -> services.FilterService:
+    def get_filter_service(
+        self,
+        session: AsyncSession,
+        redis_client: RedisClient,
+        user_index_service: services.UserIndexService,
+    ) -> services.FilterService:
         return services.FilterService(
             filter_repository=repositories.FilterRepository(session=session),
-            redis_client=redis_client
+            redis_client=redis_client,
+            user_index_service=user_index_service,
         )
 
     @provide(scope=Scope.REQUEST)
@@ -90,6 +96,7 @@ class RequestProvider(Provider):
         return services.AppearanceRatingService(
             appearance_rating_repository=repositories.AppearanceRatingRepository(session=session),
             user_repository=repositories.UserRepository(session=session),
+            like_repository=repositories.LikeRepository(session=session),
             redis_client=redis_client,
             notification_service=notification_service,
         )
@@ -112,10 +119,26 @@ class RequestProvider(Provider):
         )
 
     @provide(scope=Scope.REQUEST)
-    def get_report_service(self, session: AsyncSession) -> services.ReportService:
+    def get_adequacy_score_service(
+        self,
+        session: AsyncSession,
+        user_index_service: services.UserIndexService,
+    ) -> services.AdequacyScoreService:
+        return services.AdequacyScoreService(
+            user_repository=repositories.UserRepository(session=session),
+            user_index_service=user_index_service,
+        )
+
+    @provide(scope=Scope.REQUEST)
+    def get_report_service(
+        self,
+        session: AsyncSession,
+        adequacy_score_service: services.AdequacyScoreService,
+    ) -> services.ReportService:
         return services.ReportService(
             report_repository=repositories.ReportRepository(session=session),
             user_repository=repositories.UserRepository(session=session),
+            adequacy_score_service=adequacy_score_service,
         )
 
     @provide(scope=Scope.REQUEST)
@@ -181,12 +204,14 @@ class RequestProvider(Provider):
         self,
         session: AsyncSession,
         user_index_service: services.UserIndexService,
+        adequacy_score_service: services.AdequacyScoreService,
     ) -> services.AdminUserService:
         return services.AdminUserService(
             admin_user_repository=repositories.AdminUserRepository(session=session),
             like_repository=repositories.LikeRepository(session=session),
             report_repository=repositories.ReportRepository(session=session),
             user_index_service=user_index_service,
+            adequacy_score_service=adequacy_score_service,
         )
 
 

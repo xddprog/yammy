@@ -55,6 +55,13 @@ class WebSocketService:
         for connection in stale_connections:
             await self.disconnect(match_id, connection)
 
+    async def send_to(self, match_id: UUID, websocket: WebSocket, message: BaseModel, event: str) -> None:
+        await self._send_to_connections(
+            match_id,
+            [websocket],
+            self._build_payload(message, event),
+        )
+
     async def broadcast(self, match_id: UUID, message: BaseModel, event: str) -> None:
         connections = self.active_connections.get(match_id, [])
         if not connections:

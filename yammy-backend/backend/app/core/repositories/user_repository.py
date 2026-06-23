@@ -69,6 +69,28 @@ class UserRepository(SqlAlchemyRepository[User]):
         )
         await self.session.commit()
 
+    async def adjust_adequacy_score(self, user_id: UUID, delta: float) -> float | None:
+        user = await self.get_item(str(user_id))
+        if user is None:
+            return None
+
+        from app.utils.constants.moderation_constants import (
+            ADEQUACY_SCORE_MAX,
+            ADEQUACY_SCORE_MIN,
+        )
+
+        new_score = round(
+            max(ADEQUACY_SCORE_MIN, min(ADEQUACY_SCORE_MAX, user.adequacy_score + delta)),
+            1,
+        )
+        await self.session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(adequacy_score=new_score, updated_at=func.now())
+        )
+        await self.session.commit()
+        return new_score
+
     async def decrement_superlikes_balance(self, user_id: UUID) -> int | None:
         result = await self.session.execute(
             update(User)
