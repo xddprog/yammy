@@ -5,7 +5,7 @@ import type { EducationLevel } from '../model/educationLevel'
 import type { FiltersState } from '../model/types'
 import { getDefaultFiltersState } from '../model/types'
 
-const STORAGE_KEY = 'yammy_feed_filters_v1'
+const STORAGE_KEY = 'yammy_feed_filters_v2'
 const WORK_SPHERE_VALUES = new Set<string>(WORK_SPHERE_OPTIONS.map((option) => option.value))
 
 /** Поля ленты поиска (без bio/job — они из профиля на сервере). */

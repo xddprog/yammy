@@ -1,7 +1,7 @@
 import type { UserFilters } from '@/entities/user/types/types'
 
 import type { GenderOption } from '../lib/constants'
-import { AGE_DEFAULT_MAX, AGE_DEFAULT_MIN } from '../lib/constants'
+import { AGE_ABSOLUTE_MAX, AGE_ABSOLUTE_MIN } from '../lib/constants'
 import type { EducationLevel } from './educationLevel'
 
 /** Состояние фильтров для UI и последующей отправки на бэкенд */
@@ -31,10 +31,10 @@ export interface FiltersState {
   priorities: [number, number, number]
 }
 
-/** Начальное состояние фильтров (для сброса и по умолчанию) */
-export const getDefaultFiltersState = (): FiltersState => ({
-  gender: 'Женский', // дефолтный пол на время
-  ageRange: [AGE_DEFAULT_MIN, AGE_DEFAULT_MAX],
+/** Начальное состояние фильтров ленты (для сброса и по умолчанию). */
+export const getDefaultFiltersState = (searchGender: GenderOption | null = null): FiltersState => ({
+  gender: searchGender,
+  ageRange: [AGE_ABSOLUTE_MIN, AGE_ABSOLUTE_MAX],
   city: '',
   bio: '',
   searchText: '',

@@ -68,7 +68,6 @@ const ProfilePage = (): JSX.Element => {
       try {
         const body = buildProfileUpdateBody(draft, filtersMetadata)
         await updateUserProfileMutation.mutateAsync(body)
-        filters.persist(draft)
         setScreen('view')
       } catch {
         /* throwApiError / mutate уже показали тост */

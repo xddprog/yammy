@@ -1,15 +1,18 @@
 import type React from 'react'
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
+import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
 
 import {
   clearPersistedFeedFilters,
   extractPersistedFeedFilters,
   loadAppliedFiltersState,
+  loadPersistedFeedFilters,
   savePersistedFeedFilters,
 } from '../lib/persistedFeedFilters'
 import { reconcileFiltersStateWithMetadata } from '../lib/reconcileFeedFiltersWithMetadata'
+import { getOppositeSearchGender } from '../lib/searchGenderDefaults'
 import type { FiltersState } from './types'
 import { getDefaultFiltersState } from './types'
 
@@ -145,11 +148,27 @@ function useDraftSetters(
 
 export function FiltersProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const { data: filtersMetadata } = useFiltersMetadata()
+  const { data: profile } = useUserProfile()
+  const profileDefaultsAppliedRef = useRef(false)
 
   const [state, setState] = useState<FiltersState>(() => loadAppliedFiltersState())
   const [appliedState, setAppliedState] = useState<FiltersState>(() => loadAppliedFiltersState())
 
   const setters = useDraftSetters(setState)
+
+  useEffect(() => {
+    if (profileDefaultsAppliedRef.current || !profile?.gender) return
+
+    if (loadPersistedFeedFilters() != null) {
+      profileDefaultsAppliedRef.current = true
+      return
+    }
+
+    const defaults = getDefaultFiltersState(getOppositeSearchGender(profile.gender))
+    setState(defaults)
+    setAppliedState(defaults)
+    profileDefaultsAppliedRef.current = true
+  }, [profile?.gender])
 
   useEffect(() => {
     if (!filtersMetadata?.length) return
@@ -180,11 +199,13 @@ export function FiltersProvider({ children }: { children: React.ReactNode }): Re
   }, [])
 
   const reset = useCallback(() => {
-    const defaults = getDefaultFiltersState()
+    const defaults = getDefaultFiltersState(
+      profile?.gender ? getOppositeSearchGender(profile.gender) : null,
+    )
     setState(defaults)
     setAppliedState(defaults)
     clearPersistedFeedFilters()
-  }, [])
+  }, [profile?.gender])
 
   const value = useMemo<FiltersContextValue>(
     () => ({
