@@ -7,6 +7,7 @@ import {
   shouldShowAiSearchFailure,
   type AiSearchJob,
 } from '@/entities/ai-search'
+import { AI_SEARCH_GENDER_LABELS } from '@/entities/ai-search/lib/aiSearchGender'
 import { Button } from '@/shared'
 
 import { getAiSearchFailureMessage } from '../lib/aiSearchUserMessages'
@@ -81,6 +82,12 @@ const AiSearchJobDetailSheetContent = ({
       )}
 
       <div className="mb-2 grid grid-cols-1 gap-2">
+        <div className="rounded-[18px] bg-card px-3 py-3">
+          <p className="text-[11px] font-[200] uppercase tracking-[0.04em] text-muted-foreground">Кого ищем</p>
+          <p className="mt-1 text-[13px] font-[200] text-foreground">
+            {job.targetGender ? AI_SEARCH_GENDER_LABELS[job.targetGender] : '—'}
+          </p>
+        </div>
         <div className="rounded-[18px] bg-card px-3 py-3">
           <p className="text-[11px] font-[200] uppercase tracking-[0.04em] text-muted-foreground">Пожелания</p>
           <p className="mt-1 whitespace-pre-wrap break-words text-[13px] font-[200] leading-snug text-foreground">

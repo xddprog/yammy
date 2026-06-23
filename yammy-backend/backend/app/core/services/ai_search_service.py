@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from app.core.clients.openrouter_client import OpenRouterClient
+from app.core.clients.redis_client import RedisClient
 from app.core.dto.ai_search import (
     AiSearchCreateRequest,
     AiSearchFeedResponse,
@@ -15,9 +16,10 @@ from app.core.repositories.like_repository import LikeRepository
 from app.core.repositories.user_repository import UserRepository
 from app.infrastructure.errors.base import ConflictException, NotFoundException
 from app.infrastructure.logging.logger import get_logger
-from app.utils.constants.enums import AiSearchHistoryStatusEnum, SubscriptionTierEnum
+from app.utils.constants.enums import AiSearchHistoryStatusEnum, SubscriptionTierEnum, GenderEnum
 from app.infrastructure.config.config import AI_SEARCH_CONFIG
 from app.infrastructure.database.models.user import User
+from app.utils.constants.cache_keys import LikeCacheKeys, UserCacheKeys
 
 
 logger = get_logger(__name__)
@@ -35,11 +37,13 @@ class AiSearchService:
         ai_search_history_repository: AiSearchHistoryRepository,
         user_repository: UserRepository,
         like_repository: LikeRepository,
+        redis_client: RedisClient,
         openrouter_client: OpenRouterClient,
     ):
         self.ai_search_history_repository = ai_search_history_repository
         self.user_repository = user_repository
         self.like_repository = like_repository
+        self.redis_client = redis_client
         self.openrouter_client = openrouter_client
 
     def _daily_limit(self, user: User) -> int:
@@ -64,9 +68,11 @@ class AiSearchService:
             raise ConflictException("Дневной лимит запусков исчерпан")
 
         query_text = request.query_text.strip()
+        target_gender = self._resolve_target_gender(user, request.target_gender)
         history = await self.ai_search_history_repository.add_item(
             user_id=user.id,
             query_text=query_text,
+            target_gender=target_gender,
             status=AiSearchHistoryStatusEnum.SEARCHING,
             result_count=None,
             results_json=None,
@@ -104,9 +110,7 @@ class AiSearchService:
             )
 
         raw_results = item.results_json or []
-        interacted_ids = {
-            str(uid) for uid in await self.like_repository.get_outgoing_interaction_user_ids(user.id)
-        }
+        interacted_ids = await self._get_interacted_id_strings(user.id)
         viewable_results = self._filter_viewable_results(raw_results, interacted_ids)
 
         ordered_ids: list[UUID] = []
@@ -167,6 +171,7 @@ class AiSearchService:
         item_id = item.id
         user_id = item.user_id
         query_text = item.query_text
+        target_gender = item.target_gender
 
         user = await self.user_repository.get_item(str(user_id))
         if user is None:
@@ -183,6 +188,7 @@ class AiSearchService:
                 user_id=user_id,
                 seeker_profile=seeker_profile,
                 query_text=query_text,
+                target_gender=target_gender,
             )
             if not results:
                 await self._mark_failed(item_id, MSG_AI_SEARCH_NO_CANDIDATES)
@@ -221,9 +227,7 @@ class AiSearchService:
         return viewable
 
     async def _mark_ready(self, history_id: UUID, user_id: UUID, results: list[dict]) -> None:
-        interacted_ids = {
-            str(uid) for uid in await self.like_repository.get_outgoing_interaction_user_ids(user_id)
-        }
+        interacted_ids = await self._get_interacted_id_strings(user_id)
         viewable_results = self._filter_viewable_results(results, interacted_ids)
         if not viewable_results:
             await self._mark_failed(history_id, MSG_AI_SEARCH_NO_VIEWABLE_CANDIDATES)
@@ -271,16 +275,24 @@ class AiSearchService:
         user_id: UUID,
         seeker_profile: dict,
         query_text: str,
+        target_gender: GenderEnum | None,
     ) -> list[dict]:
         unique: dict[str, dict] = {}
         excluded_ids = await self._get_excluded_candidate_ids(user_id)
         user_id_str = str(user_id)
         llm_calls = 0
+        logger.info(
+            "ai_search_excluded_candidates",
+            user_id=user_id_str,
+            excluded_count=len(excluded_ids) - 1,
+            target_gender=target_gender.value if target_gender else None,
+        )
 
         while len(unique) < AI_SEARCH_CONFIG.MIN_RESULTS and llm_calls < AI_SEARCH_CONFIG.MAX_LLM_CALLS_PER_HISTORY_ITEM:
             batch_users = await self.user_repository.get_random_users_with_photos(
                 exclude_user_ids=list(excluded_ids),
                 limit=AI_SEARCH_CONFIG.CANDIDATE_BATCH_SIZE,
+                gender=target_gender,
             )
             if not batch_users:
                 break
@@ -291,6 +303,7 @@ class AiSearchService:
                 seeker_profile=seeker_profile,
                 candidates=compact_batch,
                 min_count=max(1, AI_SEARCH_CONFIG.MIN_RESULTS - len(unique)),
+                target_gender=target_gender.value if target_gender else None,
             )
             llm_calls += 1
             logger.info(
@@ -330,10 +343,49 @@ class AiSearchService:
         )
         return results
 
+    @staticmethod
+    def _resolve_target_gender(user: User, requested: GenderEnum | None) -> GenderEnum | None:
+        if requested is not None:
+            return requested
+        if user.gender == GenderEnum.MALE:
+            return GenderEnum.FEMALE
+        if user.gender == GenderEnum.FEMALE:
+            return GenderEnum.MALE
+        return None
+
+    async def _get_interacted_id_strings(self, user_id: UUID) -> set[str]:
+        excluded_ids = await self._get_excluded_candidate_ids(user_id)
+        return {str(uid) for uid in excluded_ids if uid != user_id}
+
     async def _get_excluded_candidate_ids(self, user_id: UUID) -> set[UUID]:
-        excluded_ids = {user_id}
+        excluded_ids: set[UUID] = {user_id}
+        user_id_str = str(user_id)
+
         outgoing = await self.like_repository.get_outgoing_interaction_user_ids(user_id)
         excluded_ids.update(outgoing)
+
+        matched = await self.like_repository.get_matched_user_ids(user_id)
+        excluded_ids.update(matched)
+
+        seen_ids = await self.redis_client.smembers(
+            UserCacheKeys.SEEN_USERS.format(user_id=user_id)
+        )
+        for uid in seen_ids:
+            try:
+                excluded_ids.add(UUID(str(uid)))
+            except ValueError:
+                continue
+
+        for buffer_key in (LikeCacheKeys.DISLIKE_BUFFER, LikeCacheKeys.DISLIKE_BUFFER_PROCESSING):
+            for field in await self.redis_client.smembers(buffer_key):
+                parts = field.split(":")
+                if len(parts) != 2 or parts[0] != user_id_str:
+                    continue
+                try:
+                    excluded_ids.add(UUID(parts[1]))
+                except ValueError:
+                    continue
+
         return excluded_ids
 
     @staticmethod
@@ -342,6 +394,7 @@ class AiSearchService:
             "id": str(candidate.id),
             "name": candidate.name,
             "age": candidate.age,
+            "gender": candidate.gender.value if candidate.gender else None,
             "city": candidate.city,
             "job": candidate.job,
             "relationship_goal": candidate.relationship_goal.value if candidate.relationship_goal else None,

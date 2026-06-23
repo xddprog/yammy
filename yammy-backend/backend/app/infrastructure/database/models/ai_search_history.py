@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.database.models.base import Base
 from app.infrastructure.database.pg_enum import pg_enum
-from app.utils.constants.enums import AiSearchHistoryStatusEnum
+from app.utils.constants.enums import AiSearchHistoryStatusEnum, GenderEnum
 
 
 class AiSearchHistory(Base):
@@ -15,6 +15,7 @@ class AiSearchHistory(Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     query_text: Mapped[str] = mapped_column(Text, nullable=False)
+    target_gender: Mapped[GenderEnum | None] = mapped_column(pg_enum(GenderEnum), nullable=True)
     status: Mapped[AiSearchHistoryStatusEnum] = mapped_column(
         pg_enum(AiSearchHistoryStatusEnum),
         default=AiSearchHistoryStatusEnum.SEARCHING,

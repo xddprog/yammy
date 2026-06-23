@@ -10,6 +10,7 @@ from app.core.repositories.base import SqlAlchemyRepository
 from app.core.dto.user import ImageOrderUpdateSchema
 from app.infrastructure.database.models.user import User, UserPhoto
 from app.infrastructure.database.models.filter import FilterOption, FilterSubcategory, UserFilterAssociation
+from app.utils.constants.enums import GenderEnum
 
 
 class UserRepository(SqlAlchemyRepository[User]):
@@ -223,13 +224,21 @@ class UserRepository(SqlAlchemyRepository[User]):
         await self.session.commit()
         return updated is not None
 
-    async def get_random_users_with_photos(self, exclude_user_ids: list[UUID], limit: int = 20) -> list[User]:
+    async def get_random_users_with_photos(
+        self,
+        exclude_user_ids: list[UUID],
+        limit: int = 20,
+        gender: GenderEnum | None = None,
+    ) -> list[User]:
+        conditions = [User.is_banned == False]
+        if exclude_user_ids:
+            conditions.append(User.id.notin_(exclude_user_ids))
+        if gender is not None:
+            conditions.append(User.gender == gender)
+
         query = (
             select(User)
-            .where(
-                User.id.notin_(exclude_user_ids),
-                User.is_banned == False
-            )
+            .where(*conditions)
             .options(selectinload(User.photos))
             .order_by(func.random())
             .limit(limit)

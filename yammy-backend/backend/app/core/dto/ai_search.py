@@ -4,11 +4,12 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.core.dto.user import UserSearchResponseSchema
-from app.utils.constants.enums import AiSearchHistoryStatusEnum
+from app.utils.constants.enums import AiSearchHistoryStatusEnum, GenderEnum
 
 
 class AiSearchCreateRequest(BaseModel):
     query_text: str = Field(default="", max_length=500)
+    target_gender: GenderEnum | None = None
 
 
 class AiSearchResultItem(BaseModel):
@@ -20,6 +21,7 @@ class AiSearchResultItem(BaseModel):
 class AiSearchHistoryItemSchema(BaseModel):
     id: UUID
     query_text: str
+    target_gender: GenderEnum | None = None
     status: AiSearchHistoryStatusEnum
     result_count: int | None = None
     error_message: str | None = None

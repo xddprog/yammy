@@ -2,13 +2,21 @@ import { authApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
 import type { UserSearchApiUser } from '@/entities/user/types/types'
 
-import type { AiSearchFeedData, AiSearchHistoryList, AiSearchJob, AiSearchJobStatus } from '../types'
+import type {
+  AiSearchCreatePayload,
+  AiSearchFeedData,
+  AiSearchHistoryList,
+  AiSearchJob,
+  AiSearchJobStatus,
+  AiSearchTargetGender,
+} from '../types'
 
 const AI_SEARCH_HISTORY_ENDPOINT = 'api/v1/users/search/ai/history'
 
 type AiSearchHistoryApiItem = {
   id: string
   query_text: string
+  target_gender: AiSearchTargetGender | null
   status: AiSearchJobStatus
   result_count: number | null
   error_message: string | null
@@ -36,6 +44,7 @@ function mapHistoryItem(item: AiSearchHistoryApiItem): AiSearchJob {
     id: item.id,
     title: truncateTitle(queryText),
     queryText,
+    targetGender: item.target_gender,
     status: item.status,
     createdAt: item.created_at,
     completedAt: item.completed_at,
@@ -69,9 +78,9 @@ export async function getAiSearchJob(id: string): Promise<AiSearchJob | null> {
   return mapHistoryItem(data)
 }
 
-export async function createAiSearchJob(query: string): Promise<AiSearchJob> {
+export async function createAiSearchJob(payload: AiSearchCreatePayload): Promise<AiSearchJob> {
   const response = await authApi.post(AI_SEARCH_HISTORY_ENDPOINT, {
-    json: { query_text: query },
+    json: payload,
   })
   if (!response.ok) {
     await throwApiError(response, 'Не удалось запустить AI-поиск')

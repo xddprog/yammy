@@ -1,5 +1,7 @@
 import type { UserSearchApiUser } from '@/entities/user/types/types'
 
+import type { AiSearchTargetGender } from './lib/aiSearchGender'
+
 /** Статусы job (контракт для будущего API). */
 export type AiSearchJobStatus =
   | 'queued'
@@ -11,7 +13,7 @@ export type AiSearchJobStatus =
 
 /** Распознанные фильтры после LLM (упрощённый preview / apply). */
 export interface ParsedSearchPreview {
-  gender?: 'male' | 'female' | null
+  gender?: AiSearchTargetGender | null
   ageMin?: number | null
   ageMax?: number | null
   city?: string | null
@@ -22,6 +24,7 @@ export interface AiSearchJob {
   id: string
   title: string
   queryText: string
+  targetGender?: AiSearchTargetGender | null
   status: AiSearchJobStatus
   createdAt: string
   completedAt?: string | null

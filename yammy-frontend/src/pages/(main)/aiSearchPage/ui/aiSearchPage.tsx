@@ -39,8 +39,8 @@ const AiSearchPage = (): JSX.Element => {
         <AiSearchStartSheetContentMemo
           close={close}
           isSubmitting={isCreatingAiSearchJob}
-          onSubmit={async (query) => {
-            await createAiSearchJob(query)
+          onSubmit={async (payload) => {
+            await createAiSearchJob(payload)
             showErrorToast('Поиск запущен. Можно закрыть приложение — результат появится в истории.')
           }}
         />

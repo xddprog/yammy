@@ -145,12 +145,14 @@ class RequestProvider(Provider):
     def get_ai_search_service(
         self,
         session: AsyncSession,
+        redis_client: RedisClient,
         openrouter_client: OpenRouterClient,
     ) -> services.AiSearchService:
         return services.AiSearchService(
             ai_search_history_repository=repositories.AiSearchHistoryRepository(session=session),
             user_repository=repositories.UserRepository(session=session),
             like_repository=repositories.LikeRepository(session=session),
+            redis_client=redis_client,
             openrouter_client=openrouter_client,
         )
 

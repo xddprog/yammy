@@ -18,6 +18,7 @@ class OpenRouterClient:
         seeker_profile: dict,
         candidates: list[dict],
         min_count: int,
+        target_gender: str | None = None,
     ) -> list[dict]:
         if not candidates:
             return []
@@ -31,6 +32,7 @@ class OpenRouterClient:
             seeker_profile=seeker_profile,
             candidates=candidates,
             min_count=min_count,
+            target_gender=target_gender,
         )
         payload = {
             "model": OPENROUTER_CONFIG.MODEL,
@@ -39,9 +41,11 @@ class OpenRouterClient:
                 {
                     "role": "system",
                     "content": (
-                        "You select dating candidates. Return only JSON array with objects "
-                        '{"id":"uuid","highlights":"short russian text <= 120 chars","match_percentage":0..100} '
-                        "without markdown."
+                        "Ты подбираешь анкеты в dating-приложении. "
+                        "Строго следуй пожеланиям пользователя и выбирай только из переданного списка id. "
+                        "Верни только JSON-массив объектов "
+                        '{"id":"uuid","highlights":"короткий текст на русском <= 120 символов","match_percentage":0..100} '
+                        "без markdown."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -170,13 +174,37 @@ class OpenRouterClient:
         seeker_profile: dict,
         candidates: list[dict],
         min_count: int,
+        target_gender: str | None = None,
     ) -> str:
+        gender_block = ""
+        if target_gender == "female":
+            gender_block = (
+                "Жёсткий фильтр: в списке только женщины. "
+                "Не выбирай кандидатов, которые не подходят под пожелания.\n\n"
+            )
+        elif target_gender == "male":
+            gender_block = (
+                "Жёсткий фильтр: в списке только мужчины. "
+                "Не выбирай кандидатов, которые не подходят под пожелания.\n\n"
+            )
+
+        wishes = query_text.strip() or "Без дополнительных пожеланий"
+
         return (
-            "Запрос пользователя:\n"
-            f"{query_text or 'Без пожеланий'}\n\n"
-            "Анкета пользователя, для которого подбираем пары (JSON):\n"
+            "Подбери лучших кандидатов по пожеланиям пользователя.\n\n"
+            f"{gender_block}"
+            "Правила:\n"
+            "1. Используй только id из списка кандидатов.\n"
+            "2. Пожелания читай буквально: внешность, стиль, характер, занятия, город, цели.\n"
+            "3. Например если просят спортивного/качка/атлетичного — ищи признаки спорта и фитнеса в bio/job.\n"
+            "4. Если просят девушку/парня — пол уже отфильтрован, не противоречь ему.\n"
+            "5. Не добавляй людей, которые явно не соответствуют пожеланиям.\n"
+            "6. highlights — одна короткая фраза на русском, почему именно этот человек подходит с учетом пожеланий пользователя.\n"
+            "7. match_percentage — насколько кандидат соответствует пожеланиям и самому пользователю (0–100).\n"
+            f"8. Верни минимум {min_count} лучших кандидатов, если столько подходящих есть, возвращай дейтсительно подходящих кандидато\n\n"
+            f"Пожелания пользователя:\n{wishes}\n\n"
+            "Анкета пользователя, для которого подбираем (JSON):\n"
             f"{json.dumps(seeker_profile, ensure_ascii=False)}\n\n"
-            f"Нужно выбрать минимум {min_count} кандидатов.\n"
             "Кандидаты (JSON):\n"
             f"{json.dumps(candidates, ensure_ascii=False)}\n\n"
             "Верни только JSON-массив объектов с полями id, highlights и match_percentage."
