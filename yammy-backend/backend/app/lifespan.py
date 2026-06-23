@@ -36,6 +36,7 @@ async def lifespan(app: FastAPI):
                 await clear_elasticsearch_users_index(es_client)
         else:
             async with await db_connection.get_session() as session:
+                await db_connection.init_tables(clear_db=False)
                 await bootstrap_production(session)
 
         await es_client.init_indices()
@@ -58,4 +59,5 @@ async def lifespan(app: FastAPI):
     yield
 
     await taskiq_client.shutdown()
+    # await redis_client.clear()
     logger.info("application_shutdown")

@@ -4,6 +4,7 @@ from dishka import Provider, Scope, provide
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import repositories, services
+from app.core.clients.telegram_client import TelegramClient
 from app.infrastructure.database.adapters.pg_connection import DatabaseConnection
 
 
@@ -35,13 +36,25 @@ class WebSocketProvider(Provider):
         return services.ImageService()
 
     @provide(scope=Scope.SESSION)
+    def get_notification_service(
+        self,
+        telegram_client: TelegramClient,
+    ) -> services.NotificationService:
+        return services.NotificationService(telegram_client=telegram_client)
+
+    @provide(scope=Scope.SESSION)
     def get_message_service(
         self,
         session: AsyncSession,
         image_service: services.ImageService,
+        notification_service: services.NotificationService,
+        presence_service: services.PresenceService,
     ) -> services.MessageService:
         return services.MessageService(
             message_repository=repositories.MessageRepository(session=session),
             chat_repository=repositories.ChatRepository(session=session),
+            user_repository=repositories.UserRepository(session=session),
             image_service=image_service,
+            notification_service=notification_service,
+            presence_service=presence_service,
         )

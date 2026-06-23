@@ -170,12 +170,16 @@ const ChatDetailPage = () => {
 
   const canEditMessage = (message: ChatMessage): boolean =>
     canInteractWithMessages &&
+    message.uploadStatus !== 'uploading' &&
     !message.isDeleted &&
     message.senderId === 'me' &&
     (Boolean(message.text?.trim()) || Boolean(message.images?.length))
 
   const canDeleteMessage = (message: ChatMessage): boolean =>
-    canInteractWithMessages && !message.isDeleted && message.senderId === 'me'
+    canInteractWithMessages &&
+    message.uploadStatus !== 'uploading' &&
+    !message.isDeleted &&
+    message.senderId === 'me'
 
   const canCopyMessage = (message: ChatMessage): boolean =>
     Boolean(message.text?.trim())

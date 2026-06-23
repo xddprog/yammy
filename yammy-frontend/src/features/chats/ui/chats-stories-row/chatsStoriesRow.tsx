@@ -2,6 +2,9 @@ import { Plus } from 'lucide-react'
 import type { JSX } from 'react'
 
 import type { ChatListItem } from '@/entities/chat'
+import { Image } from '@/shared'
+
+const CHAT_AVATAR_FALLBACK = '/images/i.webp'
 
 /** Без ring-offset — offset рисуется снаружи кнопки и даёт лишнюю ширину / дёрганье по X у всей страницы */
 const STORY_RING = 'ring-2 ring-[#FF6BA4] ring-inset'
@@ -32,7 +35,13 @@ export const ChatsStoriesRow = ({ chats, onStoryClick }: ChatsStoriesRowProps): 
           aria-label={`История ${chat.name}`}
         >
           <span className="block h-full w-full overflow-hidden rounded-full bg-muted">
-            <img src={chat.avatar} alt="" className="h-full w-full object-cover" />
+            <Image
+              src={chat.avatar || CHAT_AVATAR_FALLBACK}
+              alt=""
+              fallbackSrc={CHAT_AVATAR_FALLBACK}
+              className="h-full w-full object-cover"
+              loading="eager"
+            />
           </span>
         </button>
       ))}

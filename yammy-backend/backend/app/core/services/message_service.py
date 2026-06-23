@@ -6,8 +6,11 @@ from uuid import UUID
 from fastapi import UploadFile
 from app.core.repositories.chat_repository import ChatRepository
 from app.core.repositories.message_repository import MessageRepository
+from app.core.repositories.user_repository import UserRepository
 from app.core.dto.message import MessageCreateRequest, MessageEditRequest, MessagePhotoUploadSchema, MessageSchema
 from app.core.services.image_service import ImageService
+from app.core.services.notification_service import NotificationService
+from app.core.services.presence_service import PresenceService
 from app.infrastructure.errors.base import BadRequestException
 from app.infrastructure.errors.base import NotFoundException
 
@@ -19,11 +22,17 @@ class MessageService:
         self,
         message_repository: MessageRepository,
         chat_repository: ChatRepository,
+        user_repository: UserRepository,
         image_service: ImageService,
+        notification_service: NotificationService,
+        presence_service: PresenceService,
     ):
         self.message_repository = message_repository
         self.chat_repository = chat_repository
+        self.user_repository = user_repository
         self.image_service = image_service
+        self.notification_service = notification_service
+        self.presence_service = presence_service
 
     async def _ensure_can_interact_with_chat_messages(
         self,
@@ -75,7 +84,22 @@ class MessageService:
 
         form.images = await self.upload_images_from_base64(form.images)
         message = await self.message_repository.add_item(**form.model_dump())
-        return MessageSchema.model_validate(message, from_attributes=True)
+        message_schema = MessageSchema.model_validate(message, from_attributes=True)
+
+        recipient_id = await self.chat_repository.get_peer_user_id_by_chat_id(
+            form.chat_id,
+            form.sender_id,
+        )
+        if recipient_id and not await self.presence_service.is_user_online(recipient_id):
+            sender = await self.user_repository.get_item(str(form.sender_id))
+            if sender:
+                await self._notify_chat_message_async(
+                    recipient_id,
+                    sender.name,
+                    message.id,
+                )
+
+        return message_schema
 
     async def delete_message(self, message_id: uuid.UUID, user_id: uuid.UUID):
         message = await self.message_repository.get_message_short_info(message_id)
@@ -119,3 +143,23 @@ class MessageService:
             message = await self.message_repository.update_item(message_id, is_read=True)
 
         return MessageSchema.model_validate(message, from_attributes=True)
+
+    async def _notify_chat_message_async(
+        self,
+        recipient_id: UUID,
+        sender_name: str,
+        message_id: UUID,
+    ) -> None:
+        from app.core.tasks.notifications_task import send_chat_message_notification
+
+        try:
+            await send_chat_message_notification.kiq(
+                str(recipient_id),
+                sender_name,
+                str(message_id),
+            )
+        except Exception:
+            recipient = await self.user_repository.get_item(str(recipient_id))
+            if not recipient:
+                return
+            await self.notification_service.notify_new_chat_message(recipient, sender_name)

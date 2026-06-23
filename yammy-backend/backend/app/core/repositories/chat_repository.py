@@ -51,6 +51,30 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
         chat.user_to = peer
         return chat
 
+    async def get_peer_user_id_by_chat_id(
+        self,
+        chat_id: UUID,
+        user_id: UUID,
+    ) -> UUID | None:
+        peer_id = case(
+            (Match.user1_id == user_id, Match.user2_id),
+            else_=Match.user1_id,
+        )
+        query = (
+            select(peer_id)
+            .select_from(Chat)
+            .join(Match, Match.id == Chat.match_id)
+            .where(
+                Chat.id == chat_id,
+                or_(
+                    Match.user1_id == user_id,
+                    Match.user2_id == user_id,
+                ),
+            )
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
     async def get_peer_ban_status_by_chat_id(
         self,
         chat_id: UUID,

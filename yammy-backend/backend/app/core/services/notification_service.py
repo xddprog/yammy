@@ -27,6 +27,22 @@ class NotificationService:
             return
         await self._telegram.send_message(recipient.telegram_id, "У вас новый метч!")
 
+    async def notify_new_chat_message(self, recipient: User, sender_name: str) -> None:
+        if not recipient.notifications_enabled:
+            return
+        await self._telegram.send_message(
+            recipient.telegram_id,
+            f"{sender_name} написал вам новое сообщение",
+        )
+
+    async def notify_user_appearance_rated(self, recipient: User, rater_name: str, score: int) -> None:
+        if not recipient.notifications_enabled:
+            return
+        await self._telegram.send_message(
+            recipient.telegram_id,
+            f"{rater_name} оценил вас на {score}",
+        )
+
     async def notify_mutual_appearance_rating(self, recipient: User, other: User) -> None:
         if not recipient.notifications_enabled:
             return
@@ -35,4 +51,3 @@ class NotificationService:
             recipient.telegram_id,
             f"Взаимная оценка внешности! {link}",
         )
-    

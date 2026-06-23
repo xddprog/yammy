@@ -43,7 +43,7 @@ export function mapChatPeerDetailDto(dto: ChatPeerDetailDto): {
     name: dto.name,
     age: dto.age,
     is_banned: Boolean(dto.is_banned),
-    main_photo: photos[0] ?? '',
+    main_photo: dto.main_photo ?? photos[0] ?? '',
     last_seen: dto.last_seen,
   }
 

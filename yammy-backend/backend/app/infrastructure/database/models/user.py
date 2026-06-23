@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 import uuid
-from sqlalchemy import BigInteger, Boolean, DateTime, Enum as SQLAlchemyEnum, ForeignKey, Text, and_, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Text, and_, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.models.base import Base
+from app.infrastructure.database.pg_enum import pg_enum
 from app.utils.constants.enums import (
     EducationLevelEnum,
     GenderEnum,
@@ -42,23 +43,23 @@ class User(Base):
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True, nullable=False)
     name: Mapped[str]
     age: Mapped[int]
-    gender: Mapped[GenderEnum] = mapped_column(SQLAlchemyEnum(GenderEnum))
+    gender: Mapped[GenderEnum] = mapped_column(pg_enum(GenderEnum))
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     city: Mapped[str] = mapped_column(Text, nullable=False)
     job_sphere: Mapped[JobSphereEnum | None] = mapped_column(
-        SQLAlchemyEnum(JobSphereEnum), 
+        pg_enum(JobSphereEnum), 
         nullable=True
     )
     job: Mapped[str | None] = mapped_column(Text, nullable=True)
     relationship_goal: Mapped[RelationshipGoalEnum] = mapped_column(
-        SQLAlchemyEnum(RelationshipGoalEnum), 
+        pg_enum(RelationshipGoalEnum), 
         nullable=False
     )
 
     boost_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     
     education_level: Mapped[EducationLevelEnum | None] = mapped_column(
-        SQLAlchemyEnum(EducationLevelEnum),
+        pg_enum(EducationLevelEnum),
         nullable=True,
     )
     education_details: Mapped[str | None]
@@ -71,7 +72,7 @@ class User(Base):
     activity_score: Mapped[float] = mapped_column(default=1.0)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    subscription_tier: Mapped[SubscriptionTierEnum] = mapped_column(SQLAlchemyEnum(SubscriptionTierEnum), default=SubscriptionTierEnum.FREE)
+    subscription_tier: Mapped[SubscriptionTierEnum] = mapped_column(pg_enum(SubscriptionTierEnum), default=SubscriptionTierEnum.FREE)
     subscription_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     superlikes_balance: Mapped[int] = mapped_column(default=1)
     boosts_balance: Mapped[int] = mapped_column(default=1)
@@ -79,7 +80,7 @@ class User(Base):
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     language: Mapped[UserLanguageEnum] = mapped_column(
-        SQLAlchemyEnum(UserLanguageEnum),
+        pg_enum(UserLanguageEnum),
         default=UserLanguageEnum.RU,
     )
 

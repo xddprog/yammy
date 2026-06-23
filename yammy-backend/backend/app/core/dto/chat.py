@@ -11,6 +11,13 @@ from app.utils.helpers.url_helper import get_absolute_url
 
 class ChatPeerDetailSchema(UserSearchResponseSchema):
     last_seen: datetime
+    main_photo: str | None = None
+
+    @field_validator("main_photo", mode="before")
+    @classmethod
+    def validate_main_photo(cls, main_photo: UserPhoto | None) -> str | None:
+        photo = main_photo.file_path if main_photo else None
+        return get_absolute_url(photo) if photo else None
 
 
 class ChatErrorResponseSchema(BaseModel):

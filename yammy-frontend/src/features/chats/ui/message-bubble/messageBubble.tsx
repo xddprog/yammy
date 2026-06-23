@@ -1,9 +1,25 @@
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
-import { Check, CheckCheck, Reply } from 'lucide-react'
+import { Check, CheckCheck, Loader2, Reply } from 'lucide-react'
 import { useRef } from 'react'
 
 import { cn, Image, useOverlay } from '@/shared'
 import { triggerHaptic } from '@/shared/lib/haptics'
+
+function MessageImageUploadOverlay({ visible }: { visible: boolean }) {
+  if (!visible) {
+    return null
+  }
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-[15] flex items-center justify-center rounded-xl bg-black/55 backdrop-blur-[1px]"
+      aria-live="polite"
+      aria-busy
+    >
+      <Loader2 className="size-8 shrink-0 animate-spin text-white" aria-hidden />
+    </div>
+  )
+}
 
 interface MessageBubbleProps {
   id: string
@@ -14,6 +30,7 @@ interface MessageBubbleProps {
   isRead?: boolean
   isEdited?: boolean
   isDeleted?: boolean
+  uploadStatus?: 'uploading'
   replyToId?: string
   replyToText?: string
   replyToName?: string
@@ -30,6 +47,7 @@ export const MessageBubble = ({
   isRead,
   isEdited,
   isDeleted,
+  uploadStatus,
   replyToId,
   replyToText,
   replyToName,
@@ -50,8 +68,9 @@ export const MessageBubble = ({
   const replyOpacity = useTransform(swipeX, [-20, -72], [0, 1])
   const replyScale = useTransform(swipeX, [-20, -72], [0.78, 1])
   const replyShiftX = useTransform(swipeX, [-20, -72], [10, 0])
-  const canOpenMenu = Boolean(onOpenMenu)
-  const canSwipeReply = Boolean(onSwipeReply)
+  const canOpenMenu = Boolean(onOpenMenu) && uploadStatus !== 'uploading'
+  const canSwipeReply = Boolean(onSwipeReply) && uploadStatus !== 'uploading'
+  const isUploading = uploadStatus === 'uploading'
 
   const openImagesPreview = (index: number) => {
     if (messageImages.length === 0) return
@@ -234,23 +253,26 @@ export const MessageBubble = ({
                 <button
                   key={`${id}-${index}`}
                   type="button"
-                  onClick={() => openImagesPreview(index)}
+                  onClick={() => !isUploading && openImagesPreview(index)}
+                  disabled={isUploading}
                   className={cn(
-                    'overflow-hidden',
+                    'relative overflow-hidden',
                     isSingleImage
                       ? 'aspect-[4/3] w-full max-h-72'
                       : 'aspect-[4/3] h-auto w-[78%] shrink-0 snap-start',
                     hasTextWithImages ? 'rounded-none' : 'rounded-xl',
                   )}
                 >
-                  <img
+                  <Image
                     src={src}
                     alt={`Sent image ${index + 1}`}
                     className={cn(
                       'h-full w-full object-cover',
                       hasTextWithImages ? 'rounded-none' : 'rounded-xl',
                     )}
+                    loading="eager"
                   />
+                  <MessageImageUploadOverlay visible={isUploading} />
                 </button>
               ))}
             </div>

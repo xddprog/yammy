@@ -2,9 +2,11 @@ import { ChevronLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { formatLastSeenLabel } from '@/entities/chat'
-import { Button, cn } from '@/shared'
+import { Button, cn, Image } from '@/shared'
 
 import { TypingStatusLabel } from './typingStatusLabel'
+
+const CHAT_AVATAR_FALLBACK = '/images/i.webp'
 
 interface ChatHeaderProps {
   name: string
@@ -69,7 +71,13 @@ export const ChatHeader = ({
         className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-full border border-card-foreground/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
         aria-label={profileLocked ? 'Профиль недоступен' : `Открыть профиль ${name}`}
       >
-        <img src={avatar} alt={name} className="h-full w-full object-cover" />
+        <Image
+          src={avatar || CHAT_AVATAR_FALLBACK}
+          alt={name}
+          fallbackSrc={CHAT_AVATAR_FALLBACK}
+          className="h-full w-full object-cover"
+          loading="eager"
+        />
       </button>
     </div>
   )

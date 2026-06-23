@@ -1,11 +1,12 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import DateTime, Enum as SQLAlchemyEnum, ForeignKey, Integer, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.database.models.base import Base
+from app.infrastructure.database.pg_enum import pg_enum
 from app.utils.constants.enums import AiSearchHistoryStatusEnum
 
 
@@ -15,7 +16,7 @@ class AiSearchHistory(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     query_text: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[AiSearchHistoryStatusEnum] = mapped_column(
-        SQLAlchemyEnum(AiSearchHistoryStatusEnum),
+        pg_enum(AiSearchHistoryStatusEnum),
         default=AiSearchHistoryStatusEnum.SEARCHING,
         index=True,
     )

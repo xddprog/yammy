@@ -1,6 +1,9 @@
 import { memo } from 'react'
 
 import { formatLastSeenLabel, type ChatListItem } from '@/entities/chat'
+import { Image } from '@/shared'
+
+const CHAT_AVATAR_FALLBACK = '/images/i.webp'
 
 interface ChatItemProps {
   chat: ChatListItem
@@ -34,7 +37,13 @@ const ChatItemComponent = ({
     >
       <div className="relative h-[52px] w-[52px] shrink-0">
         <div className="h-full w-full overflow-hidden rounded-full bg-muted">
-          <img src={avatar} alt="" className="h-full w-full object-cover" />
+          <Image
+            src={avatar || CHAT_AVATAR_FALLBACK}
+            alt=""
+            fallbackSrc={CHAT_AVATAR_FALLBACK}
+            className="h-full w-full object-cover"
+            loading="eager"
+          />
         </div>
         {online && (
           <span className="absolute right-0 bottom-0 size-3 rounded-full border-2 border-[#111111] bg-[#FF6BA4]" />

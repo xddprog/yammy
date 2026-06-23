@@ -5,6 +5,7 @@ import type { ChatWsEvent } from '../lib/chatWsEvents'
 
 export type ChatPeerDetailDto = UserSearchApiUser & {
   last_seen: string
+  main_photo?: string | null
 }
 
 export type ChatWsEnvelope<T = unknown> = {

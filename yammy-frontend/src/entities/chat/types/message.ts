@@ -9,6 +9,7 @@ export type ChatMessage = {
   isRead?: boolean
   isEdited?: boolean
   isDeleted?: boolean
+  uploadStatus?: 'uploading'
   replyToId?: string
   replyToText?: string
   replyToName?: string

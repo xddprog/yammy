@@ -85,11 +85,13 @@ class RequestProvider(Provider):
         self,
         session: AsyncSession,
         redis_client: RedisClient,
+        notification_service: services.NotificationService,
     ) -> services.AppearanceRatingService:
         return services.AppearanceRatingService(
             appearance_rating_repository=repositories.AppearanceRatingRepository(session=session),
             user_repository=repositories.UserRepository(session=session),
             redis_client=redis_client,
+            notification_service=notification_service,
         )
 
     @provide(scope=Scope.REQUEST)

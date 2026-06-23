@@ -159,6 +159,7 @@ export const MessageList = ({
             isRead={msg.isRead}
             isEdited={msg.isEdited}
             isDeleted={msg.isDeleted}
+            uploadStatus={msg.uploadStatus}
             replyToId={msg.replyToId}
             replyToText={msg.replyToText}
             replyToName={msg.replyToName}

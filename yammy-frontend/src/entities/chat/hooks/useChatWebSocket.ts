@@ -23,6 +23,7 @@ import type { UserSearchApiUser } from '@/entities/user/types/types'
 const MESSAGES_PAGE_SIZE = 30
 const TYPING_IDLE_MS = 3_000
 const PEER_TYPING_TIMEOUT_MS = 4_000
+const PENDING_MESSAGE_PREFIX = 'pending:'
 
 type ChatSocketStatus = 'idle' | 'connecting' | 'ready' | 'error' | 'closed'
 
@@ -46,6 +47,44 @@ function prependOlderMessages(existing: ChatMessage[], older: ChatMessage[]): Ch
   const ids = new Set(existing.map((message) => message.id))
   const uniqueOlder = older.filter((message) => !ids.has(message.id))
   return [...uniqueOlder, ...existing]
+}
+
+function formatMessageTimestampNow(): string {
+  return new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+
+function revokeMessagePreviewUrls(message: ChatMessage | undefined): void {
+  message?.images?.forEach((url) => {
+    if (url.startsWith('blob:')) {
+      URL.revokeObjectURL(url)
+    }
+  })
+}
+
+function replacePendingOutgoingMessage(
+  messages: ChatMessage[],
+  confirmed: ChatMessage,
+): ChatMessage[] {
+  const pendingIndex = messages.findIndex(
+    (message) =>
+      message.id.startsWith(PENDING_MESSAGE_PREFIX) &&
+      message.uploadStatus === 'uploading' &&
+      message.senderId === 'me',
+  )
+  if (pendingIndex === -1) {
+    return upsertMessage(messages, confirmed)
+  }
+
+  revokeMessagePreviewUrls(messages[pendingIndex])
+  const copy = [...messages]
+  copy[pendingIndex] = confirmed
+  return copy
+}
+
+function removePendingMessage(messages: ChatMessage[], pendingId: string): ChatMessage[] {
+  const pending = messages.find((message) => message.id === pendingId)
+  revokeMessagePreviewUrls(pending)
+  return messages.filter((message) => message.id !== pendingId)
 }
 
 export function useChatWebSocket(matchId: string | undefined) {
@@ -336,9 +375,13 @@ export function useChatWebSocket(matchId: string | undefined) {
             setIsPeerTyping(false)
             clearPeerTypingTimer()
           }
-          setMessages((prev) =>
-            upsertMessage(prev, mapMessageDtoToChatMessage(dto, userId)),
-          )
+          setMessages((prev) => {
+            const mapped = mapMessageDtoToChatMessage(dto, userId)
+            if (isNewMessage && dto.sender.id === userId) {
+              return replacePendingOutgoingMessage(prev, mapped)
+            }
+            return upsertMessage(prev, mapped)
+          })
           if (isNewMessage) {
             setScrollToBottomKey((key) => key + 1)
           }
@@ -477,22 +520,57 @@ export function useChatWebSocket(matchId: string | undefined) {
         return false
       }
 
-      const images = files?.length ? await filesToMessageImages(files) : []
+      const trimmed = text.trim()
+      const hasImages = Boolean(files?.length)
+      let pendingId: string | null = null
 
-      stopTyping()
-
-      const sent = sendPayload({
-        event: CHAT_WS_EVENTS.MESSAGE,
-        chat_id: chatIdRef.current,
-        content: text,
-        sender_id: currentUserId,
-        reply_to_id: replyTo?.id ?? null,
-        images,
-      })
-      if (!sent) {
-        showErrorToast('Не удалось отправить сообщение')
+      if (hasImages && files) {
+        pendingId = `${PENDING_MESSAGE_PREFIX}${crypto.randomUUID()}`
+        const previewUrls = files.map((file) => URL.createObjectURL(file))
+        const pendingMessage: ChatMessage = {
+          id: pendingId,
+          text: trimmed || undefined,
+          images: previewUrls,
+          senderId: 'me',
+          timestamp: formatMessageTimestampNow(),
+          createdAt: new Date().toISOString(),
+          isRead: false,
+          uploadStatus: 'uploading',
+          replyToId: replyTo?.id,
+          replyToText: replyTo?.text,
+          replyToName: replyTo?.name,
+        }
+        setMessages((prev) => [...prev, pendingMessage])
+        setScrollToBottomKey((key) => key + 1)
       }
-      return sent
+
+      try {
+        const images = files?.length ? await filesToMessageImages(files) : []
+
+        stopTyping()
+
+        const sent = sendPayload({
+          event: CHAT_WS_EVENTS.MESSAGE,
+          chat_id: chatIdRef.current,
+          content: trimmed,
+          sender_id: currentUserId,
+          reply_to_id: replyTo?.id ?? null,
+          images,
+        })
+        if (!sent) {
+          if (pendingId) {
+            setMessages((prev) => removePendingMessage(prev, pendingId))
+          }
+          showErrorToast('Не удалось отправить сообщение')
+        }
+        return sent
+      } catch {
+        if (pendingId) {
+          setMessages((prev) => removePendingMessage(prev, pendingId))
+        }
+        showErrorToast('Не удалось отправить сообщение')
+        return false
+      }
     },
     [currentUserId, sendPayload, stopTyping],
   )

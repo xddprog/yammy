@@ -24,8 +24,13 @@ class LikeCacheKeys:
     NOTIFY_MATCH_SENT = "notify:match:{recipient_id}:{pair_key}"
 
 
+class MessageCacheKeys:
+    NOTIFY_CHAT_MESSAGE_SENT = "notify:chat_message:{message_id}"
+
+
 class AppearanceRatingCacheKeys:
     APPEARANCE_RATED_USERS = "user:{user_id}:appearance_rated_users"
+    NOTIFY_APPEARANCE_RATING_SENT = "notify:appearance_rating:{rated_user_id}:{rater_id}:{score}"
     NOTIFY_MUTUAL_RATING_SENT = "notify:mutual_rating:{pair_id}"
 
 
