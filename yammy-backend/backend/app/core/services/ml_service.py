@@ -4,10 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import UploadFile
+import numpy as np
 from PIL import Image
 import torch
 from mtcnn import MTCNN
-from mtcnn.utils.images import load_image
 from sentence_transformers import SentenceTransformer, util
 from transformers import CLIPModel, CLIPProcessor
 
@@ -148,8 +148,12 @@ class MLService(metaclass=SingletonMeta):
         embedding = self.embeddings_model.encode(text)
         return embedding.tolist()
 
+    def _decode_image_rgb_uint8(self, image_bytes: bytes) -> np.ndarray:
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        return np.asarray(image, dtype=np.uint8)
+
     def _detect_faces_sync(self, image_bytes: bytes):
-        image = load_image(image_bytes)
+        image = self._decode_image_rgb_uint8(image_bytes)
         result = self.face_detection_model.detect_faces(image)
         return result
 

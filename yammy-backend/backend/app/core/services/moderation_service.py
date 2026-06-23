@@ -1,7 +1,10 @@
 from fastapi import UploadFile
 import re
+import time
+
 from app.core.services.ml_service import MLService
-from app.infrastructure.errors.image_errors import ImageProcessingError
+from app.core.services.image_service import assert_image_upload_size
+from app.infrastructure.errors.image_errors import ImageProcessingError, ImageTooLarge
 from app.infrastructure.errors.moderation_errors import TextModerationError
 from app.infrastructure.logging.logger import get_logger
 from app.utils.constants.moderation_constants import (
@@ -19,19 +22,38 @@ class ModerationService:
         self.ml_service = ml_service
 
     async def moderate_image(self, image: UploadFile, is_main: bool) -> bool:
+        started_at = time.perf_counter()
         try:
+            assert_image_upload_size(image)
+
             if image.content_type not in ["image/jpeg", "image/png", "image/webp"]:
                 raise ImageProcessingError("некорректный тип файла")
 
             if is_main:
+                faces_started = time.perf_counter()
                 faces = await self.ml_service.detect_faces(image)
+                logger.info(
+                    "moderate_image_timing",
+                    phase="detect_faces",
+                    is_main=is_main,
+                    seconds=round(time.perf_counter() - faces_started, 3),
+                    faces_count=len(faces) if faces else 0,
+                )
                 if not faces:
                     raise ImageProcessingError("на фото должно быть видно лицо")
                 if len(faces) > 1:
                     raise ImageProcessingError("на фото должен быть только 1 человек")
                 await image.seek(0)
 
+            clip_started = time.perf_counter()
             is_safe, probabilities = await self.ml_service.moderate_content(image)
+            logger.info(
+                "moderate_image_timing",
+                phase="clip",
+                is_main=is_main,
+                seconds=round(time.perf_counter() - clip_started, 3),
+                is_safe=is_safe,
+            )
             
             if not is_safe:
                 unsafe_cats = {
@@ -57,9 +79,22 @@ class ModerationService:
                     "недопустимый контент"
                 )
                 raise ImageProcessingError(error_msg)
-            
+
+            logger.info(
+                "moderate_image_timing",
+                phase="handler_total",
+                is_main=is_main,
+                seconds=round(time.perf_counter() - started_at, 3),
+            )
             return True
-        except ImageProcessingError:
+        except ImageProcessingError as exc:
+            logger.info(
+                "moderate_image_timing",
+                phase="handler_total_rejected",
+                is_main=is_main,
+                seconds=round(time.perf_counter() - started_at, 3),
+                reason=str(exc.detail),
+            )
             raise
         except ValueError as e:
             logger.error("Error moderating image", error=e)

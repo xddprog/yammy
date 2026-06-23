@@ -1,5 +1,6 @@
 import { authApi, publicApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
+import { compressImageForUpload } from '@/shared/lib/compressImageForUpload'
 import {
   deleteRefreshToken,
   setAccessToken,
@@ -50,7 +51,8 @@ export class AuthService {
   ): Promise<TokenPair> {
     const formData = new FormData()
     formData.append('profile', JSON.stringify(profile))
-    for (const file of images) {
+    const preparedImages = await Promise.all(images.map((file) => compressImageForUpload(file)))
+    for (const file of preparedImages) {
       formData.append('images', file)
     }
 

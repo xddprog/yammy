@@ -19,6 +19,19 @@ from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
+def assert_image_upload_size(file: UploadFile) -> None:
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    if size == 0:
+        raise EmptyImageFile()
+
+    max_bytes = APP_CONFIG.MAX_IMAGE_SIZE_MB * 1024 * 1024
+    if size > max_bytes:
+        raise ImageTooLarge(APP_CONFIG.MAX_IMAGE_SIZE_MB)
+
+
 class ImageService:
     def __init__(self):
         images_dir = BASE_DIR / "static" / "images"
@@ -93,17 +106,8 @@ class ImageService:
             file_ext = Path(file.filename).suffix.lower()
             if file_ext not in allowed_extensions:
                 raise InvalidImageFormat(', '.join(allowed_extensions))
-        
-        file.file.seek(0, 2)
-        size = file.file.tell()
-        file.file.seek(0)
-        
-        max_bytes = APP_CONFIG.MAX_IMAGE_SIZE_MB * 1024 * 1024
-        if size > max_bytes:
-            raise ImageTooLarge(APP_CONFIG.MAX_IMAGE_SIZE_MB)
-        
-        if size == 0:
-            raise EmptyImageFile()
+
+        assert_image_upload_size(file)
     
     async def delete_image(self, image_path: str) -> bool:
         try:

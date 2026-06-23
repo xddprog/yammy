@@ -21,7 +21,7 @@ import {
 } from '@/entities/user/lib/patchProfilePhotosCache'
 import { usersQueryKeys } from '@/entities/user/lib/usersQueryKeys'
 
-import { Image, cn } from '@/shared'
+import { Image, cn, showErrorToast } from '@/shared'
 import { triggerHaptic } from '@/shared/lib/haptics'
 
 import { MAX_PROFILE_PHOTOS } from './profile.constants'
@@ -311,9 +311,9 @@ export const ProfilePhotosEditor = ({
       void (async () => {
         try {
           if (isLocal) {
-            await moderateImage(file, false)
+            const prepared = await moderateImage(file, false)
             const id = `local-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-            photoFilesRef.current.set(id, file)
+            photoFilesRef.current.set(id, prepared)
             revokeIfBlobUrl(blobUrl)
             setPhotos((prev) => {
               const rest = prev.filter((p) => p.id !== tempId)
@@ -321,7 +321,7 @@ export const ProfilePhotosEditor = ({
                 ...rest,
                 {
                   id,
-                  file_path: URL.createObjectURL(file),
+                  file_path: URL.createObjectURL(prepared),
                   is_main: false,
                   order: rest.length,
                 },
@@ -333,10 +333,12 @@ export const ProfilePhotosEditor = ({
             setPhotos((prev) => prev.filter((p) => p.id !== tempId))
             mergeUploadedGalleryPhotoInCache(queryClient, created)
           }
-        } catch {
+        } catch (error) {
           revokeIfBlobUrl(blobUrl)
           setPhotos((prev) => prev.filter((p) => p.id !== tempId))
-          if (!isLocal) {
+          if (isLocal) {
+            showErrorToast(error instanceof Error ? error.message : 'Не удалось проверить фото')
+          } else {
             void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
           }
         }
@@ -382,9 +384,9 @@ export const ProfilePhotosEditor = ({
     void (async () => {
       try {
         if (isLocal) {
-          await moderateImage(file, true)
+          const prepared = await moderateImage(file, true)
           const id = `local-main-${Date.now()}`
-          photoFilesRef.current.set(id, file)
+          photoFilesRef.current.set(id, prepared)
           revokeIfBlobUrl(blobUrl)
           const replacedMain = rollback.find((p) => p.is_main)
           revokeIfBlobUrl(replacedMain?.file_path)
@@ -394,7 +396,7 @@ export const ProfilePhotosEditor = ({
             return renumberPhotosOrder([
               {
                 id,
-                file_path: URL.createObjectURL(file),
+                file_path: URL.createObjectURL(prepared),
                 is_main: true,
                 order: 0,
               },
@@ -407,10 +409,12 @@ export const ProfilePhotosEditor = ({
           setPhotos((prev) => prev.filter((p) => p.id !== tempId))
           mergeUploadedMainPhotoInCache(queryClient, mainRow)
         }
-      } catch {
+      } catch (error) {
         revokeIfBlobUrl(blobUrl)
         setPhotos(rollback)
-        if (!isLocal) {
+        if (isLocal) {
+          showErrorToast(error instanceof Error ? error.message : 'Не удалось проверить фото')
+        } else {
           void queryClient.invalidateQueries({ queryKey: usersQueryKeys.profile() })
         }
       }

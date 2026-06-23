@@ -1,8 +1,11 @@
+import { readTelegramInitDataFromLaunch } from './readTelegramInitData'
+
 const TELEGRAM_WEB_APP_SCRIPT = 'https://telegram.org/js/telegram-web-app.js'
 
 /** Не вешать загрузку на index.html — иначе main.tsx не стартует, пока telegram.org не ответит. */
 export function loadTelegramWebAppScript(): Promise<void> {
-  if (window.Telegram?.WebApp) {
+  // Desktop/Web: нативный stub WebApp без initData — всё равно грузим SDK, он прочитает #tgWebAppData.
+  if (readTelegramInitDataFromLaunch()) {
     return Promise.resolve()
   }
 

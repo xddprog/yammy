@@ -11,6 +11,7 @@ import { publicApi } from '@/shared/api/baseQueryInstanse'
 import { ensureDevAuthToken } from './bootstrapDevAuth'
 import { ensureDevOnboardingToken } from './bootstrapDevOnboarding'
 import { loadTelegramWebAppScript } from './providers/loadTelegramWebAppScript'
+import { readTelegramInitDataFromLaunch } from './providers/readTelegramInitData'
 
 type TokenPair = {
   access_token: string
@@ -42,22 +43,18 @@ async function tryRestoreSessionFromRefresh(): Promise<boolean> {
 }
 
 async function getTelegramInitData(): Promise<string | null> {
-  const currentInitData = (
-    window as Window & { Telegram?: { WebApp?: { initData?: string } } }
-  ).Telegram?.WebApp?.initData?.trim()
-  if (currentInitData) {
-    return currentInitData
+  const fromLaunch = readTelegramInitDataFromLaunch()
+  if (fromLaunch) {
+    return fromLaunch
   }
 
   try {
     await loadTelegramWebAppScript()
   } catch {
-    return null
+    return readTelegramInitDataFromLaunch()
   }
 
-  const tg = (window as Window & { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp
-  const initData = tg?.initData?.trim()
-  return initData || null
+  return readTelegramInitDataFromLaunch()
 }
 
 export async function ensureAppAuth(): Promise<void> {

@@ -109,7 +109,7 @@ class AppConfig(Config):
     BASE_URL: str = Field(default="http://localhost:8000")
     STATIC_URL: str = Field(default="http://localhost:8000/static/images")
     
-    MAX_IMAGE_SIZE_MB: int = Field(default=10)
+    MAX_IMAGE_SIZE_MB: int = Field(default=4)
     WEBP_QUALITY: int = Field(default=85)
     
     SLOW_REQUEST_THRESHOLD: float = Field(default=1.0, description="Порог медленных запросов в секундах")

@@ -1,6 +1,7 @@
 import { isOnboardingSession } from '@/entities/token/lib/isOnboardingSession'
 import { authApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
+import { compressImageForUpload } from '@/shared/lib/compressImageForUpload'
 import type { PaginatedResponse } from '@/shared/api/pagination'
 
 import type {
@@ -91,8 +92,9 @@ export class UserService {
 
   /** Доп. фото: модерация + сохранение (POST). */
   public async uploadUserGalleryPhoto(file: File): Promise<UserProfilePhotoDto> {
+    const prepared = await compressImageForUpload(file)
     const formData = new FormData()
-    formData.append('image', file)
+    formData.append('image', prepared)
     const response = await authApi.post(USER_IMAGE_ENDPOINT, { body: formData })
     if (!response.ok) {
       await throwApiError(response, 'Загрузка фото')
@@ -113,8 +115,9 @@ export class UserService {
 
   /** Главное фото: модерация + подмена (multipart PATCH /image/main). */
   public async uploadUserMainPhoto(file: File): Promise<UserProfilePhotoDto> {
+    const prepared = await compressImageForUpload(file)
     const formData = new FormData()
-    formData.append('image', file)
+    formData.append('image', prepared)
     const response = await authApi.patch(USER_MAIN_IMAGE_ENDPOINT, { body: formData })
     if (!response.ok) {
       await throwApiError(response, 'Главное фото')
