@@ -306,9 +306,13 @@ class AiSearchService:
 
             for item in selected:
                 cid = str(item["id"])
-                if cid in unique or cid in {str(uid) for uid in excluded_ids if str(uid) != user_id_str}:
+                if cid in unique:
                     continue
-                if cid == user_id_str:
+                try:
+                    candidate_uuid = UUID(cid)
+                except ValueError:
+                    continue
+                if candidate_uuid in excluded_ids:
                     continue
                 unique[cid] = {
                     "id": cid,
@@ -325,6 +329,12 @@ class AiSearchService:
             min_results=AI_SEARCH_CONFIG.MIN_RESULTS,
         )
         return results
+
+    async def _get_excluded_candidate_ids(self, user_id: UUID) -> set[UUID]:
+        excluded_ids = {user_id}
+        outgoing = await self.like_repository.get_outgoing_interaction_user_ids(user_id)
+        excluded_ids.update(outgoing)
+        return excluded_ids
 
     @staticmethod
     def _compact_candidate(candidate: User) -> dict:

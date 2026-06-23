@@ -78,7 +78,11 @@ const AiSearchResultsPage = (): JSX.Element => {
           <ChevronLeft className="size-5" strokeWidth={2} />
         </button>
         <div className={emptyStateClassName}>
-          {!isReady ? 'Результат ещё готовится' : 'В этом запуске нет анкет для показа'}
+          {!isReady
+            ? 'Результат ещё готовится'
+            : (job.resultCount ?? 0) > 0
+              ? 'Анкеты из этого поиска уже оценены'
+              : 'В этом запуске нет анкет для показа'}
         </div>
         <Button type="button" variant="default" size="default" className="mt-4 w-full rounded-full" onClick={goBack}>
           К истории поиска
