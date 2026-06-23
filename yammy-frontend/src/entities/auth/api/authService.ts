@@ -1,7 +1,8 @@
 import { authApi, publicApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
 import { compressImageForUpload } from '@/shared/lib/compressImageForUpload'
-import { rememberTelegramInitData } from '@/app/providers/readTelegramInitData'
+import { readTelegramInitDataFromLaunch, rememberTelegramInitData } from '@/app/providers/readTelegramInitData'
+import { isOnboardingSession } from '@/entities/token/lib/isOnboardingSession'
 import {
   deleteRefreshToken,
   setAccessToken,
@@ -24,6 +25,9 @@ type TokenPair = {
 }
 
 function applyTokenPair(data: TokenPair): void {
+  if (!data.access_token?.trim()) {
+    throw new Error('Сервер не вернул access token')
+  }
   setAccessToken(data.access_token)
   if (data.refresh_token) {
     setRefreshToken(data.refresh_token)
@@ -32,18 +36,22 @@ function applyTokenPair(data: TokenPair): void {
   }
 }
 
+async function loginTelegramWithInitData(initData: string): Promise<TokenPair> {
+  rememberTelegramInitData(initData)
+  const response = await publicApi.post(TELEGRAM_LOGIN_ENDPOINT, {
+    json: { init_data: initData },
+  })
+  if (!response.ok) {
+    await throwApiError(response, 'Ошибка входа через Telegram')
+  }
+  const data = (await response.json()) as TokenPair
+  applyTokenPair(data)
+  return data
+}
+
 export class AuthService {
   public async loginTelegram(initData: string): Promise<TokenPair> {
-    rememberTelegramInitData(initData)
-    const response = await publicApi.post(TELEGRAM_LOGIN_ENDPOINT, {
-      json: { init_data: initData },
-    })
-    if (!response.ok) {
-      await throwApiError(response, 'Ошибка входа через Telegram')
-    }
-    const data = (await response.json()) as TokenPair
-    applyTokenPair(data)
-    return data
+    return loginTelegramWithInitData(initData)
   }
 
   /** Профиль + фото одним запросом, в ответе полные JWT. */
@@ -64,11 +72,24 @@ export class AuthService {
       body: formData,
       timeout: ONBOARDING_FINISH_TIMEOUT_MS,
     })
+    if (response.status === 409) {
+      const initData = readTelegramInitDataFromLaunch()
+      if (initData) {
+        return loginTelegramWithInitData(initData)
+      }
+    }
     if (!response.ok) {
       await throwApiError(response, 'Регистрация')
     }
     const data = (await response.json()) as TokenPair
     applyTokenPair(data)
+    if (isOnboardingSession()) {
+      const initData = readTelegramInitDataFromLaunch()
+      if (!initData) {
+        throw new Error('Не удалось обновить сессию после регистрации')
+      }
+      return loginTelegramWithInitData(initData)
+    }
     return data
   }
 

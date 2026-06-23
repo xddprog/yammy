@@ -1,8 +1,7 @@
 import type { JSX } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
-import { getAccessToken } from '@/entities/token/lib/tokenService'
-import { isOnboardingSession } from '@/entities/token/lib/isOnboardingSession'
+import { useAuthSession } from '@/entities/token/hooks/useAuthSession'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
 import { AppPageLoader } from '@/app/ui/AppPageLoader'
 import { ERouteNames } from '@/shared/lib/routeVariables'
@@ -50,8 +49,7 @@ function ProfileLoadErrorScreen({ onRetry }: { onRetry: () => void }): JSX.Eleme
 
 export function AppAuthGate(): JSX.Element {
   const location = useLocation()
-  const hasToken = Boolean(getAccessToken())
-  const onboardingSession = isOnboardingSession()
+  const { hasToken, isOnboarding: onboardingSession } = useAuthSession()
   const isOnboardingRoute = location.pathname.includes(ERouteNames.ONBOARDING_ROUTE)
 
   const { data: profile, isLoading, isError, refetch } = useUserProfile({
