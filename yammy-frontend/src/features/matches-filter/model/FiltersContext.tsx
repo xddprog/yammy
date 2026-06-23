@@ -1,6 +1,8 @@
+import isEqual from 'lodash/isEqual'
 import type React from 'react'
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { useAuthSession } from '@/entities/token/hooks/useAuthSession'
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
 
@@ -146,43 +148,69 @@ function useDraftSetters(
   )
 }
 
+function mergeDraftFields(next: FiltersState, draft: FiltersState): FiltersState {
+  return {
+    ...next,
+    bio: draft.bio,
+    job: draft.job,
+  }
+}
+
+function persistedFeedFiltersEqual(left: FiltersState, right: FiltersState): boolean {
+  return isEqual(extractPersistedFeedFilters(left), extractPersistedFeedFilters(right))
+}
+
 export function FiltersProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const { data: filtersMetadata } = useFiltersMetadata()
-  const { data: profile } = useUserProfile()
+  const { hasToken, isOnboarding } = useAuthSession()
+  const canLoadUserProfile = hasToken && !isOnboarding
+  const { data: filtersMetadata, dataUpdatedAt: filtersMetadataUpdatedAt } = useFiltersMetadata({
+    enabled: hasToken,
+  })
+  const { data: profile } = useUserProfile({ enabled: canLoadUserProfile })
   const profileDefaultsAppliedRef = useRef(false)
+  const metadataSyncedAtRef = useRef('')
+  const filtersMetadataRef = useRef(filtersMetadata)
+  if (filtersMetadata?.length) {
+    filtersMetadataRef.current = filtersMetadata
+  }
 
   const [state, setState] = useState<FiltersState>(() => loadAppliedFiltersState())
   const [appliedState, setAppliedState] = useState<FiltersState>(() => loadAppliedFiltersState())
+  const appliedStateRef = useRef(appliedState)
+  appliedStateRef.current = appliedState
 
   const setters = useDraftSetters(setState)
 
   useEffect(() => {
-    if (profileDefaultsAppliedRef.current || !profile?.gender) return
+    const metadata = filtersMetadataRef.current
+    if (!metadata?.length) return
 
-    if (loadPersistedFeedFilters() != null) {
+    const hasPersisted = loadPersistedFeedFilters() != null
+    let working = appliedStateRef.current
+
+    if (!hasPersisted && profile?.gender && !profileDefaultsAppliedRef.current) {
+      working = getDefaultFiltersState(getOppositeSearchGender(profile.gender))
       profileDefaultsAppliedRef.current = true
+    } else if (hasPersisted) {
+      profileDefaultsAppliedRef.current = true
+    }
+
+    const reconciled = reconcileFiltersStateWithMetadata(working, metadata)
+    const syncKey = `${filtersMetadataUpdatedAt}:${profile?.gender ?? ''}`
+
+    if (metadataSyncedAtRef.current === syncKey) {
+      return
+    }
+    metadataSyncedAtRef.current = syncKey
+
+    if (persistedFeedFiltersEqual(appliedStateRef.current, reconciled)) {
       return
     }
 
-    const defaults = getDefaultFiltersState(getOppositeSearchGender(profile.gender))
-    setState(defaults)
-    setAppliedState(defaults)
-    profileDefaultsAppliedRef.current = true
-  }, [profile?.gender])
-
-  useEffect(() => {
-    if (!filtersMetadata?.length) return
-
-    setAppliedState((prev) => {
-      const next = reconcileFiltersStateWithMetadata(prev, filtersMetadata)
-      const unchanged =
-        JSON.stringify(extractPersistedFeedFilters(prev)) ===
-        JSON.stringify(extractPersistedFeedFilters(next))
-      if (unchanged) return prev
-      savePersistedFeedFilters(next)
-      return next
-    })
-  }, [filtersMetadata])
+    savePersistedFeedFilters(reconciled)
+    setAppliedState(reconciled)
+    setState((draft) => mergeDraftFields(reconciled, draft))
+  }, [filtersMetadataUpdatedAt, profile?.gender])
 
   const persist = useCallback((snapshot?: FiltersState) => {
     if (snapshot != null) {

@@ -53,16 +53,26 @@ const OnboardingPage = (): JSX.Element => {
   const [photos, setPhotos] = useState<ProfilePhotoItem[]>([])
   const [submitting, setSubmitting] = useState(false)
 
+  const nameHydratedRef = useRef(false)
+
   useEffect(() => {
+    if (nameHydratedRef.current) return
+
     const firstName = tg?.initDataUnsafe?.user?.first_name?.trim()
-    if (firstName && !draft.name.trim()) {
-      setDraft((prev) => {
-        const next = { ...prev, name: firstName }
-        saveOnboardingDraft(next)
-        return next
-      })
-    }
-  }, [tg, draft.name])
+    if (!firstName) return
+
+    setDraft((prev) => {
+      if (prev.name.trim()) {
+        nameHydratedRef.current = true
+        return prev
+      }
+
+      nameHydratedRef.current = true
+      const next = { ...prev, name: firstName }
+      saveOnboardingDraft(next)
+      return next
+    })
+  }, [tg])
 
   const persistDraft = useCallback((next: OnboardingDraft) => {
     setDraft(next)
