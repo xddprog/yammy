@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, load_only, noload, selectinload
 
@@ -50,6 +50,24 @@ class MessageRepository(SqlAlchemyRepository[Message]):
         query = base.offset(pagination.offset).limit(pagination.size).options(*self._item_options())
         result = await self.session.execute(query)
         return total, list(result.scalars().all())
+
+    async def list_text_excerpts_for_chat(self, chat_id: UUID) -> list[tuple[UUID, str, object, bool]]:
+        has_photos = (
+            select(1)
+            .where(MessagePhoto.message_id == Message.id)
+            .correlate(Message)
+            .exists()
+        )
+        query = (
+            select(Message.sender_id, Message.content, Message.created_at, has_photos)
+            .where(
+                Message.chat_id == chat_id,
+                Message.is_deleted.is_(False),
+            )
+            .order_by(Message.created_at.asc(), Message.id.asc())
+        )
+        result = await self.session.execute(query)
+        return list(result.tuples().all())
 
     async def get_item(self, item_id: str) -> Message | None:
         query = (

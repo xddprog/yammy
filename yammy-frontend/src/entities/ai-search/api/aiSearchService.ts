@@ -3,13 +3,12 @@ import { throwApiError } from '@/shared/api/handleApiError'
 import type { UserSearchApiUser } from '@/entities/user/types/types'
 
 import type {
-  AiSearchCreatePayload,
   AiSearchFeedData,
   AiSearchHistoryList,
   AiSearchJob,
   AiSearchJobStatus,
-  AiSearchTargetGender,
 } from '../types'
+import type { AiSearchCreatePayload, AiSearchTargetGender } from '../lib/aiSearchGender'
 
 const AI_SEARCH_HISTORY_ENDPOINT = 'api/v1/users/search/ai/history'
 

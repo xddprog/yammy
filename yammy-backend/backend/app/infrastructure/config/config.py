@@ -173,6 +173,7 @@ class AiSearchConfig(Config):
 class TarotCompatibilityConfig(Config):
     model_config = _settings_config(env_prefix="TAROT_COMPATIBILITY_CONFIG__")
     DAILY_LIMIT: int = Field(default=1)
+    MESSAGES_TOTAL_MAX_CHARS: int = Field(default=20000)
 
 
 class Settings(Config):

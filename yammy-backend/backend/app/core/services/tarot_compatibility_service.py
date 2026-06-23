@@ -11,7 +11,9 @@ from app.core.dto.tarot_compatibility import (
     TarotCompatibilityResultSchema,
     TarotCompatibilityWithPartnerResponse,
 )
+from app.core.repositories.chat_repository import ChatRepository
 from app.core.repositories.like_repository import LikeRepository
+from app.core.repositories.message_repository import MessageRepository
 from app.core.repositories.tarot_compatibility_history_repository import TarotCompatibilityHistoryRepository
 from app.core.repositories.user_repository import UserRepository
 from app.infrastructure.config.config import TAROT_COMPATIBILITY_CONFIG
@@ -35,11 +37,15 @@ class TarotCompatibilityService:
         tarot_history_repository: TarotCompatibilityHistoryRepository,
         user_repository: UserRepository,
         like_repository: LikeRepository,
+        chat_repository: ChatRepository,
+        message_repository: MessageRepository,
         openrouter_client: OpenRouterClient,
     ):
         self.tarot_history_repository = tarot_history_repository
         self.user_repository = user_repository
         self.like_repository = like_repository
+        self.chat_repository = chat_repository
+        self.message_repository = message_repository
         self.openrouter_client = openrouter_client
 
     @staticmethod
@@ -133,9 +139,14 @@ class TarotCompatibilityService:
             return
 
         try:
+            chat_messages = await self._build_chat_messages_for_llm(
+                seeker_id=item.user_id,
+                partner_user_id=item.partner_user_id,
+            )
             result = await self.openrouter_client.generate_tarot_compatibility_reading(
                 seeker_profile=self._compact_profile(seeker),
                 partner_profile=self._compact_profile(partner),
+                chat_messages=chat_messages,
             )
             TarotCompatibilityResultSchema.model_validate(result)
             await self.tarot_history_repository.update_item(
@@ -151,6 +162,7 @@ class TarotCompatibilityService:
                 user_id=str(item.user_id),
                 partner_user_id=str(item.partner_user_id),
                 compatibility_score=result.get("compatibility_score"),
+                chat_messages_count=len(chat_messages),
             )
         except (ValidationError, ValueError, RuntimeError):
             logger.exception("tarot_compatibility_processing_error", history_id=history_id_str)
@@ -158,6 +170,53 @@ class TarotCompatibilityService:
         except Exception:
             logger.exception("tarot_compatibility_unexpected_error", history_id=history_id_str)
             await self._mark_failed(item.id, MSG_TAROT_FAILED)
+
+    async def _build_chat_messages_for_llm(
+        self,
+        *,
+        seeker_id: UUID,
+        partner_user_id: UUID,
+    ) -> list[dict]:
+        chat_id = await self.chat_repository.get_chat_id_for_user_pair(seeker_id, partner_user_id)
+        if chat_id is None:
+            return []
+
+        rows = await self.message_repository.list_text_excerpts_for_chat(chat_id)
+        excerpts: list[dict] = []
+        for sender_id, content, created_at, has_photos in rows:
+            text = (content or "").strip()
+            if text:
+                if has_photos:
+                    text = f"{text} [+ фото]"
+            elif has_photos:
+                text = "[фото]"
+            else:
+                continue
+
+            excerpts.append(
+                {
+                    "author": "seeker" if sender_id == seeker_id else "partner",
+                    "text": text,
+                    "sent_at": created_at.isoformat() if created_at is not None else None,
+                }
+            )
+
+        return self._trim_chat_excerpts(excerpts)
+
+    @staticmethod
+    def _trim_chat_excerpts(excerpts: list[dict]) -> list[dict]:
+        max_total = TAROT_COMPATIBILITY_CONFIG.MESSAGES_TOTAL_MAX_CHARS
+        if not excerpts:
+            return []
+
+        start = 0
+        while start < len(excerpts):
+            total_len = sum(len(str(item.get("text", ""))) for item in excerpts[start:])
+            if total_len <= max_total:
+                return excerpts[start:]
+            start += 1
+
+        return excerpts[-1:] if excerpts else []
 
     async def _ensure_valid_partner(self, user_id: UUID, partner_user_id: UUID) -> None:
         if partner_user_id == user_id:

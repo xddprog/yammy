@@ -166,6 +166,8 @@ class RequestProvider(Provider):
             tarot_history_repository=repositories.TarotCompatibilityHistoryRepository(session=session),
             user_repository=repositories.UserRepository(session=session),
             like_repository=repositories.LikeRepository(session=session),
+            chat_repository=repositories.ChatRepository(session=session),
+            message_repository=repositories.MessageRepository(session=session),
             openrouter_client=openrouter_client,
         )
 

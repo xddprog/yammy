@@ -114,10 +114,23 @@ class OpenRouterClient:
         *,
         seeker_profile: dict,
         partner_profile: dict,
+        chat_messages: list[dict] | None = None,
     ) -> dict:
         api_key = (OPENROUTER_CONFIG.API_KEY or "").strip()
         if not api_key:
             raise RuntimeError("OPENROUTER_CONFIG__API_KEY is not set")
+
+        chat_block = ""
+        if chat_messages:
+            chat_block = (
+                "Переписка между ними (только текст; содержимое картинок не передаётся). "
+                "[фото] — сообщение только с картинкой; "
+                "[+ фото] — к тексту было прикреплено фото. "
+                "Учитывай тон, инициативу и динамику общения:\n"
+                f"{json.dumps(chat_messages, ensure_ascii=False)}\n\n"
+            )
+        else:
+            chat_block = "Переписки между ними пока нет — опирайся только на анкеты.\n\n"
 
         prompt = (
             "Сделай расклад таро на совместимость двух людей в dating-приложении.\n\n"
@@ -126,6 +139,7 @@ class OpenRouterClient:
             "- present — текущая энергия между ними\n"
             "- future — потенциал отношений\n\n"
             "Учитывай анкеты обоих (имя, возраст, пол, город, цель знакомства, bio, работа, характеристики).\n"
+            f"{chat_block}"
             "Тон — лёгкий, романтичный, поддерживающий, на русском.\n"
             "compatibility_score — целое число 0–100.\n"
             "summary — короткий итог до 200 символов.\n"

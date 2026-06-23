@@ -1,7 +1,7 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, joinedload, noload, selectinload
 
@@ -97,6 +97,24 @@ class ChatRepository(SqlAlchemyRepository[Chat]):
                     Match.user1_id == user_id,
                     Match.user2_id == user_id,
                 ),
+            )
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_chat_id_for_user_pair(
+        self,
+        user_id: UUID,
+        partner_user_id: UUID,
+    ) -> UUID | None:
+        query = (
+            select(Chat.id)
+            .join(Match, Match.id == Chat.match_id)
+            .where(
+                or_(
+                    and_(Match.user1_id == user_id, Match.user2_id == partner_user_id),
+                    and_(Match.user1_id == partner_user_id, Match.user2_id == user_id),
+                )
             )
         )
         result = await self.session.execute(query)
