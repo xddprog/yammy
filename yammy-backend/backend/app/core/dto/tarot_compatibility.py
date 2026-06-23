@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
 
 from app.utils.constants.enums import AiSearchHistoryStatusEnum
 
@@ -14,7 +14,8 @@ class TarotCardSchema(BaseModel):
 
 
 class TarotCompatibilityResultSchema(BaseModel):
-    compatibility_score: int = Field(ge=0, le=100)
+    model_config = ConfigDict(extra="ignore")
+
     summary: str
     cards: list[TarotCardSchema]
     reading_text: str
@@ -22,6 +23,7 @@ class TarotCompatibilityResultSchema(BaseModel):
 
 class TarotCompatibilityCreateRequest(BaseModel):
     partner_user_id: UUID
+    force_new: bool = False
 
 
 class TarotCompatibilityItemSchema(BaseModel):

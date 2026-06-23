@@ -9,7 +9,6 @@ export interface TarotCard {
 }
 
 export interface TarotCompatibilityResult {
-  compatibility_score: number
   summary: string
   cards: TarotCard[]
   reading_text: string
@@ -32,4 +31,5 @@ export interface TarotCompatibilityWithPartner {
 
 export interface TarotCompatibilityCreatePayload {
   partner_user_id: string
+  force_new?: boolean
 }

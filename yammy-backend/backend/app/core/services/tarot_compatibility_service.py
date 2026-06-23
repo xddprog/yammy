@@ -90,16 +90,17 @@ class TarotCompatibilityService:
         partner_user_id = request.partner_user_id
         await self._ensure_valid_partner(user.id, partner_user_id)
 
-        existing_ready = await self.tarot_history_repository.get_latest_ready_for_pair(
-            user.id,
-            partner_user_id,
-        )
-        if existing_ready is not None:
-            return self._to_item_schema(existing_ready)
-
         latest = await self.tarot_history_repository.get_latest_for_pair(user.id, partner_user_id)
         if latest is not None and latest.status == AiSearchHistoryStatusEnum.SEARCHING:
             return self._to_item_schema(latest)
+
+        if not request.force_new:
+            existing_ready = await self.tarot_history_repository.get_latest_ready_for_pair(
+                user.id,
+                partner_user_id,
+            )
+            if existing_ready is not None:
+                return self._to_item_schema(existing_ready)
 
         if await self._remaining_today(user) <= 0:
             raise ConflictException(MSG_TAROT_DAILY_LIMIT)
@@ -161,7 +162,6 @@ class TarotCompatibilityService:
                 history_id=history_id_str,
                 user_id=str(item.user_id),
                 partner_user_id=str(item.partner_user_id),
-                compatibility_score=result.get("compatibility_score"),
                 chat_messages_count=len(chat_messages),
             )
         except (ValidationError, ValueError, RuntimeError):

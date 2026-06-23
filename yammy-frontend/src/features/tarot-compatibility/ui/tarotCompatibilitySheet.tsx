@@ -1,12 +1,10 @@
-import { Sparkles } from 'lucide-react'
-import type { CSSProperties, JSX } from 'react'
-import { memo, useEffect, useRef } from 'react'
+import type { JSX } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   useCreateTarotCompatibility,
   useTarotCompatibilityWithPartner,
 } from '@/entities/tarot-compatibility'
-import { AppPageLoader } from '@/app/ui/AppPageLoader'
 import { Button } from '@/shared'
 
 import {
@@ -20,31 +18,27 @@ const POSITION_LABELS: Record<string, string> = {
   future: 'Будущее',
 }
 
-function CompatibilityScoreRing({ score }: { score: number }): JSX.Element {
-  const clamped = Math.max(0, Math.min(100, Math.round(score)))
-  const angle = (clamped / 100) * 360
+const SHEET_BUTTON_EDGE_INSET_CLASS = 'w-3 shrink-0 snap-start'
+const SHEET_BUTTON_EDGE_INSET_END_CLASS = 'w-3 shrink-0 snap-end'
+const SHEET_BUTTON_PEEK_ITEM_CLASS = 'shrink-0 snap-start min-w-[calc(100%-3.5rem)]'
+
+function ShufflingDeckText(): JSX.Element {
+  const [dotCount, setDotCount] = useState(1)
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setDotCount((count) => (count % 3) + 1)
+    }, 500)
+
+    return () => window.clearInterval(id)
+  }, [])
 
   return (
-    <div className="relative mx-auto aspect-square w-[120px]">
-      <div
-        className="absolute inset-0 rounded-full"
-        style={
-          {
-            '--progress-angle': `${angle}deg`,
-            backgroundImage:
-              'conic-gradient(#FF6BA4 var(--progress-angle), transparent var(--progress-angle))',
-            WebkitMaskImage:
-              'radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 6px))',
-            maskImage:
-              'radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 6px))',
-          } as CSSProperties
-        }
-        aria-hidden
-      />
-      <div className="relative m-[10px] flex h-[calc(100%-20px)] w-[calc(100%-20px)] items-center justify-center rounded-full bg-[#FF6BA4]">
-        <span className="text-[28px] font-semibold text-white">{clamped}%</span>
-      </div>
-    </div>
+    <p className="text-center text-[13px] font-[200] text-muted-foreground">
+      Колода перемешивается{'.'.repeat(dotCount)}
+      <br />
+      Можно закрыть — расклад продолжится в фоне.
+    </p>
   )
 }
 
@@ -74,11 +68,22 @@ const TarotCompatibilitySheetContent = ({
     createMutation.mutate({ partner_user_id: partnerUserId })
   }, [createMutation, data, isLoading, partnerUserId])
 
+  const handleRestart = useCallback(() => {
+    if (!data || data.remainingToday <= 0 || createMutation.isPending) return
+
+    createMutation.mutate({
+      partner_user_id: partnerUserId,
+      force_new: true,
+    })
+  }, [createMutation, data, partnerUserId])
+
   const item = data?.item
   const isSearching =
     item?.status === 'searching' || createMutation.isPending || (isLoading && !item)
   const isReady = item?.status === 'ready' && item.result
   const isFailed = item?.status === 'failed'
+  const canRestart =
+    !isSearching && data != null && data.remainingToday > 0 && (isReady || isFailed)
   const isQuotaExceeded =
     !isLoading &&
     data != null &&
@@ -88,14 +93,11 @@ const TarotCompatibilitySheetContent = ({
 
   return (
     <div className="w-full max-w-md rounded-t-[28px] border-t border-border/30 bg-background px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] shadow-[0_-8px_32px_rgba(0,0,0,0.35)]">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-[15px] font-[200] text-foreground">Расклад таро</h2>
-          <p className="mt-1 text-[12px] font-[200] text-muted-foreground">
-            Совместимость с {partnerName}
-          </p>
-        </div>
-        <Sparkles className="size-8 shrink-0 text-[#FF6BA4]" strokeWidth={1.5} />
+      <div className="mb-4 min-w-0">
+        <h2 className="text-[15px] font-[200] text-foreground">Расклад таро</h2>
+        <p className="mt-1 text-[12px] font-[200] text-muted-foreground">
+          Совместимость с {partnerName}
+        </p>
       </div>
 
       <div className="max-h-[min(70vh,560px)] overflow-y-auto no-scrollbar">
@@ -106,13 +108,8 @@ const TarotCompatibilitySheetContent = ({
         )}
 
         {isSearching && (
-          <div className="flex flex-col items-center gap-4 py-8">
-            <AppPageLoader />
-            <p className="text-center text-[13px] font-[200] text-muted-foreground">
-              Колода перемешивается…
-              <br />
-              Можно закрыть — расклад продолжится в фоне.
-            </p>
+          <div className="flex flex-col items-center py-8">
+            <ShufflingDeckText />
           </div>
         )}
 
@@ -138,10 +135,6 @@ const TarotCompatibilitySheetContent = ({
 
         {isReady && item.result && (
           <div className="space-y-5 pb-2">
-            <div className="flex justify-center">
-              <CompatibilityScoreRing score={item.result.compatibility_score} />
-            </div>
-
             <p className="text-center text-[14px] font-medium text-foreground">{item.result.summary}</p>
 
             <div className="grid grid-cols-3 gap-2">
@@ -166,13 +159,57 @@ const TarotCompatibilitySheetContent = ({
             <p className="text-[13px] font-[200] leading-relaxed text-foreground">
               {item.result.reading_text}
             </p>
+
+            {data != null && data.remainingToday <= 0 && (
+              <p className="text-center text-[12px] font-[200] text-muted-foreground">
+                {TAROT_QUOTA_MESSAGE}
+              </p>
+            )}
           </div>
         )}
       </div>
 
-      <Button type="button" variant="black" size="lg" className="mt-4 w-full rounded-full" onClick={close}>
-        Закрыть
-      </Button>
+      {canRestart ? (
+        <div className="-mx-5 mt-4 overflow-x-auto no-scrollbar snap-x snap-mandatory">
+          <div className="flex gap-2">
+            <div className={SHEET_BUTTON_EDGE_INSET_CLASS} aria-hidden />
+            <div className={SHEET_BUTTON_PEEK_ITEM_CLASS}>
+              <Button
+                type="button"
+                variant="default"
+                size="default"
+                className="w-full rounded-full"
+                disabled={createMutation.isPending}
+                onClick={handleRestart}
+              >
+                Перезапустить расклад
+              </Button>
+            </div>
+            <div className={SHEET_BUTTON_PEEK_ITEM_CLASS}>
+              <Button
+                type="button"
+                variant="default"
+                size="default"
+                className="w-full rounded-full border-0 bg-white text-black hover:bg-white/90"
+                onClick={close}
+              >
+                Закрыть
+              </Button>
+            </div>
+            <div className={SHEET_BUTTON_EDGE_INSET_END_CLASS} aria-hidden />
+          </div>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="default"
+          size="default"
+          className="mt-4 w-full rounded-full"
+          onClick={close}
+        >
+          Закрыть
+        </Button>
+      )}
     </div>
   )
 }

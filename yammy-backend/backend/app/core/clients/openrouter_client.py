@@ -141,7 +141,6 @@ class OpenRouterClient:
             "Учитывай анкеты обоих (имя, возраст, пол, город, цель знакомства, bio, работа, характеристики).\n"
             f"{chat_block}"
             "Тон — лёгкий, романтичный, поддерживающий, на русском.\n"
-            "compatibility_score — целое число 0–100.\n"
             "summary — короткий итог до 200 символов.\n"
             "reading_text — развёрнутый текст расклада (3–6 предложений).\n"
             "cards — ровно 3 объекта с полями name (название аркана на русском), "
@@ -150,7 +149,7 @@ class OpenRouterClient:
             f"{json.dumps(seeker_profile, ensure_ascii=False)}\n\n"
             "Анкета партнёра (JSON):\n"
             f"{json.dumps(partner_profile, ensure_ascii=False)}\n\n"
-            'Верни только JSON-объект с полями compatibility_score, summary, cards, reading_text.'
+            "Верни только JSON-объект с полями summary, cards, reading_text."
         )
         payload = {
             "model": OPENROUTER_CONFIG.MODEL,
@@ -230,13 +229,6 @@ class OpenRouterClient:
         if not isinstance(parsed, dict):
             raise ValueError("Tarot response must be a JSON object")
 
-        score_raw = parsed.get("compatibility_score")
-        try:
-            compatibility_score = int(score_raw)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("invalid compatibility_score") from exc
-        compatibility_score = max(0, min(100, compatibility_score))
-
         summary = str(parsed.get("summary", "")).strip()
         reading_text = str(parsed.get("reading_text", "")).strip()
         if not summary or not reading_text:
@@ -266,7 +258,6 @@ class OpenRouterClient:
             raise ValueError("cards must include past, present and future")
 
         return {
-            "compatibility_score": compatibility_score,
             "summary": summary[:200],
             "cards": cards,
             "reading_text": reading_text[:4000],
