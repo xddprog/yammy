@@ -8,6 +8,7 @@ import {
   setAccessToken,
   setRefreshToken,
 } from '@/entities'
+import { isOnboardingSession } from '@/entities/token/lib/isOnboardingSession'
 import {
   API_BASE_URL,
   isNgrokApiBaseUrl,
@@ -136,6 +137,10 @@ export const authApi = ky.create({
 
         const refreshed = await refreshUserTokensDeduped()
         if (!refreshed) {
+          // Онбординг-JWT без refresh: не сбрасываем сессию на 401 — иначе ломается весь флоу.
+          if (!getRefreshToken() || isOnboardingSession()) {
+            return response
+          }
           clearAuthSession()
           return response
         }

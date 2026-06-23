@@ -2,6 +2,7 @@ import { authApi } from '@/shared/api/baseQueryInstanse'
 import { throwApiError } from '@/shared/api/handleApiError'
 import type { PaginatedResponse } from '@/shared/api/pagination'
 import { compressImageForUpload } from '@/shared/lib/compressImageForUpload'
+import { isOnboardingSession } from '@/entities/token/lib/isOnboardingSession'
 
 const IMAGE_UPLOAD_TIMEOUT_MS = 180_000
 
@@ -17,6 +18,7 @@ import type {
 const SEARCH_ENDPOINT = 'api/v1/users/search'
 const RECEIVED_LIKES_ENDPOINT = 'api/v1/users/likes'
 const FILTERS_ENDPOINT = 'api/v1/filters/'
+const ONBOARDING_FILTERS_ENDPOINT = 'api/v1/auth/onboarding/filters'
 const PROFILE_ENDPOINT = 'api/v1/users/'
 const USER_IMAGE_ENDPOINT = 'api/v1/users/image'
 const USER_MAIN_IMAGE_ENDPOINT = 'api/v1/users/image/main'
@@ -52,7 +54,8 @@ export class UserService {
   }
 
   public async getFilters(): Promise<FiltersMetadataResponse> {
-    const response = await authApi.get(FILTERS_ENDPOINT)
+    const path = isOnboardingSession() ? ONBOARDING_FILTERS_ENDPOINT : FILTERS_ENDPOINT
+    const response = await authApi.get(path)
 
     if (!response.ok) {
       await throwApiError(response, 'Ошибка загрузки фильтров')
