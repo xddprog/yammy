@@ -56,6 +56,20 @@ class NotificationService:
             reply_markup=self._mini_app_markup(),
         )
 
+    async def notify_profile_moderation_rejected(self, recipient: User) -> None:
+        if not recipient.notifications_enabled:
+            return
+        note = recipient.profile_moderation_note
+        reason = f"\n\n{note.strip()}" if note and note.strip() else ""
+        await self._telegram.send_message(
+            recipient.telegram_id,
+            (
+                "Профиль не прошёл модерацию. Открой приложение и посмотри комментарий в профиле."
+                f"{reason}"
+            ),
+            reply_markup=self._mini_app_markup(),
+        )
+
     async def notify_mutual_appearance_rating(self, recipient: User, other: User) -> None:
         if not recipient.notifications_enabled:
             return

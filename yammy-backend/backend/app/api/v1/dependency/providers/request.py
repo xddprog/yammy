@@ -226,6 +226,7 @@ class RequestProvider(Provider):
         session: AsyncSession,
         user_index_service: services.UserIndexService,
         adequacy_score_service: services.AdequacyScoreService,
+        notification_service: services.NotificationService,
     ) -> services.AdminUserService:
         return services.AdminUserService(
             admin_user_repository=repositories.AdminUserRepository(session=session),
@@ -233,6 +234,7 @@ class RequestProvider(Provider):
             report_repository=repositories.ReportRepository(session=session),
             user_index_service=user_index_service,
             adequacy_score_service=adequacy_score_service,
+            notification_service=notification_service,
         )
 
 

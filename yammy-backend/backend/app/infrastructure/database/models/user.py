@@ -11,6 +11,7 @@ from app.utils.constants.enums import (
     EducationLevelEnum,
     GenderEnum,
     JobSphereEnum,
+    ProfileModerationStatusEnum,
     RelationshipGoalEnum,
     SubscriptionTierEnum,
     UserLanguageEnum,
@@ -66,7 +67,11 @@ class User(Base):
 
     is_banned: Mapped[bool] = mapped_column(default=False)
 
-    profile_moderation_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    profile_moderation_status: Mapped[ProfileModerationStatusEnum] = mapped_column(
+        pg_enum(ProfileModerationStatusEnum),
+        default=ProfileModerationStatusEnum.PENDING,
+    )
+    profile_moderation_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     adequacy_score: Mapped[float] = mapped_column(default=10.0)
     activity_score: Mapped[float] = mapped_column(default=1.0)

@@ -12,7 +12,7 @@ export type AdminUserPreview = {
   city: string
   is_banned: boolean
   subscription_tier: string
-  profile_moderation_approved: boolean
+  profile_moderation_status: 'approved' | 'pending' | 'rejected'
   last_seen: string
   created_at: string | null
   main_photo: string | null

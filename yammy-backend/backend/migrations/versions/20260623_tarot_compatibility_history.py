@@ -24,8 +24,26 @@ def _table_exists(conn, table: str) -> bool:
     return table in inspect(conn).get_table_names()
 
 
+def _widen_alembic_version_num(conn) -> None:
+    max_length = conn.execute(
+        sa.text(
+            """
+            SELECT character_maximum_length
+            FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = 'alembic_version'
+              AND column_name = 'version_num'
+            """
+        )
+    ).scalar()
+    if max_length is not None and max_length < 64:
+        op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64)")
+
+
 def upgrade() -> None:
     conn = op.get_bind()
+    _widen_alembic_version_num(conn)
+
     if _table_exists(conn, "tarot_compatibility_history"):
         return
 

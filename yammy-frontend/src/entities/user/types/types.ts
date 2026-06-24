@@ -45,6 +45,8 @@ export type FiltersMetadataResponse = FilterCategoryDto[]
 
 export type UserLanguage = 'ru' | 'en'
 
+export type ProfileModerationStatus = 'approved' | 'pending' | 'rejected'
+
 export interface UserProfilePhotoDto {
   id: string
   file_path: string
@@ -113,6 +115,8 @@ export interface UserProfileDto {
   boost_expires_at: string | null
   last_seen: string
   is_banned: boolean
+  profile_moderation_status: ProfileModerationStatus
+  profile_moderation_note: string | null
   superlikes_balance: number
   boosts_balance: number
   notifications_enabled: boolean

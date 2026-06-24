@@ -17,12 +17,14 @@ from app.core.dto.user import UserPhoto
 from app.core.repositories.admin_user_repository import AdminUserRepository
 from app.core.repositories.like_repository import LikeRepository
 from app.core.repositories.report_repository import ReportRepository
+from app.core.services.notification_service import NotificationService
 from app.core.services.user_index_service import UserIndexService
 from app.core.services.adequacy_score_service import AdequacyScoreService
 from app.infrastructure.database.models.subscription import SubscriptionHistory
+from app.infrastructure.database.models.user import User
 from app.infrastructure.errors.base import NotFoundException
 from app.infrastructure.logging import get_logger
-from app.utils.constants.enums import ReportStatusEnum, SubscriptionTierEnum
+from app.utils.constants.enums import ProfileModerationStatusEnum, ReportStatusEnum, SubscriptionTierEnum
 
 logger = get_logger(__name__)
 
@@ -35,12 +37,14 @@ class AdminUserService:
         report_repository: ReportRepository,
         user_index_service: UserIndexService,
         adequacy_score_service: AdequacyScoreService,
+        notification_service: NotificationService,
     ):
         self.admin_user_repository = admin_user_repository
         self.like_repository = like_repository
         self.report_repository = report_repository
         self.user_index_service = user_index_service
         self.adequacy_score_service = adequacy_score_service
+        self.notification_service = notification_service
 
     def _preview(self, user) -> AdminUserPreviewSchema:
         return AdminUserPreviewSchema(
@@ -50,7 +54,7 @@ class AdminUserService:
             city=user.city,
             is_banned=user.is_banned,
             subscription_tier=user.subscription_tier,
-            profile_moderation_approved=user.profile_moderation_approved,
+            profile_moderation_status=user.profile_moderation_status,
             last_seen=user.last_seen,
             created_at=user.created_at,
             main_photo=AdminUserRepository.photo_url(user),
@@ -80,7 +84,7 @@ class AdminUserService:
             bio=user.bio,
             relationship_goal=user.relationship_goal.value,
             is_banned=user.is_banned,
-            profile_moderation_approved=user.profile_moderation_approved,
+            profile_moderation_status=user.profile_moderation_status,
             subscription_tier=user.subscription_tier,
             subscription_expires_at=user.subscription_expires_at,
             superlikes_balance=user.superlikes_balance,
@@ -127,6 +131,61 @@ class AdminUserService:
     async def get_moderation_profile(self, user_id: UUID) -> AdminUserDetailSchema:
         return await self.get_user_detail(user_id)
 
+    async def _apply_profile_moderation_status(
+        self,
+        user_id: UUID,
+        status: ProfileModerationStatusEnum,
+        *,
+        staff_id: UUID,
+        note: str | None = None,
+        notify_rejected: bool = False,
+    ) -> None:
+        user = await self.admin_user_repository.get_user_detail(user_id)
+        if not user:
+            raise NotFoundException("Пользователь не найден")
+
+        update_fields: dict = {"profile_moderation_status": status}
+        if status == ProfileModerationStatusEnum.REJECTED:
+            update_fields["profile_moderation_note"] = note.strip() if note and note.strip() else None
+        else:
+            update_fields["profile_moderation_note"] = None
+
+        await self.admin_user_repository.update_item(str(user_id), **update_fields)
+        await self.user_index_service.update_profile_moderation_status(user_id, status)
+
+        if notify_rejected and status == ProfileModerationStatusEnum.REJECTED:
+            refreshed = await self.admin_user_repository.get_user_detail(user_id)
+            if refreshed:
+                await self.notification_service.notify_profile_moderation_rejected(refreshed)
+
+        logger.info(
+            "admin_profile_moderation",
+            staff_id=str(staff_id),
+            user_id=str(user_id),
+            status=status.value,
+            note=note,
+        )
+
+    async def decide_profile_moderation(
+        self,
+        user_id: UUID,
+        approved: bool,
+        note: str | None,
+        staff_id: UUID,
+    ) -> None:
+        status = (
+            ProfileModerationStatusEnum.APPROVED
+            if approved
+            else ProfileModerationStatusEnum.REJECTED
+        )
+        await self._apply_profile_moderation_status(
+            user_id,
+            status,
+            staff_id=staff_id,
+            note=note,
+            notify_rejected=not approved,
+        )
+
     async def set_profile_moderation(
         self,
         user_id: UUID,
@@ -134,18 +193,15 @@ class AdminUserService:
         note: str | None,
         staff_id: UUID,
     ) -> None:
-        user = await self.admin_user_repository.get_item(str(user_id))
-        if not user:
-            raise NotFoundException("Пользователь не найден")
-        await self.admin_user_repository.update_item(
-            str(user_id),
-            profile_moderation_approved=approved,
+        status = (
+            ProfileModerationStatusEnum.APPROVED
+            if approved
+            else ProfileModerationStatusEnum.PENDING
         )
-        logger.info(
-            "admin_profile_moderation",
-            staff_id=str(staff_id),
-            user_id=str(user_id),
-            approved=approved,
+        await self._apply_profile_moderation_status(
+            user_id,
+            status,
+            staff_id=staff_id,
             note=note,
         )
 

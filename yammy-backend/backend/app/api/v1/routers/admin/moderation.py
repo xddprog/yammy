@@ -56,7 +56,7 @@ async def moderate_profile(
     admin_user_service: FromDishka[AdminUserService],
     staff: Annotated[AdminSchema, Depends(get_current_staff)],
 ) -> Response:
-    await admin_user_service.set_profile_moderation(
+    await admin_user_service.decide_profile_moderation(
         user_id,
         body.approved,
         body.note,

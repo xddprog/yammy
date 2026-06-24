@@ -5,12 +5,13 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_serialize
 from app.utils.helpers.url_helper import get_absolute_url
 from app.infrastructure.database.models.filter import FilterOption
 from app.utils.constants.enums import (
-    GenderEnum,
-    RelationshipGoalEnum,
-    SubscriptionTierEnum,
     EducationLevelEnum,
+    GenderEnum,
     JobSphereEnum,
     LikeTypeEnum,
+    ProfileModerationStatusEnum,
+    RelationshipGoalEnum,
+    SubscriptionTierEnum,
     UserLanguageEnum,
 )
 
@@ -33,6 +34,8 @@ class BaseUserSchema(BaseModel):
     boost_expires_at: datetime | None = None
     last_seen: datetime
     is_banned: bool = False
+    profile_moderation_status: ProfileModerationStatusEnum = ProfileModerationStatusEnum.PENDING
+    profile_moderation_note: str | None = None
     superlikes_balance: int
     boosts_balance: int
     notifications_enabled: bool

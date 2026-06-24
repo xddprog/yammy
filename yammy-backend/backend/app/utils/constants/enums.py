@@ -6,6 +6,12 @@ class AdminRoleEnum(str, Enum):
     SUPPORT = "support"
 
 
+class ProfileModerationStatusEnum(str, Enum):
+    APPROVED = "approved"
+    PENDING = "pending"
+    REJECTED = "rejected"
+
+
 class ReportStatusEnum(str, Enum):
     PENDING = "pending"
     REVIEWED = "reviewed"

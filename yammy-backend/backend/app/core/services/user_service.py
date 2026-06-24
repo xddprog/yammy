@@ -11,6 +11,7 @@ from app.core.services.moderation_service import ModerationService
 from app.core.services.user_index_service import UserIndexService
 from app.infrastructure.database.models.user import User
 from app.infrastructure.errors.base import BadRequestException, ConflictException, NotFoundException
+from app.utils.constants.enums import ProfileModerationStatusEnum
 class UserService:
     BOOST_DURATION_HOURS = 3
 
@@ -41,8 +42,16 @@ class UserService:
                 include_personality_vector=include_personality_vector,
             )
 
-    async def _invalidate_profile_moderation_after_photo_change(self, user_id: UUID) -> None:
-        await self.user_repository.update_item(str(user_id), profile_moderation_approved=False)
+    async def _set_profile_moderation_pending(self, user_id: UUID) -> None:
+        await self.user_repository.update_item(
+            str(user_id),
+            profile_moderation_status=ProfileModerationStatusEnum.PENDING,
+            profile_moderation_note=None,
+        )
+        await self.user_index_service.update_profile_moderation_status(
+            user_id,
+            ProfileModerationStatusEnum.PENDING,
+        )
 
     async def get_user_profile(self, user_id: UUID) -> UserProfileSchema:
         row = await self.user_repository.get_user_profile(user_id)
@@ -130,6 +139,8 @@ class UserService:
                 user_id,
                 **update_payload,
             )
+            if bio_changed:
+                await self._set_profile_moderation_pending(user_id)
         elif filters_changed:
             await self.user_repository.touch_updated_at(user_id)
 
@@ -146,7 +157,7 @@ class UserService:
         if not image_path:
             raise NotFoundException("Фото пользователя не найдено")
         await self.image_service.delete_image(image_path)
-        await self._invalidate_profile_moderation_after_photo_change(user_id)
+        await self._set_profile_moderation_pending(user_id)
         await self._enqueue_reindex_user(user_id, include_personality_vector=False)
 
     async def add_user_image(self, user_id: UUID, image: UploadFile) -> UserPhoto:
@@ -158,7 +169,7 @@ class UserService:
             raise BadRequestException("Вы превысили максимальное количество фотографий")
 
         photo = UserPhoto.model_validate(row, from_attributes=True)
-        await self._invalidate_profile_moderation_after_photo_change(user_id)
+        await self._set_profile_moderation_pending(user_id)
         await self._enqueue_reindex_user(user_id, include_personality_vector=False)
         return photo
 
@@ -172,7 +183,7 @@ class UserService:
             if previous_path and previous_path != image_path:
                 await self.image_service.delete_image(previous_path)
 
-            await self._invalidate_profile_moderation_after_photo_change(user_id)
+            await self._set_profile_moderation_pending(user_id)
             await self._enqueue_reindex_user(user_id, include_personality_vector=False)
             return photo
         else:

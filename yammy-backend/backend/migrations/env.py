@@ -2,6 +2,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from sqlalchemy import text
 
 from alembic import context
 
@@ -30,6 +31,25 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+
+def _ensure_alembic_version_column(connection) -> None:
+    """Alembic creates version_num as VARCHAR(32); some revision ids are longer."""
+    max_length = connection.execute(
+        text(
+            """
+            SELECT character_maximum_length
+            FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = 'alembic_version'
+              AND column_name = 'version_num'
+            """
+        )
+    ).scalar()
+    if max_length is not None and max_length < 64:
+        connection.execute(
+            text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64)")
+        )
 
 
 def run_migrations_offline() -> None:
@@ -70,6 +90,9 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        _ensure_alembic_version_column(connection)
+        connection.commit()
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

@@ -65,9 +65,13 @@ export function UserActionsPanel({ user, onChanged }: { user: AdminUserDetail; o
       </div>
       <Button
         disabled={loading}
-        onClick={() => void run(() => setModerationFlag(user.id, !user.profile_moderation_approved))}
+        onClick={() =>
+          void run(() =>
+            setModerationFlag(user.id, user.profile_moderation_status !== 'approved'),
+          )
+        }
       >
-        {user.profile_moderation_approved ? t.rejectModeration : t.approveModeration}
+        {user.profile_moderation_status === 'approved' ? t.rejectModeration : t.approveModeration}
       </Button>
     </Card>
   )

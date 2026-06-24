@@ -12,7 +12,7 @@ from app.infrastructure.database.models.message import Message
 from app.infrastructure.database.models.payment import Payment
 from app.infrastructure.database.models.report import Report
 from app.infrastructure.database.models.user import User
-from app.utils.constants.enums import PaymentStatus, ReportStatusEnum
+from app.utils.constants.enums import PaymentStatus, ProfileModerationStatusEnum, ReportStatusEnum
 
 
 class AdminStatsRepository:
@@ -201,5 +201,7 @@ class AdminStatsRepository:
         return int((await self.session.scalar(q)) or 0)
 
     async def count_pending_moderation(self) -> int:
-        q = select(func.count(User.id)).where(User.profile_moderation_approved.is_(False))
+        q = select(func.count(User.id)).where(
+            User.profile_moderation_status == ProfileModerationStatusEnum.PENDING
+        )
         return int((await self.session.scalar(q)) or 0)

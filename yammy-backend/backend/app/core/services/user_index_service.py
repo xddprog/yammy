@@ -6,6 +6,7 @@ from app.core.services.ml_service import MLService
 from app.core.dto.user import UserSearchResponseSchema
 from app.core.repositories.user_repository import UserRepository
 from app.infrastructure.logging.logger import get_logger
+from app.utils.constants.enums import ProfileModerationStatusEnum
 
 
 logger = get_logger(__name__)
@@ -35,6 +36,7 @@ class UserIndexService:
                 "boost_expires_at": user.boost_expires_at,
                 "last_seen": user.last_seen,
                 "is_banned": user.is_banned,
+                "profile_moderation_status": user.profile_moderation_status.value,
                 "adequacy_score": user.adequacy_score,
                 "superlikes_balance": user.superlikes_balance,
                 "boosts_balance": user.boosts_balance,
@@ -77,6 +79,20 @@ class UserIndexService:
                 index="users",
                 doc_id=str(user_id),
                 document={"is_banned": is_banned},
+            )
+        except Exception:
+            await self.upsert_user(user_id, include_personality_vector=False)
+
+    async def update_profile_moderation_status(
+        self,
+        user_id: UUID,
+        status: ProfileModerationStatusEnum,
+    ) -> None:
+        try:
+            await self.elasticsearch_client.update_document(
+                index="users",
+                doc_id=str(user_id),
+                document={"profile_moderation_status": status.value},
             )
         except Exception:
             await self.upsert_user(user_id, include_personality_vector=False)

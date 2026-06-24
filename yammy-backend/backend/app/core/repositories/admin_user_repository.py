@@ -19,6 +19,7 @@ from app.utils.constants.enums import (
     GenderEnum,
     JobSphereEnum,
     LikeTypeEnum,
+    ProfileModerationStatusEnum,
     RelationshipGoalEnum,
     ReportStatusEnum,
     SubscriptionTierEnum,
@@ -46,6 +47,7 @@ class AdminUserRepository(SqlAlchemyRepository[User]):
         is_banned: bool | None = None,
         subscription_tier: str | None = None,
         only_premium: bool | None = None,
+        profile_moderation_status: ProfileModerationStatusEnum | None = None,
         profile_moderation_approved: bool | None = None,
         filter_option_ids: list[UUID] | None = None,
     ) -> tuple[int, list[User]]:
@@ -82,8 +84,13 @@ class AdminUserRepository(SqlAlchemyRepository[User]):
             stmt = stmt.where(User.subscription_tier == subscription_tier)
         if only_premium:
             stmt = stmt.where(User.subscription_tier != SubscriptionTierEnum.FREE)
-        if profile_moderation_approved is not None:
-            stmt = stmt.where(User.profile_moderation_approved.is_(profile_moderation_approved))
+        if profile_moderation_status is not None:
+            stmt = stmt.where(User.profile_moderation_status == profile_moderation_status)
+        elif profile_moderation_approved is not None:
+            if profile_moderation_approved:
+                stmt = stmt.where(User.profile_moderation_status == ProfileModerationStatusEnum.APPROVED)
+            else:
+                stmt = stmt.where(User.profile_moderation_status != ProfileModerationStatusEnum.APPROVED)
         if filter_option_ids:
             option_ids = list(dict.fromkeys(filter_option_ids))
             stmt = stmt.where(
@@ -140,7 +147,7 @@ class AdminUserRepository(SqlAlchemyRepository[User]):
     ) -> tuple[int, list[User]]:
         stmt = (
             select(User)
-            .where(User.profile_moderation_approved.is_(False))
+            .where(User.profile_moderation_status == ProfileModerationStatusEnum.PENDING)
             .options(joinedload(User.main_photo))
             .order_by(User.updated_at.desc())
             .offset(pagination.offset)

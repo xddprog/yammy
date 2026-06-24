@@ -32,6 +32,7 @@ from app.utils.constants.enums import (
     UserLanguageEnum,
     LikeTypeEnum,
     PaymentStatus,
+    ProfileModerationStatusEnum,
     ReportReasonEnum,
     ReportStatusEnum,
 )
@@ -341,7 +342,7 @@ async def seed_match_calibration_users(
             last_seen=datetime.now() - timedelta(minutes=5),
             referral_code=f"REFCAL{telegram_id}",
             notifications_enabled=True,
-            profile_moderation_approved=True,
+            profile_moderation_status=ProfileModerationStatusEnum.APPROVED,
             language=UserLanguageEnum.RU,
         )
         session.add(u)
@@ -744,7 +745,7 @@ async def _seed_admin_demo_users(session: AsyncSession, photo_paths: list[str]) 
                 **common,
                 "name": "Анна Модерация",
                 "bio": "Новый профиль на проверке — тестовая анкета для очереди модерации.",
-                "profile_moderation_approved": False,
+                "profile_moderation_status": ProfileModerationStatusEnum.PENDING,
                 "last_seen": now - timedelta(hours=2),
                 "subscription_tier": SubscriptionTierEnum.FREE,
             },
@@ -758,7 +759,7 @@ async def _seed_admin_demo_users(session: AsyncSession, photo_paths: list[str]) 
                 "name": "Мария Модерация",
                 "gender": GenderEnum.FEMALE,
                 "bio": "Обновила фото — ждёт одобрения модератором.",
-                "profile_moderation_approved": False,
+                "profile_moderation_status": ProfileModerationStatusEnum.PENDING,
                 "last_seen": now - timedelta(hours=5),
                 "subscription_tier": SubscriptionTierEnum.FREE,
             },
@@ -772,7 +773,7 @@ async def _seed_admin_demo_users(session: AsyncSession, photo_paths: list[str]) 
                 "name": "Спамер Тест",
                 "gender": GenderEnum.MALE,
                 "bio": "Подозрительная активность — demo user для жалоб.",
-                "profile_moderation_approved": True,
+                "profile_moderation_status": ProfileModerationStatusEnum.APPROVED,
                 "last_seen": now - timedelta(days=1),
                 "subscription_tier": SubscriptionTierEnum.FREE,
             },
@@ -786,7 +787,7 @@ async def _seed_admin_demo_users(session: AsyncSession, photo_paths: list[str]) 
                 "name": "Забанен Тест",
                 "gender": GenderEnum.MALE,
                 "bio": "Заблокирован за нарушения — demo для карточки user.",
-                "profile_moderation_approved": True,
+                "profile_moderation_status": ProfileModerationStatusEnum.APPROVED,
                 "is_banned": True,
                 "last_seen": now - timedelta(days=14),
                 "subscription_tier": SubscriptionTierEnum.FREE,
@@ -801,7 +802,7 @@ async def _seed_admin_demo_users(session: AsyncSession, photo_paths: list[str]) 
                 "name": "Пётр VIP",
                 "gender": GenderEnum.MALE,
                 "bio": "VIP-подписчик для теста monetization и поиска.",
-                "profile_moderation_approved": True,
+                "profile_moderation_status": ProfileModerationStatusEnum.APPROVED,
                 "last_seen": now - timedelta(minutes=30),
                 "subscription_tier": SubscriptionTierEnum.VIP,
                 "superlikes_balance": 5,
@@ -816,7 +817,7 @@ async def _seed_admin_demo_users(session: AsyncSession, photo_paths: list[str]) 
                 **common,
                 "name": "Елена Premium",
                 "bio": "Premium-подписчик для теста actions в админке.",
-                "profile_moderation_approved": True,
+                "profile_moderation_status": ProfileModerationStatusEnum.APPROVED,
                 "last_seen": now - timedelta(hours=12),
                 "subscription_tier": SubscriptionTierEnum.PREMIUM,
                 "superlikes_balance": 10,
@@ -1044,7 +1045,7 @@ async def _seed_admin_stats_timeseries(session: AsyncSession) -> None:
             city="Москва",
             relationship_goal=RelationshipGoalEnum.COMMUNICATION,
             referral_code="ADMIN_DEMO_STATS",
-            profile_moderation_approved=True,
+            profile_moderation_status=ProfileModerationStatusEnum.APPROVED,
             is_banned=True,
             last_seen=now - timedelta(days=365),
         )
@@ -1117,27 +1118,29 @@ async def seed_filters_if_missing(session: AsyncSession) -> bool:
 
 
 async def seed_dev_admins_if_missing(session: AsyncSession) -> bool:
-    admin_exists = (await session.execute(select(Admin))).scalars().first()
-    if admin_exists:
-        return False
-
     pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
-    session.add(
-        Admin(
-            username="admin",
-            password_hash=pwd_context.hash("admin"),
-            role=AdminRoleEnum.ADMIN,
+    created = False
+    for username, password, role in (
+        ("admin", "admin", AdminRoleEnum.ADMIN),
+        ("support", "support", AdminRoleEnum.SUPPORT),
+    ):
+        existing = (
+            await session.execute(select(Admin).where(Admin.username == username))
+        ).scalars().first()
+        if existing:
+            continue
+        session.add(
+            Admin(
+                username=username,
+                password_hash=pwd_context.hash(password),
+                role=role,
+            )
         )
-    )
-    session.add(
-        Admin(
-            username="support",
-            password_hash=pwd_context.hash("support"),
-            role=AdminRoleEnum.SUPPORT,
-        )
-    )
-    logger.info("dev_admin_accounts_created")
-    return True
+        created = True
+
+    if created:
+        logger.info("dev_admin_accounts_created")
+    return created
 
 
 async def seed_admin_from_env_if_missing(session: AsyncSession) -> bool:
@@ -1168,7 +1171,9 @@ async def seed_admin_from_env_if_missing(session: AsyncSession) -> bool:
 
 async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
     try:
-        await seed_dev_admins_if_missing(session)
+        from app.utils.loaders.bootstrap_db import bootstrap_admins
+
+        await bootstrap_admins(session)
         await seed_filters_if_missing(session)
 
         all_options = (await session.execute(select(FilterOption))).scalars().all()
@@ -1228,7 +1233,7 @@ async def init_test_db(session: AsyncSession, count: int = 50) -> bool:
                 last_seen=datetime.now() - timedelta(minutes=random.randint(0, 120)) if is_high_match else datetime.now() - timedelta(minutes=random.randint(0, 10000)),
                 referral_code=f"REF{uuid.uuid4().hex[:12].upper()}",
                 notifications_enabled=random.random() > 0.4,
-                profile_moderation_approved=True,
+                profile_moderation_status=ProfileModerationStatusEnum.APPROVED,
                 boost_expires_at=datetime.now() + timedelta(hours=2) if is_high_match else (datetime.now() + timedelta(hours=2) if random.random() > 0.9 else None),
                 language=random.choice(list(UserLanguageEnum)),
             )

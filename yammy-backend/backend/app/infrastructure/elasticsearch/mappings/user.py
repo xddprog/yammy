@@ -59,6 +59,7 @@ USER_MAPPING = {
             "last_seen": {"type": "date"},
             "boost_expires_at": {"type": "date"},
             "is_banned": {"type": "boolean"},
+            "profile_moderation_status": {"type": "keyword"},
             
             "personality_vector": {
                 "type": "dense_vector",

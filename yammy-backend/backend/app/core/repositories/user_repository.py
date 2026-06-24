@@ -10,7 +10,7 @@ from app.core.repositories.base import SqlAlchemyRepository
 from app.core.dto.user import ImageOrderUpdateSchema
 from app.infrastructure.database.models.user import User, UserPhoto
 from app.infrastructure.database.models.filter import FilterOption, FilterSubcategory, UserFilterAssociation
-from app.utils.constants.enums import GenderEnum
+from app.utils.constants.enums import GenderEnum, ProfileModerationStatusEnum
 
 
 class UserRepository(SqlAlchemyRepository[User]):
@@ -230,7 +230,10 @@ class UserRepository(SqlAlchemyRepository[User]):
         limit: int = 20,
         gender: GenderEnum | None = None,
     ) -> list[User]:
-        conditions = [User.is_banned == False]
+        conditions = [
+            User.is_banned == False,
+            User.profile_moderation_status == ProfileModerationStatusEnum.APPROVED,
+        ]
         if exclude_user_ids:
             conditions.append(User.id.notin_(exclude_user_ids))
         if gender is not None:
@@ -251,7 +254,11 @@ class UserRepository(SqlAlchemyRepository[User]):
             return []
         result = await self.session.execute(
             select(User)
-            .where(User.id.in_(user_ids), User.is_banned == False)
+            .where(
+                User.id.in_(user_ids),
+                User.is_banned == False,
+                User.profile_moderation_status == ProfileModerationStatusEnum.APPROVED,
+            )
             .options(
                 selectinload(User.photos),
                 selectinload(User.filters)

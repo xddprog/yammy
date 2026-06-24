@@ -21,7 +21,12 @@ export function UserProfilePreview({ user }: { user: AdminUserDetail | AdminUser
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-semibold">{user.name}, {user.age}</h1>
             {user.is_banned && <Badge tone="danger">{t.banned}</Badge>}
-            {!user.profile_moderation_approved && <Badge tone="neutral">{t.moderationPending}</Badge>}
+            {user.profile_moderation_status === 'rejected' && (
+              <Badge tone="danger">{t.moderationRejected}</Badge>
+            )}
+            {user.profile_moderation_status === 'pending' && (
+              <Badge tone="neutral">{t.moderationPending}</Badge>
+            )}
           </div>
           <p className="mt-1 text-zinc-400">{user.city}</p>
           {'bio' in user && user.bio && <p className="mt-3 text-sm text-zinc-300">{user.bio}</p>}

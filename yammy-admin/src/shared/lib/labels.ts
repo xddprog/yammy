@@ -179,6 +179,7 @@ export const t = {
   searchUsersPlaceholder: 'Имя, Telegram ID или UUID',
   banned: 'Заблокирован',
   moderationPending: 'На модерации',
+  moderationRejected: 'Отклонён',
 
   reportsList: 'Жалобы',
   noReports: 'Жалоб нет',

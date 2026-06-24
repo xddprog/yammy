@@ -7,6 +7,7 @@ import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import { useUpdateUserProfile } from '@/entities/user/hooks/useUpdateUserProfile'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
 import type { ProfilePhotoItem, UserLanguage } from '@/entities/user/types/types'
+import { ProfileModerationBanner } from '@/features/profile-moderation/ui/profileModerationBanner'
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { useFiltersState } from '@/features/matches-filter/model/useFiltersState'
 import { showErrorToast } from '@/shared'
@@ -27,7 +28,7 @@ const ProfilePage = (): JSX.Element => {
   const { data: filtersMetadata } = useFiltersMetadata()
   const activateBoostMutation = useActivateBoost()
   const updateUserProfileMutation = useUpdateUserProfile()
-  const { data: profile, status } = useUserProfile()
+  const { data: profile, status } = useUserProfile({ refetchOnMount: 'always' })
   const [screen, setScreen] = useState<ProfileScreen>('view')
   const [draft, setDraft] = useState<FiltersState>(filters.state)
   const [photos, setPhotos] = useState<ProfilePhotoItem[]>([])
@@ -101,6 +102,13 @@ const ProfilePage = (): JSX.Element => {
       <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none pb-28 no-scrollbar">
         <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-6">
           <header className={stickyTopHeaderClassNames()} aria-hidden />
+          {status === 'success' && profile ? (
+            <ProfileModerationBanner
+              status={profile.profile_moderation_status}
+              note={profile.profile_moderation_note}
+              className="mb-1"
+            />
+          ) : null}
           <div>
             {screen === 'edit' ? (
               <>
@@ -118,7 +126,8 @@ const ProfilePage = (): JSX.Element => {
                   Профиль
                 </h1>
                 {status === 'success' && profile ? (
-                  <ProfileView
+                  <div className="space-y-3">
+                    <ProfileView
                     avatarUrl={profile.photos.find((p) => p.is_main)!.file_path}
                     profileTitle={profileTitle}
                     onOpenEdit={openEdit}
@@ -157,6 +166,7 @@ const ProfilePage = (): JSX.Element => {
                     settingsUpdating={updateUserProfileMutation.isPending}
                     boostActivating={activateBoostMutation.isPending}
                   />
+                  </div>
                 ) : (
                   <ProfilePageSkeleton />
                 )}

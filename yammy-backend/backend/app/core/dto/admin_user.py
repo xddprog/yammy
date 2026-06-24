@@ -5,7 +5,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.dto.message import MessagePhotoSchema
 from app.core.dto.user import UserPhoto
-from app.utils.constants.enums import ReportReasonEnum, ReportStatusEnum, SubscriptionTierEnum
+from app.utils.constants.enums import (
+    ProfileModerationStatusEnum,
+    ReportReasonEnum,
+    ReportStatusEnum,
+    SubscriptionTierEnum,
+)
 
 
 class AdminUserPreviewSchema(BaseModel):
@@ -17,7 +22,7 @@ class AdminUserPreviewSchema(BaseModel):
     city: str
     is_banned: bool = False
     subscription_tier: SubscriptionTierEnum
-    profile_moderation_approved: bool = False
+    profile_moderation_status: ProfileModerationStatusEnum = ProfileModerationStatusEnum.PENDING
     last_seen: datetime
     created_at: datetime | None = None
     main_photo: str | None = None
@@ -46,7 +51,7 @@ class AdminUserDetailSchema(BaseModel):
     bio: str | None = None
     relationship_goal: str
     is_banned: bool
-    profile_moderation_approved: bool
+    profile_moderation_status: ProfileModerationStatusEnum
     subscription_tier: SubscriptionTierEnum
     subscription_expires_at: datetime | None = None
     superlikes_balance: int
