@@ -1,7 +1,8 @@
 import type { LucideIcon } from 'lucide-react'
 import { GalleryHorizontal, Heart, MessageCircle, UserRound } from 'lucide-react'
 import type { JSX } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, useLocation, useNavigation } from 'react-router-dom'
 
 import { cn, ERouteNames } from '@/shared'
 
@@ -35,6 +36,22 @@ const navItems: NavItem[] = [
     label: 'Профиль',
   },
 ]
+
+function isNavItemActive(pathname: string, navTo: string): boolean {
+  const target = `/${navTo}`
+  return pathname === target || pathname.startsWith(`${target}/`)
+}
+
+function resolveNavbarActivePath(
+  pathname: string,
+  pendingPathname: string | undefined,
+  isNavigating: boolean,
+): string {
+  if (isNavigating && pendingPathname) {
+    return pendingPathname
+  }
+  return pathname
+}
 
 const navItemBaseClasses = cn(
   'group relative flex flex-1 items-center justify-center',
@@ -74,22 +91,51 @@ interface NavbarProps {
   className?: string
 }
 
-const Navbar = ({ className }: NavbarProps): JSX.Element => (
-  <nav
-    className={cn(
-      'mx-auto mb-2 mt-5 flex h-[84px] w-[82%] shrink-0 items-center justify-around overflow-hidden rounded-full border border-black/10 bg-white px-2',
-      'transition-all duration-300',
-      className,
-    )}
-    role="navigation"
-    aria-label="Основная навигация"
-  >
-    {navItems.map(({ to, icon, label }) => (
-      <NavLink key={to} to={to} className={navItemBaseClasses} aria-label={label}>
-        {({ isActive }) => <NavContent icon={icon} isActive={isActive} />}
-      </NavLink>
-    ))}
-  </nav>
-)
+const Navbar = ({ className }: NavbarProps): JSX.Element => {
+  const { pathname } = useLocation()
+  const navigation = useNavigation()
+  const [pressedTo, setPressedTo] = useState<string | null>(null)
+
+  const activePath = resolveNavbarActivePath(
+    pathname,
+    navigation.location?.pathname,
+    navigation.state === 'loading',
+  )
+
+  useEffect(() => {
+    if (navigation.state === 'idle') {
+      setPressedTo(null)
+    }
+  }, [navigation.state, pathname])
+
+  return (
+    <nav
+      className={cn(
+        'mx-auto mb-2 mt-5 flex h-[84px] w-[82%] shrink-0 items-center justify-around overflow-hidden rounded-full border border-black/10 bg-white px-2',
+        'transition-all duration-300',
+        className,
+      )}
+      role="navigation"
+      aria-label="Основная навигация"
+    >
+      {navItems.map(({ to, icon, label }) => {
+        const isActive = pressedTo === to || isNavItemActive(activePath, to)
+
+        return (
+          <NavLink
+            key={to}
+            to={to}
+            className={navItemBaseClasses}
+            aria-label={label}
+            aria-current={isActive ? 'page' : undefined}
+            onPointerDown={() => setPressedTo(to)}
+          >
+            <NavContent icon={icon} isActive={isActive} />
+          </NavLink>
+        )
+      })}
+    </nav>
+  )
+}
 
 export default Navbar
