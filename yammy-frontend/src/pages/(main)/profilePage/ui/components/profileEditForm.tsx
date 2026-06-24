@@ -3,6 +3,7 @@ import type React from 'react'
 import { useFiltersMetadata } from '@/entities/user/hooks/useFiltersMetadata'
 import { useUserProfile } from '@/entities/user/hooks/useUserProfile'
 import { filterCatalogLabel } from '@/entities/user/lib/filterLabelByLanguage'
+import { ProfileModerationBanner } from '@/features/profile-moderation/ui/profileModerationBanner'
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { cn } from '@/shared'
 
@@ -43,6 +44,10 @@ export const ProfileEditForm = ({
 
   return (
     <section className="flex flex-col gap-3">
+      <ProfileModerationBanner
+        status={profile?.profile_moderation_status}
+        note={profile?.profile_moderation_note}
+      />
       <ProfilePhotosEditor photos={photos} setPhotos={setPhotos} />
 
       <div className="mb-4 flex flex-col gap-1.5">

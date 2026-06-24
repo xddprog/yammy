@@ -27,7 +27,7 @@ class UserSearchQueryBuilder:
         self.must_filters.append({"term": {"gender": gender}})
         self.must_filters.append({"range": {"age": {"gte": age_min, "lte": age_max}}})
         self.must_filters.append({"term": {"is_banned": False}})
-        self.must_filters.append({"term": {"profile_moderation_status": "approved"}})
+        self.must_not_filters.append({"term": {"profile_moderation_status": "rejected"}})
         if city:
             self.must_filters.append({"term": {"city": city}})
         if goal:
@@ -158,8 +158,8 @@ class UserSearchQueryBuilder:
         self.must_filters = [
             {"ids": {"values": user_ids}},
             {"term": {"is_banned": False}},
-            {"term": {"profile_moderation_status": "approved"}},
         ]
+        self.must_not_filters.append({"term": {"profile_moderation_status": "rejected"}})
         if personality_query_vector:
             self.add_personality_vector(
                 vector=personality_query_vector,

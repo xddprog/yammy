@@ -192,6 +192,7 @@ class UserService:
                     user_id, existing_image_id
                 )
                 photos = [UserPhoto.model_validate(photo, from_attributes=True) for photo in user_photos]
+                await self._set_profile_moderation_pending(user_id)
                 await self._enqueue_reindex_user(user_id, include_personality_vector=False)
                 return photos
             except ValueError:
@@ -205,6 +206,7 @@ class UserService:
         except ValueError:
             raise NotFoundException("Изображения не найдено")
         photos = [UserPhoto.model_validate(image, from_attributes=True) for image in images]
+        await self._set_profile_moderation_pending(user_id)
         await self._enqueue_reindex_user(user_id, include_personality_vector=False)
         return photos
 

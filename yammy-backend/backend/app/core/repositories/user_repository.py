@@ -232,7 +232,7 @@ class UserRepository(SqlAlchemyRepository[User]):
     ) -> list[User]:
         conditions = [
             User.is_banned == False,
-            User.profile_moderation_status == ProfileModerationStatusEnum.APPROVED,
+            User.profile_moderation_status != ProfileModerationStatusEnum.REJECTED,
         ]
         if exclude_user_ids:
             conditions.append(User.id.notin_(exclude_user_ids))
@@ -257,7 +257,7 @@ class UserRepository(SqlAlchemyRepository[User]):
             .where(
                 User.id.in_(user_ids),
                 User.is_banned == False,
-                User.profile_moderation_status == ProfileModerationStatusEnum.APPROVED,
+                User.profile_moderation_status != ProfileModerationStatusEnum.REJECTED,
             )
             .options(
                 selectinload(User.photos),

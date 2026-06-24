@@ -5,9 +5,11 @@ import { getUserProfile } from '../api/userService'
 import { usersQueryKeys } from '../lib/usersQueryKeys'
 import type { UserProfileDto } from '../types/types'
 
+type UserProfileQueryKey = ReturnType<typeof usersQueryKeys.profile>
+
 export function useUserProfile(
   options?: Omit<
-    UseQueryOptions<UserProfileDto, Error, UserProfileDto, ReturnType<typeof usersQueryKeys.profile>>,
+    UseQueryOptions<UserProfileDto, Error, UserProfileDto, UserProfileQueryKey>,
     'queryKey' | 'queryFn'
   >,
 ) {
@@ -16,5 +18,14 @@ export function useUserProfile(
     queryFn: () => getUserProfile(),
     staleTime: 60_000,
     ...options,
+  })
+}
+
+/** Свежий профиль при каждом заходе на экран «Профиль». */
+export function useUserProfileOnProfilePage() {
+  return useUserProfile({
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
