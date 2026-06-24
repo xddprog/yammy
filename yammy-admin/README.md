@@ -36,7 +36,7 @@ docker compose down
 Для production-сборки задай URL API:
 
 ```bash
-VITE_API_BASE_URL=https://api.lascovo.ru npm run build
+VITE_API_BASE_URL=https://api.yammy.fun npm run build
 ```
 
 или через build-arg в CI/CD.

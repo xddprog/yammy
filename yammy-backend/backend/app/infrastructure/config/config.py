@@ -85,18 +85,6 @@ class JWTConfig(Config):
     ONBOARDING_ACCESS_TOKEN_EXPIRE_HOURS: int = Field(default=2)
 
 
-class YandexPayConfig(Config):
-    model_config = _settings_config(env_prefix="YANDEX_PAY_CONFIG__")
-    API_URL: str = Field(default="https://pay.yandex.ru")
-    ON_ERROR_REDIRECT_URL: str = Field(default="")
-    ON_SUCCESS_REDIRECT_URL: str = Field(default="")
-    ON_ABORT_REDIRECT_URL: str = Field(default="")
-    CALLBACK_URL: str = Field(default="http://localhost:8000/api/v1/order/callback")
-    REQUEST_TIMEOUT: int = Field(default=10)
-    MAX_RETRIES: int = Field(default=3)
-    API_KEY: str = Field(default="")
-    
-
 class AppConfig(Config):
     model_config = _settings_config(env_prefix="APP_CONFIG__")
     APP_NAME: str = Field(default="yammy")
@@ -193,7 +181,6 @@ class Settings(Config):
     database_config: DatabaseConfig = Field(default_factory=DatabaseConfig)
     jwt_config: JWTConfig = Field(default_factory=JWTConfig)
     app_config: AppConfig = Field(default_factory=AppConfig)
-    yandex_pay_config: YandexPayConfig = Field(default_factory=YandexPayConfig)
     redis_config: RedisConfig = Field(default_factory=RedisConfig)
     elasticsearch_config: ElasticsearchConfig = Field(default_factory=ElasticsearchConfig)
     gigdata_config: GigDataConfig = Field(default_factory=GigDataConfig)
@@ -209,7 +196,6 @@ TELEGRAM_CONFIG = settings.telegram_config
 DB_CONFIG = settings.database_config
 JWT_CONFIG = settings.jwt_config
 APP_CONFIG = settings.app_config
-YANDEX_PAY_CONFIG = settings.yandex_pay_config
 REDIS_CONFIG = settings.redis_config
 ELASTICSEARCH_CONFIG = settings.elasticsearch_config
 GIGDATA_CONFIG = settings.gigdata_config
@@ -220,6 +206,6 @@ TAROT_COMPATIBILITY_CONFIG = settings.tarot_compatibility_config
 
 __all__ = [
     "BASE_DIR", "TELEGRAM_CONFIG", "DB_CONFIG",
-    "JWT_CONFIG", "APP_CONFIG", "YANDEX_PAY_CONFIG", "ELASTICSEARCH_CONFIG",
+    "JWT_CONFIG", "APP_CONFIG", "ELASTICSEARCH_CONFIG",
     "GIGDATA_CONFIG", "OPENROUTER_CONFIG", "AI_SEARCH_CONFIG", "TAROT_COMPATIBILITY_CONFIG",
 ]
