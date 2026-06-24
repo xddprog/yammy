@@ -6,6 +6,8 @@ x-app-env-file: &app-env-file
   environment:
     YAMMY_ENV: production
     HF_HOME: /app/model_cache
+    CUDA_VISIBLE_DEVICES: ""
+    TF_CPP_MIN_LOG_LEVEL: "2"
 
 x-backend-build: &backend-build
   context: ./backend

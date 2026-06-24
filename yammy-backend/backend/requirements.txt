@@ -28,5 +28,6 @@ faker
 taskiq[opentelemetry]
 taskiq-redis
 prometheus_client
-mtcnn[tensorflow]
+mtcnn
+tensorflow-cpu
 fastapi-limiter

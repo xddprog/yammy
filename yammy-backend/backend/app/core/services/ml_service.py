@@ -2,14 +2,11 @@ import asyncio
 import io
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from fastapi import UploadFile
 import numpy as np
 from PIL import Image
-import torch
-from mtcnn import MTCNN
-from sentence_transformers import SentenceTransformer, util
-from transformers import CLIPModel, CLIPProcessor
 
 from app.infrastructure.config.config import BASE_DIR
 from app.utils.constants.moderation_constants import (
@@ -28,6 +25,12 @@ from app.utils.constants.moderation_constants import (
 from app.infrastructure.logging.logger import get_logger
 from app.utils.helpers.singleton_meta import SingletonMeta
 
+if TYPE_CHECKING:
+    import torch
+    from mtcnn import MTCNN
+    from sentence_transformers import SentenceTransformer
+    from transformers import CLIPModel, CLIPProcessor
+
 logger = get_logger(__name__)
 
 
@@ -38,6 +41,14 @@ class MLService(metaclass=SingletonMeta):
     _LOCAL_KWARGS: dict[str, bool] = {"local_files_only": True}
 
     def __init__(self) -> None:
+        import torch
+        from mtcnn import MTCNN
+        from sentence_transformers import SentenceTransformer, util
+
+        self._torch = torch
+        self._util = util
+
+        logger.info("ml_models_loading_start")
         self.embeddings_model = self._load_sentence_transformer()
         self.face_detection_model = MTCNN(device="CPU:0")
         self.clip_model, self.clip_processor = self._load_clip()
@@ -47,6 +58,7 @@ class MLService(metaclass=SingletonMeta):
         self._clip_moderation_flag_categories, self._clip_moderation_text_feats = (
             self._precompute_clip_moderation_text_embeddings()
         )
+        logger.info("ml_models_loading_done")
 
     @classmethod
     def _hub_roots(cls) -> list[Path]:
@@ -75,6 +87,8 @@ class MLService(metaclass=SingletonMeta):
 
     @classmethod
     def _load_sentence_transformer(cls) -> SentenceTransformer:
+        from sentence_transformers import SentenceTransformer
+
         snap = cls._snapshot_dir(cls._ST_HUB_REPO)
         if snap is not None:
             try:
@@ -97,6 +111,8 @@ class MLService(metaclass=SingletonMeta):
 
     @classmethod
     def _load_clip(cls) -> tuple[CLIPModel, CLIPProcessor]:
+        from transformers import CLIPModel, CLIPProcessor
+
         snap = cls._snapshot_dir(cls._CLIP_REPO_ID)
         if snap is not None:
             try:
@@ -116,7 +132,7 @@ class MLService(metaclass=SingletonMeta):
             CLIPProcessor.from_pretrained(cls._CLIP_REPO_ID, local_files_only=False),
         )
 
-    def _precompute_pattern_embeddings(self) -> dict[str, torch.Tensor]:
+    def _precompute_pattern_embeddings(self) -> dict[str, Any]:
         cached = {}
         for category, patterns in TEXT_MODERATION_PATTERNS.items():
             embeddings = self.embeddings_model.encode(patterns, convert_to_tensor=True)
@@ -125,7 +141,7 @@ class MLService(metaclass=SingletonMeta):
 
     def _precompute_clip_moderation_text_embeddings(
         self,
-    ) -> tuple[list[str], torch.Tensor]:
+    ) -> tuple[list[str], Any]:
         texts = [prompt for _, prompt in IMAGE_MODERATION_FLAGS] + [IMAGE_MODERATION_SAFE_ANCHOR]
         categories = [cat for cat, _ in IMAGE_MODERATION_FLAGS]
         device = next(self.clip_model.parameters()).device
@@ -136,9 +152,9 @@ class MLService(metaclass=SingletonMeta):
             truncation=True,
         )
         tensor_inputs = {
-            k: v.to(device) for k, v in inputs.items() if torch.is_tensor(v)
+            k: v.to(device) for k, v in inputs.items() if self._torch.is_tensor(v)
         }
-        with torch.no_grad():
+        with self._torch.no_grad():
             text_out = self.clip_model.get_text_features(**tensor_inputs)
             feats = text_out.pooler_output
             feats = feats / feats.norm(dim=-1, keepdim=True)
@@ -166,7 +182,7 @@ class MLService(metaclass=SingletonMeta):
         text_all = self._clip_moderation_text_feats
         categories = self._clip_moderation_flag_categories
 
-        with torch.no_grad():
+        with self._torch.no_grad():
             image_out = self.clip_model.get_image_features(pixel_values=pixel_values)
             image_feat = image_out.pooler_output
             image_feat = image_feat / image_feat.norm(dim=-1, keepdim=True)
@@ -177,13 +193,13 @@ class MLService(metaclass=SingletonMeta):
 
             logits_u = scale * (image_feat * unsafe_feats).sum(dim=-1)
             logits_s = scale * (image_feat * safe_vec).sum(dim=-1).expand_as(logits_u)
-            logits = torch.stack([logits_u, logits_s], dim=-1)
+            logits = self._torch.stack([logits_u, logits_s], dim=-1)
             probs = logits.softmax(dim=-1)
             prob_unsafe = probs[:, 0]
             logit_diff = logits_u - logits_s
             m_nsfw = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN_NSFW)
             m_other = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN_NON_NSFW)
-            row_margins = torch.tensor(
+            row_margins = self._torch.tensor(
                 [
                     m_nsfw if cat == "nsfw" else m_other
                     for cat in categories
@@ -191,10 +207,10 @@ class MLService(metaclass=SingletonMeta):
                 device=logit_diff.device,
                 dtype=logit_diff.dtype,
             )
-            prob_unsafe = torch.where(
+            prob_unsafe = self._torch.where(
                 logit_diff >= row_margins,
                 prob_unsafe,
-                torch.zeros_like(prob_unsafe),
+                self._torch.zeros_like(prob_unsafe),
             )
 
         result: dict[str, float] = {
@@ -220,7 +236,7 @@ class MLService(metaclass=SingletonMeta):
         text_all = self._clip_moderation_text_feats
         categories = self._clip_moderation_flag_categories
 
-        with torch.no_grad():
+        with self._torch.no_grad():
             image_out = self.clip_model.get_image_features(pixel_values=pixel_values)
             image_feat = image_out.pooler_output
             image_feat = image_feat / image_feat.norm(dim=-1, keepdim=True)
@@ -231,13 +247,13 @@ class MLService(metaclass=SingletonMeta):
 
             logits_u = scale * (image_feat * unsafe_feats).sum(dim=-1)
             logits_s = scale * (image_feat * safe_vec).sum(dim=-1).expand_as(logits_u)
-            logits = torch.stack([logits_u, logits_s], dim=-1)
+            logits = self._torch.stack([logits_u, logits_s], dim=-1)
             probs = logits.softmax(dim=-1)
             prob_unsafe_raw = probs[:, 0]
             logit_diff = logits_u - logits_s
             m_nsfw = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN_NSFW)
             m_other = float(IMAGE_CLIP_PAIR_LOGIT_MARGIN_NON_NSFW)
-            row_margins = torch.tensor(
+            row_margins = self._torch.tensor(
                 [
                     m_nsfw if cat == "nsfw" else m_other
                     for cat in categories
@@ -245,10 +261,10 @@ class MLService(metaclass=SingletonMeta):
                 device=logit_diff.device,
                 dtype=logit_diff.dtype,
             )
-            prob_after_margin = torch.where(
+            prob_after_margin = self._torch.where(
                 logit_diff >= row_margins,
                 prob_unsafe_raw,
-                torch.zeros_like(prob_unsafe_raw),
+                self._torch.zeros_like(prob_unsafe_raw),
             )
 
         out: list[dict[str, object]] = []
@@ -278,7 +294,7 @@ class MLService(metaclass=SingletonMeta):
         result = {}
 
         for category, pattern_embeddings in self._cached_pattern_embeddings.items():
-            similarities = util.cos_sim(text_embedding, pattern_embeddings)[0]
+            similarities = self._util.cos_sim(text_embedding, pattern_embeddings)[0]
 
             max_similarity = float(similarities.max())
 
