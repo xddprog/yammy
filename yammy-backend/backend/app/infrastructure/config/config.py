@@ -89,9 +89,7 @@ class AppConfig(Config):
     model_config = _settings_config(env_prefix="APP_CONFIG__")
     APP_NAME: str = Field(default="yammy")
     DEBUG: bool = Field(default=False)
-    """Включить structlog ConsoleRenderer (цветные логи в терминале) без FastAPI debug."""
-    PRETTY_LOGS: bool = Field(default=False)
-    """development: POST /auth/telegram использует заглушку без проверки init_data. production — реальная проверка WebApp."""
+    """development: POST /auth/telegram использует заглушку без проверки init_data. production — реальная верификация WebApp."""
     ENVIRONMENT: Literal["development", "production"] = Field(default="development")
 
     BASE_URL: str = Field(default="http://localhost:8000")
