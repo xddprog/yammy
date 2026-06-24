@@ -5,7 +5,8 @@ from fastapi import FastAPI
 from app.core.clients.elasticsearch_client import ElasticsearchClient
 from app.core.clients.redis_client import RedisClient
 from app.core.clients.taskiq_client import taskiq_client
-from app.infrastructure.config.config import APP_CONFIG
+from app.core.clients.telegram_client import TelegramClient
+from app.infrastructure.config.config import APP_CONFIG, TELEGRAM_CONFIG
 from app.infrastructure.config.validation import validate_production_config
 from app.infrastructure.database.adapters.pg_connection import DatabaseConnection
 from app.infrastructure.logging.logger import get_logger
@@ -41,6 +42,12 @@ async def lifespan(app: FastAPI):
 
         await es_client.init_indices()
         await taskiq_client.startup()
+
+        base_url = APP_CONFIG.BASE_URL.rstrip("/")
+        if TELEGRAM_CONFIG.BOT_TOKEN and base_url.startswith("https://"):
+            webhook_url = f"{base_url}/api/v1/telegram/webhook"
+            secret = TELEGRAM_CONFIG.WEBHOOK_SECRET or None
+            await TelegramClient().set_webhook(webhook_url, secret)
 
         if APP_CONFIG.ENVIRONMENT == "development":
             async with await db_connection.get_session() as session:

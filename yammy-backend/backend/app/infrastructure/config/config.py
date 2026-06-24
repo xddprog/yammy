@@ -130,7 +130,19 @@ class TelegramConfig(Config):
     BOT_TOKEN: str = Field(default="")
     ADMIN_CHAT_ID: str = Field(default="", description="ID чата для уведомлений администратора")
     BOT_USERNAME: str = Field(
-        default="yammy_bot",
+        default="yammy_dating_bot",
+    )
+    MINI_APP_URL: str = Field(
+        default="",
+        description="HTTPS URL мини-приложения для inline-кнопки в уведомлениях",
+    )
+    MINI_APP_SHORT_NAME: str = Field(
+        default="ap",
+        description="Короткое имя Mini App в BotFather (fallback для url-кнопки, если MINI_APP_URL не задан)",
+    )
+    WEBHOOK_SECRET: str = Field(
+        default="",
+        description="Secret token для проверки заголовка X-Telegram-Bot-Api-Secret-Token",
     )
     DEV_STUB_TELEGRAM_ID: int = Field(default=1212345678)
 

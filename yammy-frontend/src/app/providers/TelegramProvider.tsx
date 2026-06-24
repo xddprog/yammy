@@ -50,6 +50,11 @@ export const TelegramProvider = ({ children }: TelegramProviderProps) => {
     tg.ready()
     tg.expand()
 
+    const webApp = tg as WebApp & { requestFullscreen?: () => void }
+    if (typeof webApp.requestFullscreen === 'function') {
+      webApp.requestFullscreen()
+    }
+
     if (typeof tg.disableVerticalSwipes === 'function') {
       tg.disableVerticalSwipes()
     }

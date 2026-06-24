@@ -13,6 +13,7 @@ from app.core.services.message_service import MessageService
 from app.core.services.user_service import UserService
 from app.core.services.city_service import CityService
 from app.core.services.notification_service import NotificationService
+from app.core.services.telegram_bot_service import TelegramBotService
 from app.core.services.presence_service import PresenceService
 from app.core.services.report_service import ReportService
 from app.core.services.ai_search_service import AiSearchService
@@ -39,6 +40,7 @@ __all__ = [
     "UserService",
     "CityService",
     "NotificationService",
+    "TelegramBotService",
     "PresenceService",
     "ReportService",
     "AiSearchService",

@@ -73,6 +73,10 @@ class RequestProvider(Provider):
         return services.NotificationService(telegram_client=telegram_client)
 
     @provide(scope=Scope.REQUEST)
+    def get_telegram_bot_service(self, telegram_client: TelegramClient) -> services.TelegramBotService:
+        return services.TelegramBotService(telegram_client=telegram_client)
+
+    @provide(scope=Scope.REQUEST)
     def get_like_service(
         self,
         session: AsyncSession,
