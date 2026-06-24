@@ -96,11 +96,14 @@ const Navbar = ({ className }: NavbarProps): JSX.Element => {
   const navigation = useNavigation()
   const [pressedTo, setPressedTo] = useState<string | null>(null)
 
-  const activePath = resolveNavbarActivePath(
-    pathname,
-    navigation.location?.pathname,
-    navigation.state === 'loading',
-  )
+  const activePath =
+    pressedTo != null
+      ? `/${pressedTo}`
+      : resolveNavbarActivePath(
+          pathname,
+          navigation.location?.pathname,
+          navigation.state === 'loading',
+        )
 
   useEffect(() => {
     if (navigation.state === 'idle') {
@@ -119,7 +122,7 @@ const Navbar = ({ className }: NavbarProps): JSX.Element => {
       aria-label="Основная навигация"
     >
       {navItems.map(({ to, icon, label }) => {
-        const isActive = pressedTo === to || isNavItemActive(activePath, to)
+        const isActive = isNavItemActive(activePath, to)
 
         return (
           <NavLink
