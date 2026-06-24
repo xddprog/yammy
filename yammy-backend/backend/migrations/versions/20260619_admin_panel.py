@@ -26,7 +26,13 @@ def _enum_exists(conn, name: str) -> bool:
     )
 
 
+def _table_exists(conn, table: str) -> bool:
+    return inspect(conn).has_table(table)
+
+
 def _column_exists(conn, table: str, column: str) -> bool:
+    if not _table_exists(conn, table):
+        return False
     return column in {c["name"] for c in inspect(conn).get_columns(table)}
 
 

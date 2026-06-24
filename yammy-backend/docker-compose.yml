@@ -71,6 +71,8 @@ services:
     container_name: db-store
     ports:
       - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: postgres123
       POSTGRES_PASSWORD: postgres123
@@ -120,7 +122,7 @@ services:
     depends_on:
       - prometheus
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3001:3000"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning
     env_file:
@@ -135,5 +137,6 @@ networks:
 
 volumes:
   elasticsearch-data:
+  postgres-data:
   prometheus-data:
   grafana-data:

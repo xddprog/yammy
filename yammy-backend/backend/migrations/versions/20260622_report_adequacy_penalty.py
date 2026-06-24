@@ -11,7 +11,13 @@ branch_labels = None
 depends_on = None
 
 
+def _table_exists(conn, table: str) -> bool:
+    return inspect(conn).has_table(table)
+
+
 def _column_exists(conn, table: str, column: str) -> bool:
+    if not _table_exists(conn, table):
+        return False
     return column in {c["name"] for c in inspect(conn).get_columns(table)}
 
 
