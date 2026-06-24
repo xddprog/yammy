@@ -1,8 +1,7 @@
 import type { JSX } from 'react'
 import { memo } from 'react'
 
-import type { ProfileModerationStatus, UserLanguage } from '@/entities/user/types/types'
-import { ProfileModerationBanner } from '@/features/profile-moderation/ui/profileModerationBanner'
+import type { UserLanguage } from '@/entities/user/types/types'
 import { cn, useOverlay } from '@/shared'
 import { bottomSheetPanelClassNames } from '@/widgets'
 
@@ -28,8 +27,6 @@ interface ProfileViewProps {
   avatarUrl: string
   profileTitle: string
   onOpenEdit: () => void
-  profileModerationStatus?: ProfileModerationStatus
-  profileModerationNote?: string | null
   hasActiveSubscription: boolean
   subscriptionTier: string
   subscriptionExpiresAt: string | null
@@ -110,8 +107,6 @@ export const ProfileView = ({
   avatarUrl,
   profileTitle,
   onOpenEdit,
-  profileModerationStatus,
-  profileModerationNote,
   hasActiveSubscription,
   subscriptionTier,
   subscriptionExpiresAt,
@@ -192,10 +187,6 @@ export const ProfileView = ({
       </section>
 
       <section className="mt-5 flex flex-col gap-1.5">
-        <ProfileModerationBanner
-          status={profileModerationStatus}
-          note={profileModerationNote}
-        />
         <ProfileSuperlikesSheetRow
           superlikesCount={superlikesCount}
           onBuySuperlikes={onBuySuperlikes}

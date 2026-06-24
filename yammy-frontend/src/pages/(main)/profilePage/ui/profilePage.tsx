@@ -8,6 +8,7 @@ import { useUpdateUserProfile } from '@/entities/user/hooks/useUpdateUserProfile
 import { useUserProfileOnProfilePage } from '@/entities/user/hooks/useUserProfile'
 import type { ProfilePhotoItem, UserLanguage } from '@/entities/user/types/types'
 import type { FiltersState } from '@/features/matches-filter/model/types'
+import { ProfileModerationBanner } from '@/features/profile-moderation/ui/profileModerationBanner'
 import { useFiltersState } from '@/features/matches-filter/model/useFiltersState'
 import { showErrorToast } from '@/shared'
 import { stickyTopHeaderClassNames } from '@/widgets'
@@ -101,6 +102,13 @@ const ProfilePage = (): JSX.Element => {
       <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none pb-28 no-scrollbar">
         <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-6">
           <header className={stickyTopHeaderClassNames()} aria-hidden />
+          {status === 'success' && profile ? (
+            <ProfileModerationBanner
+              status={profile.profile_moderation_status}
+              note={profile.profile_moderation_note}
+              className="mb-1"
+            />
+          ) : null}
           <div>
             {screen === 'edit' ? (
               <>
@@ -123,8 +131,6 @@ const ProfilePage = (): JSX.Element => {
                     avatarUrl={profile.photos.find((p) => p.is_main)!.file_path}
                     profileTitle={profileTitle}
                     onOpenEdit={openEdit}
-                    profileModerationStatus={profile.profile_moderation_status}
-                    profileModerationNote={profile.profile_moderation_note}
                     hasActiveSubscription={profile.has_active_subscription}
                     subscriptionTier={profile.subscription_tier}
                     subscriptionExpiresAt={profile.subscription_expires_at}
