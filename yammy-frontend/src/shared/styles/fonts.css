@@ -1,10 +1,19 @@
-/* Bounded — семейство начертаний */
+/* Bounded Variable — один файл на все веса (100–900), основной для UI */
+@font-face {
+  font-family: 'Bounded Variable';
+  src: url('/fonts/Bounded-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+/* Bounded — статические начертания (fallback, если variable недоступен) */
 @font-face {
   font-family: 'Bounded';
   src: url('/fonts/Bounded-ExtraLight.otf') format('opentype');
   font-weight: 200;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -12,7 +21,7 @@
   src: url('/fonts/Bounded-Light.otf') format('opentype');
   font-weight: 300;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -20,7 +29,7 @@
   src: url('/fonts/Bounded-Regular.otf') format('opentype');
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -28,7 +37,7 @@
   src: url('/fonts/Bounded-Medium.otf') format('opentype');
   font-weight: 500;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -36,7 +45,7 @@
   src: url('/fonts/Bounded-SemiBold.otf') format('opentype');
   font-weight: 600;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -44,7 +53,7 @@
   src: url('/fonts/Bounded-Bold.otf') format('opentype');
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -52,7 +61,7 @@
   src: url('/fonts/Bounded-ExtraBold.otf') format('opentype');
   font-weight: 800;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
@@ -60,14 +69,5 @@
   src: url('/fonts/Bounded-Black.otf') format('opentype');
   font-weight: 900;
   font-style: normal;
-  font-display: swap;
-}
-
-/* Bounded Variable (опционально, для плавного веса) */
-@font-face {
-  font-family: 'Bounded Variable';
-  src: url('/fonts/Bounded-Variable.ttf') format('truetype');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
+  font-display: optional;
 }
