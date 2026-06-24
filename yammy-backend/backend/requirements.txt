@@ -27,6 +27,7 @@ prometheus-fastapi-instrumentator
 faker
 taskiq[opentelemetry]
 taskiq-redis
+psutil
 prometheus_client
 mtcnn
 tensorflow-cpu
