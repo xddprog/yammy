@@ -33,3 +33,4 @@ prometheus_client==0.25.0
 mtcnn==1.0.0
 tensorflow-cpu==2.21.0
 pyrate-limiter==4.1.0
+fastapi-limiter==0.2.0
