@@ -22,13 +22,12 @@ cp "$ROOT/deploy/nginx/yammy.conf" /etc/nginx/conf.d/yammy.conf
 nginx -t
 systemctl reload nginx
 
-echo "==> Backend (db, redis, elasticsearch, app only — 4GB RAM)"
+echo "==> Backend (db, redis, elasticsearch, app, worker, scheduler)"
 mkdir -p "$ROOT/yammy-backend/static" "$ROOT/yammy-backend/hf_model_cache"
 cd "$ROOT/yammy-backend"
 docker compose build app
-docker compose stop worker scheduler 2>/dev/null || true
 docker rm -f grafana prometheus 2>/dev/null || true
-docker compose up -d db redis elasticsearch app
+docker compose up -d db redis elasticsearch app worker scheduler
 
 echo "==> Frontend (TMA)"
 cd "$ROOT/yammy-frontend"
@@ -48,6 +47,7 @@ sleep 10
 curl -sf -o /dev/null -w "api: %{http_code}\n" http://127.0.0.1:8000/docs || echo "api: not ready"
 curl -sf -o /dev/null -w "front: %{http_code}\n" http://127.0.0.1:3000/ || echo "front: not ready"
 curl -sf -o /dev/null -w "admin: %{http_code}\n" http://127.0.0.1:5174/ || echo "admin: not ready"
+docker ps --format '{{.Names}} {{.Status}}' | grep -E 'taskiq|worker|scheduler' || echo "worker/scheduler: not running"
 
 echo "==> Baked API URLs in JS bundles"
 grep -roh 'https://api[^"'\'' ]*' "$ROOT/yammy-frontend/dist" 2>/dev/null | sort -u | head -3 || \
