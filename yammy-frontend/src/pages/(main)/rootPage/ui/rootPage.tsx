@@ -1,12 +1,23 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import type { JSX } from 'react'
-import { Suspense } from 'react'
+import { Suspense, useLayoutEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 
 import { PresenceProvider } from '@/entities/chat'
 import { ERouteNames } from '@/shared/lib/routeVariables'
 import { topHeaderScrimLayerClassNames, type TopHeaderScrimVariant } from '@/widgets'
 import { Navbar } from '@/widgets/navbar'
+
+const pageEase = [0.22, 0.61, 0.36, 1] as const
+const pageTransition = { duration: 0.2, ease: pageEase }
+
+function resolveMainTabIndex(pathname: string): number {
+  if (pathname.includes(`/${ERouteNames.CHATS_ROUTE}`)) return 0
+  if (pathname.includes(`/${ERouteNames.LIKES_ROUTE}`)) return 1
+  if (pathname.includes(`/${ERouteNames.DASHBOARD_ROUTE}`)) return 2
+  if (pathname.includes(`/${ERouteNames.PROFILE_ROUTE}`)) return 3
+  return 2
+}
 
 const RootPage = (): JSX.Element => {
   const location = useLocation()
@@ -21,22 +32,38 @@ const RootPage = (): JSX.Element => {
     ? 'dark'
     : 'background'
 
+  const tabIndex = resolveMainTabIndex(pathname)
+  const prevTabIndexRef = useRef(tabIndex)
+  const directionRef = useRef(1)
+
+  if (prevTabIndexRef.current !== tabIndex) {
+    directionRef.current = tabIndex >= prevTabIndexRef.current ? 1 : -1
+  }
+
+  useLayoutEffect(() => {
+    prevTabIndexRef.current = tabIndex
+  }, [tabIndex])
+
+  const slideOffset = directionRef.current * 14
+
   return (
     <PresenceProvider>
-      <Suspense>
+      <Suspense fallback={null}>
         <div className="relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overscroll-none">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.main
-              key={location.pathname}
-              className="min-h-0 min-w-0 flex-1 overflow-x-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
-            >
-              <Outlet />
-            </motion.main>
-          </AnimatePresence>
+          <div className="relative min-h-0 min-w-0 flex-1 overflow-x-hidden">
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.main
+                key={location.pathname}
+                className="absolute inset-0 min-h-0 min-w-0 overflow-x-hidden"
+                initial={{ x: slideOffset }}
+                animate={{ x: 0 }}
+                exit={{ x: -slideOffset }}
+                transition={pageTransition}
+              >
+                <Outlet />
+              </motion.main>
+            </AnimatePresence>
+          </div>
           {showEdgeGradients && (
             <div
               className={topHeaderScrimLayerClassNames({ variant: topScrimVariant })}
