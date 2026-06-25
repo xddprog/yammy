@@ -3,6 +3,7 @@
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
+from sqlalchemy.dialects import postgresql
 
 
 revision = "20260625_support_tickets"
@@ -10,13 +11,13 @@ down_revision = "20260625_profile_moderation_feedback"
 branch_labels = None
 depends_on = None
 
-REQUEST_TYPE = sa.Enum(
+REQUEST_TYPE = postgresql.ENUM(
     "suggestion", "problem", "bug", name="supportrequesttypeenum", create_type=False
 )
-CONVERSATION_STATUS = sa.Enum(
+CONVERSATION_STATUS = postgresql.ENUM(
     "open", "closed", name="supportconversationstatusenum", create_type=False
 )
-MESSAGE_DIRECTION = sa.Enum(
+MESSAGE_DIRECTION = postgresql.ENUM(
     "user", "staff", name="supportmessagedirectionenum", create_type=False
 )
 

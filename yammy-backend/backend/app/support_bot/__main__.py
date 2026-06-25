@@ -43,12 +43,19 @@ async def _run_webhook(bot: Bot, dp) -> None:
     webhook_handler.register(app, path=SUPPORT_TELEGRAM_CONFIG.WEBHOOK_PATH)
 
     async def on_startup(_app: web.Application) -> None:
-        await bot.set_webhook(
-            webhook_url,
-            secret_token=SUPPORT_TELEGRAM_CONFIG.WEBHOOK_SECRET or None,
-            drop_pending_updates=True,
-        )
-        logger.info("support_bot_webhook_set", url=webhook_url)
+        try:
+            await bot.set_webhook(
+                webhook_url,
+                secret_token=SUPPORT_TELEGRAM_CONFIG.WEBHOOK_SECRET or None,
+                drop_pending_updates=True,
+            )
+            logger.info("support_bot_webhook_set", url=webhook_url)
+        except Exception:
+            logger.exception(
+                "support_bot_webhook_set_failed",
+                url=webhook_url,
+                hint="Set webhook manually if outbound to api.telegram.org is blocked",
+            )
 
     async def on_shutdown(_app: web.Application) -> None:
         await bot.session.close()
