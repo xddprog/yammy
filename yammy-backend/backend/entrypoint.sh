@@ -16,4 +16,8 @@ with create_engine(DB_CONFIG.get_url(is_async=False)).connect() as conn:
   fi
 fi
 
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+fi
+
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000
