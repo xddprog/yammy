@@ -3,7 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from app.infrastructure.config.config import DB_CONFIG
 from app.infrastructure.database.models.base import Base
 import app.infrastructure.database.models  # noqa: F401
-from app.utils.loaders.test_db import init_test_db
 from app.infrastructure.logging.logger import get_logger
 
 # import app.infrastructure.database.events.is_active
@@ -28,6 +27,8 @@ class DatabaseConnection:
             await conn.run_sync(Base.metadata.create_all)
         
     async def init_development_db(self, clear_db: bool = False) -> bool:
+        from app.utils.loaders.test_db import init_test_db
+
         async with self._engine.begin() as conn:
             if clear_db:
                 await conn.run_sync(Base.metadata.drop_all)
