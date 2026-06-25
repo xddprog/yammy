@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import type { JSX } from 'react'
 import { Suspense, useLayoutEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
@@ -9,14 +9,29 @@ import { topHeaderScrimLayerClassNames, type TopHeaderScrimVariant } from '@/wid
 import { Navbar } from '@/widgets/navbar'
 
 const pageEase = [0.22, 0.61, 0.36, 1] as const
-const pageTransition = { duration: 0.2, ease: pageEase }
 
-function resolveMainTabIndex(pathname: string): number {
-  if (pathname.includes(`/${ERouteNames.CHATS_ROUTE}`)) return 0
-  if (pathname.includes(`/${ERouteNames.LIKES_ROUTE}`)) return 1
-  if (pathname.includes(`/${ERouteNames.DASHBOARD_ROUTE}`)) return 2
-  if (pathname.includes(`/${ERouteNames.PROFILE_ROUTE}`)) return 3
-  return 2
+function resolveMainTabKey(pathname: string): string {
+  if (pathname.includes(`/${ERouteNames.CHATS_ROUTE}`)) return 'chats'
+  if (pathname.includes(`/${ERouteNames.LIKES_ROUTE}`)) return 'likes'
+  if (pathname.includes(`/${ERouteNames.DASHBOARD_ROUTE}`)) return 'dashboard'
+  if (pathname.includes(`/${ERouteNames.PROFILE_ROUTE}`)) return 'profile'
+  if (pathname.includes(`/${ERouteNames.AI_SEARCH_ROUTE}`)) return 'ai-search'
+  return 'other'
+}
+
+function resolveMainTabIndex(tabKey: string): number {
+  switch (tabKey) {
+    case 'chats':
+      return 0
+    case 'likes':
+      return 1
+    case 'dashboard':
+      return 2
+    case 'profile':
+      return 3
+    default:
+      return 2
+  }
 }
 
 const RootPage = (): JSX.Element => {
@@ -32,38 +47,42 @@ const RootPage = (): JSX.Element => {
     ? 'dark'
     : 'background'
 
-  const tabIndex = resolveMainTabIndex(pathname)
-  const prevTabIndexRef = useRef(tabIndex)
+  const tabKey = resolveMainTabKey(pathname)
+  const skipEnterAnimationRef = useRef(true)
+  const prevTabIndexRef = useRef(resolveMainTabIndex(tabKey))
   const directionRef = useRef(1)
 
+  const tabIndex = resolveMainTabIndex(tabKey)
   if (prevTabIndexRef.current !== tabIndex) {
     directionRef.current = tabIndex >= prevTabIndexRef.current ? 1 : -1
+    skipEnterAnimationRef.current = false
   }
 
   useLayoutEffect(() => {
     prevTabIndexRef.current = tabIndex
   }, [tabIndex])
 
-  const slideOffset = directionRef.current * 14
+  const slideOffset = directionRef.current * 8
 
   return (
     <PresenceProvider>
       <Suspense fallback={null}>
         <div className="relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overscroll-none">
-          <div className="relative min-h-0 min-w-0 flex-1 overflow-x-hidden">
-            <AnimatePresence initial={false} mode="popLayout">
-              <motion.main
-                key={location.pathname}
-                className="absolute inset-0 min-h-0 min-w-0 overflow-x-hidden"
-                initial={{ x: slideOffset }}
-                animate={{ x: 0 }}
-                exit={{ x: -slideOffset }}
-                transition={pageTransition}
-              >
-                <Outlet />
-              </motion.main>
-            </AnimatePresence>
-          </div>
+          <main className="relative min-h-0 min-w-0 flex-1 overflow-x-hidden">
+            <motion.div
+              key={tabKey}
+              className="h-full min-h-0"
+              initial={
+                skipEnterAnimationRef.current
+                  ? false
+                  : { opacity: 0.94, x: slideOffset }
+              }
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.16, ease: pageEase }}
+            >
+              <Outlet />
+            </motion.div>
+          </main>
           {showEdgeGradients && (
             <div
               className={topHeaderScrimLayerClassNames({ variant: topScrimVariant })}
