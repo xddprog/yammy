@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import type { JSX } from 'react'
 import { Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
@@ -25,15 +25,18 @@ const RootPage = (): JSX.Element => {
     <PresenceProvider>
       <Suspense>
         <div className="relative mx-auto flex h-dvh max-w-md flex-col overflow-hidden overscroll-none">
-          <motion.main
-            key={location.pathname}
-            className="min-h-0 min-w-0 flex-1 overflow-x-hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
-          >
-            <Outlet />
-          </motion.main>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.main
+              key={location.pathname}
+              className="min-h-0 min-w-0 flex-1 overflow-x-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
+            >
+              <Outlet />
+            </motion.main>
+          </AnimatePresence>
           {showEdgeGradients && (
             <div
               className={topHeaderScrimLayerClassNames({ variant: topScrimVariant })}
