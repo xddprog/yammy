@@ -4,7 +4,7 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
-from urllib.parse import parse_qs, unquote
+from urllib.parse import parse_qsl
 from uuid import UUID
 
 import jwt
@@ -153,41 +153,48 @@ class AuthService:
         except (ValueError, TypeError):
             raise InvalidCredentials()
 
-    def _verify_telegram_init_data(self, init_data: str) -> Tuple[int, Optional[str]]:
-        data = dict(parse_qs(unquote(init_data)))
-
-        if 'hash' not in data:
-            raise InvalidTelegramData("Отсутствует поле hash в init_data")
-
-        received_hash = data.pop('hash')[0]
-        data_check_string = '\n'.join(f"{key}={value[0]}" for key, value in sorted(data.items()))
-
+    @staticmethod
+    def _telegram_data_check_hash(fields: dict[str, str], bot_token: str) -> str:
+        data = dict(fields)
+        data.pop("hash", None)
+        data_check_string = "\n".join(f"{key}={value}" for key, value in sorted(data.items()))
         secret_key = hmac.new(
-            key="WebAppData".encode('utf-8'),
-            msg=TELEGRAM_CONFIG.BOT_TOKEN.encode('utf-8'),
-            digestmod=hashlib.sha256
+            key="WebAppData".encode("utf-8"),
+            msg=bot_token.encode("utf-8"),
+            digestmod=hashlib.sha256,
         ).digest()
-
-        calculated_hash = hmac.new(
+        return hmac.new(
             key=secret_key,
-            msg=data_check_string.encode('utf-8'),
-            digestmod=hashlib.sha256
+            msg=data_check_string.encode("utf-8"),
+            digestmod=hashlib.sha256,
         ).hexdigest()
 
-        if not APP_CONFIG.DEBUG:
-            if calculated_hash != received_hash:
-                raise InvalidTelegramData("Неверный хеш")
+    def _verify_telegram_init_data(self, init_data: str) -> Tuple[int, Optional[str]]:
+        data = dict(parse_qsl(init_data.strip(), keep_blank_values=True))
 
-            auth_date = int(data.get('auth_date', [0])[0])
+        if "hash" not in data:
+            raise InvalidTelegramData("Отсутствует поле hash в init_data")
+
+        received_hash = data.pop("hash")
+        bot_token = TELEGRAM_CONFIG.BOT_TOKEN.strip()
+        calculated_hash = self._telegram_data_check_hash(
+            {"hash": received_hash, **data},
+            bot_token=bot_token,
+        )
+
+        if not APP_CONFIG.DEBUG and calculated_hash != received_hash:
+            raise InvalidTelegramData("Неверный хеш")
+
+        if not APP_CONFIG.DEBUG:
+            auth_date = int(data.get("auth_date", 0))
             current_time = int(time.time())
             if current_time - auth_date > 86400:
                 raise InvalidTelegramData("Данные устарели")
 
-        user_data = data.get('user', [None])[0]
+        user_data = data.get("user")
         if not user_data:
             raise InvalidTelegramData("Отсутствует поле user в init_data")
 
-        user_data = user_data.replace('\\"', '"')
         user = json.loads(user_data)
 
         telegram_id = user.get("id")
