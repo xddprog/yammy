@@ -10,6 +10,7 @@ from app.core.repositories.ai_search_history_repository import AiSearchHistoryRe
 from app.core.repositories.tarot_compatibility_history_repository import TarotCompatibilityHistoryRepository
 from app.core.repositories.admin_stats_repository import AdminStatsRepository
 from app.core.repositories.admin_user_repository import AdminUserRepository
+from app.core.repositories.support_repository import SupportRepository
 
 __all__ = [
     "AdminRepository",
@@ -24,4 +25,5 @@ __all__ = [
     "TarotCompatibilityHistoryRepository",
     "AdminStatsRepository",
     "AdminUserRepository",
+    "SupportRepository",
 ]

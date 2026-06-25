@@ -23,6 +23,7 @@ from app.core.services.user_index_service import UserIndexService
 
 from app.core.services.admin_stats_service import AdminStatsService
 from app.core.services.admin_user_service import AdminUserService
+from app.core.services.support_service import SupportService
 
 __all__ = [
     "AuthService",
@@ -49,4 +50,5 @@ __all__ = [
     "UserIndexService",
     "AdminStatsService",
     "AdminUserService",
+    "SupportService",
 ]

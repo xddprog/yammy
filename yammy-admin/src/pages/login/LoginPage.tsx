@@ -31,7 +31,7 @@ export function LoginPage() {
             setError('')
             void loginAdmin(username, password)
               .then((staff) => {
-                navigate(staff.role === 'admin' ? '/dashboard' : '/moderation/profiles', { replace: true })
+                navigate(staff.role === 'admin' ? '/dashboard' : '/support', { replace: true })
               })
               .catch(() => setError(t.invalidCredentials))
               .finally(() => setLoading(false))

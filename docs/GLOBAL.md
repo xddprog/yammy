@@ -74,6 +74,7 @@ infrastructure/database/models/  → ORM без логики
 | **ML** (`ml_service`) | эмбеддинги bio, модерация текста/фото, детекция лиц |
 | **OpenRouter** | AI search (LLM отбор кандидатов) |
 | **Telegram Bot** | push: лайк, новый матч (`notification_service`) |
+| **Support Bot** | отдельный aiogram-бот: тикеты в Telegram → админка `/support` |
 
 Запуск: `yammy-backend/docker compose up -d`, фронт `cd yammy-frontend && npm run dev`.
 
@@ -297,7 +298,7 @@ infrastructure/database/models/  → ORM без логики
 | Роль | Доступ |
 |------|--------|
 | **admin** | Dashboard stats, users search/actions, moderation, reports |
-| **support** | Profile moderation + reported users (без stats и ban) |
+| **support** | Profile moderation + reported users + **support inbox** (без stats и ban) |
 
 Dev: `admin/admin`, `support/support` · миграция `20260619_admin_panel`.
 
@@ -426,7 +427,12 @@ SQL/миграция для статистики профиля: `migrations/ver
 
 ---
 
-*Последнее (2026-06-23):*
+*Последнее (2026-06-25):*
+
+- *Support-бот:* отдельный Telegram-бот на aiogram 3.x (`support-bot` container), тикеты в Postgres, админка `/support`.
+- *Типы обращения:* предложение, проблема, баг.
+
+*Ранее (2026-06-23):*
 
 - *Оценки внешности:* таблица `appearance_rating_pairs` (взаимные пары); POST сразу в PG (Redis-буфер и `flush_appearance_ratings_to_database` **удалены**); GET `/appearance-ratings/received` — только неотвеченные входящие; взаимная оценка → Taskiq + Telegram.
 - *Страница лайков:* вкладки «Лайки» / «Оценки», lazy queries, оверлей оценок с `RateCardActions`.

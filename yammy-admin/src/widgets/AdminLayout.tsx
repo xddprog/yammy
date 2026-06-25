@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Shield, Users, Flag, LogOut, SlidersHorizontal } from 'lucide-react'
+import { LayoutDashboard, Shield, Users, Flag, LogOut, SlidersHorizontal, MessageCircle } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { logoutAdmin } from '@/entities/admin-auth/api'
 import type { StaffSession } from '@/entities/admin-auth/api'
@@ -41,6 +41,9 @@ export function AdminLayout({ staff }: { staff: StaffSession }) {
           </NavLink>
           <NavLink to="/moderation/reported-users" className={linkClass}>
             <Flag className="size-4" /> {t.reports}
+          </NavLink>
+          <NavLink to="/support" className={linkClass}>
+            <MessageCircle className="size-4" /> {t.support}
           </NavLink>
         </nav>
         <button

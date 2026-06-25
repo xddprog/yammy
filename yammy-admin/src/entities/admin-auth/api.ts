@@ -1,5 +1,5 @@
 import { adminFetch, adminApi, setAdminSession, clearAdminSession, getAdminAccessToken } from '@/shared/api/adminApi'
-import type { AdminUserChat, AdminUserDetail, AdminUserPreview, Paginated, ReportedUserDetail, ReportedUserItem, StatsOverview } from '@/shared/api/types'
+import type { AdminUserChat, AdminUserDetail, AdminUserPreview, Paginated, ReportedUserDetail, ReportedUserItem, StatsOverview, SupportConversationDetail, SupportConversationItem, SupportMessageItem } from '@/shared/api/types'
 import type { AdminReportItem } from '@/shared/api/types'
 
 export type StaffSession = {
@@ -187,5 +187,35 @@ export async function setModerationFlag(userId: string, approved: boolean) {
   return adminFetch(`users/${userId}/moderation`, {
     method: 'PATCH',
     json: { profile_moderation_approved: approved },
+  })
+}
+
+export async function fetchSupportConversations(page = 1, size = 20, status?: 'open' | 'closed') {
+  const params = new URLSearchParams({ page: String(page), size: String(size) })
+  if (status) params.set('status', status)
+  return adminFetch<Paginated<SupportConversationItem>>(`support/conversations?${params}`)
+}
+
+export async function fetchSupportConversation(conversationId: string) {
+  return adminFetch<SupportConversationDetail>(`support/conversations/${conversationId}`)
+}
+
+export async function fetchSupportMessages(conversationId: string, page = 1, size = 100) {
+  return adminFetch<Paginated<SupportMessageItem>>(
+    `support/conversations/${conversationId}/messages?page=${page}&size=${size}`,
+  )
+}
+
+export async function replySupportConversation(conversationId: string, content: string) {
+  return adminFetch<SupportMessageItem>(`support/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    json: { content },
+  })
+}
+
+export async function updateSupportConversationStatus(conversationId: string, status: 'open' | 'closed') {
+  return adminFetch<SupportConversationDetail>(`support/conversations/${conversationId}`, {
+    method: 'PATCH',
+    json: { status },
   })
 }

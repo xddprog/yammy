@@ -133,6 +133,15 @@ class TelegramConfig(Config):
     DEV_STUB_TELEGRAM_ID: int = Field(default=1212345678)
 
 
+class SupportTelegramConfig(Config):
+    model_config = _settings_config(env_prefix="SUPPORT_TELEGRAM_CONFIG__")
+    BOT_TOKEN: str = Field(default="")
+    WEBHOOK_SECRET: str = Field(default="")
+    WEBHOOK_PATH: str = Field(default="/webhook")
+    LISTEN_HOST: str = Field(default="0.0.0.0")
+    LISTEN_PORT: int = Field(default=8001)
+
+
 class ElasticsearchConfig(Config):
     model_config = _settings_config(env_prefix="ELASTICSEARCH_CONFIG__")
     ES_HOST: str = Field(default="localhost")
@@ -185,6 +194,7 @@ class Settings(Config):
     openrouter_config: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
     ai_search_config: AiSearchConfig = Field(default_factory=AiSearchConfig)
     tarot_compatibility_config: TarotCompatibilityConfig = Field(default_factory=TarotCompatibilityConfig)
+    support_telegram_config: SupportTelegramConfig = Field(default_factory=SupportTelegramConfig)
 
 
 settings = Settings()
@@ -200,10 +210,12 @@ GIGDATA_CONFIG = settings.gigdata_config
 OPENROUTER_CONFIG = settings.openrouter_config
 AI_SEARCH_CONFIG = settings.ai_search_config
 TAROT_COMPATIBILITY_CONFIG = settings.tarot_compatibility_config
+SUPPORT_TELEGRAM_CONFIG = settings.support_telegram_config
 
 
 __all__ = [
     "BASE_DIR", "TELEGRAM_CONFIG", "DB_CONFIG",
     "JWT_CONFIG", "APP_CONFIG", "ELASTICSEARCH_CONFIG",
     "GIGDATA_CONFIG", "OPENROUTER_CONFIG", "AI_SEARCH_CONFIG", "TAROT_COMPATIBILITY_CONFIG",
+    "SUPPORT_TELEGRAM_CONFIG",
 ]

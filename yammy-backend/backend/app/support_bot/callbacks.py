@@ -1,0 +1,7 @@
+MENU_CREATE = "menu:create"
+MENU_TICKETS = "menu:tickets"
+MENU_BUG = "menu:bug"
+TYPE_SUGGESTION = "type:suggestion"
+TYPE_PROBLEM = "type:problem"
+TYPE_BUG = "type:bug"
+NAV_BACK = "nav:back"

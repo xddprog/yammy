@@ -27,7 +27,7 @@ mkdir -p "$ROOT/yammy-backend/static" "$ROOT/yammy-backend/hf_model_cache"
 cd "$ROOT/yammy-backend"
 docker compose build app
 docker rm -f grafana prometheus 2>/dev/null || true
-docker compose up -d db redis elasticsearch app worker scheduler
+docker compose up -d db redis elasticsearch app worker scheduler support-bot
 
 echo "==> Frontend (TMA)"
 cd "$ROOT/yammy-frontend"

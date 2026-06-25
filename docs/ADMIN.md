@@ -2,7 +2,7 @@
 
 Отдельная desktop-панель для модерации и аналитики. Клиентское TMA-приложение (`yammy-frontend`) админку **не содержит**.
 
-**Репозиторий:** `yammy-admin/` · **Backend API:** `/admin` (не `/api/v1`) · **Обновлено:** 2026-06-19
+**Репозиторий:** `yammy-admin/` · **Backend API:** `/admin` (не `/api/v1`) · **Обновлено:** 2026-06-25
 
 ---
 
@@ -31,9 +31,10 @@
 | Profile moderation (`profile_moderation_approved`) | ✓ | ✓ |
 | Reports: список user + count | ✓ | ✓ |
 | Reports: деталка + actions на репорт | ✓ | ✓ |
+| Support inbox (Telegram тикеты) | ✓ | ✓ |
 | Ban / subscription / balances | ✓ | — |
 
-Support после логина → `/moderation/profiles`. Admin → `/dashboard`.
+Support после логина → `/support`. Admin → `/dashboard`.
 
 ---
 
@@ -50,6 +51,8 @@ Support после логина → `/moderation/profiles`. Admin → `/dashboar
 | `/moderation/profiles/:id` | Review + approve/reject | admin, support |
 | `/moderation/reported-users` | User + count жалоб | admin, support |
 | `/moderation/reported-users/:id` | Профиль + список репортов | admin, support |
+| `/support` | Inbox тикетов Telegram-бота | admin, support |
+| `/support/:id` | Переписка + ответ + close/reopen | admin, support |
 
 **Auth на клиенте:** `localStorage` keys `yammy_admin_*`, Bearer в `adminApi` (`src/shared/api/adminApi.ts`).
 
@@ -96,6 +99,17 @@ Support после логина → `/moderation/profiles`. Admin → `/dashboar
 | Method | Path | Описание |
 |--------|------|----------|
 | PATCH | `/admin/reports/{report_id}` | `{ status: reviewed\|dismissed, review_note? }` |
+
+### Support (admin + support)
+| Method | Path | Описание |
+|--------|------|----------|
+| GET | `/admin/support/conversations` | Inbox; `?status=open\|closed`, пагинация |
+| GET | `/admin/support/conversations/{id}` | Деталь тикета + превью user |
+| GET | `/admin/support/conversations/{id}/messages` | История сообщений |
+| POST | `/admin/support/conversations/{id}/messages` | `{ content }` → Telegram + БД |
+| PATCH | `/admin/support/conversations/{id}` | `{ status: open\|closed }` |
+
+**Support-бот (отдельный Telegram):** `SUPPORT_TELEGRAM_CONFIG__BOT_TOKEN`, контейнер `support-bot`, webhook `https://api.yammy.fun/api/v1/support/telegram/webhook`.
 
 ### Прочее
 | Method | Path | Описание |

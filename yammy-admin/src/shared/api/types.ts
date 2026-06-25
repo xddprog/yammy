@@ -66,6 +66,43 @@ export type ReportedUserDetail = {
   reports: AdminReportItem[]
 }
 
+export type SupportUserPreview = {
+  id: string
+  name: string
+  age: number
+  city: string
+  main_photo: string | null
+}
+
+export type SupportConversationItem = {
+  id: string
+  telegram_id: number
+  request_type: 'suggestion' | 'problem' | 'bug'
+  status: 'open' | 'closed'
+  last_message_at: string | null
+  created_at: string | null
+  last_message_preview: string | null
+  user: SupportUserPreview | null
+}
+
+export type SupportConversationDetail = {
+  id: string
+  telegram_id: number
+  request_type: 'suggestion' | 'problem' | 'bug'
+  status: 'open' | 'closed'
+  last_message_at: string | null
+  created_at: string | null
+  user: SupportUserPreview | null
+}
+
+export type SupportMessageItem = {
+  id: string
+  direction: 'user' | 'staff'
+  content: string
+  admin_id: string | null
+  created_at: string | null
+}
+
 export type FilterDeleteResult = {
   affected_users: number
   reindexed_users: number

@@ -2,6 +2,7 @@ from dishka import Provider, Scope, provide
 
 from app.core.clients.elasticsearch_client import ElasticsearchClient
 from app.core.clients.openrouter_client import OpenRouterClient
+from app.core.clients.support_telegram_client import SupportTelegramClient
 from app.core.clients.telegram_client import TelegramClient
 from app.core.services.ml_service import MLService
 from app.core.clients.redis_client import RedisClient
@@ -45,6 +46,10 @@ class AppProvider(Provider):
     @provide(scope=Scope.APP)
     def get_telegram_client(self) -> TelegramClient:
         return TelegramClient()
+
+    @provide(scope=Scope.APP)
+    def get_support_telegram_client(self) -> SupportTelegramClient:
+        return SupportTelegramClient()
 
     @provide(scope=Scope.APP)
     def get_openrouter_client(self) -> OpenRouterClient:

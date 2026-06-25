@@ -12,6 +12,7 @@ from app.infrastructure.database.adapters.pg_connection import DatabaseConnectio
 from app.infrastructure.database.models.user import User
 from app.core.clients.elasticsearch_client import ElasticsearchClient
 from app.core.clients.openrouter_client import OpenRouterClient
+from app.core.clients.support_telegram_client import SupportTelegramClient
 from app.core.clients.telegram_client import TelegramClient
 from app.core.services.ml_service import MLService
 
@@ -75,6 +76,18 @@ class RequestProvider(Provider):
     @provide(scope=Scope.REQUEST)
     def get_telegram_bot_service(self, telegram_client: TelegramClient) -> services.TelegramBotService:
         return services.TelegramBotService(telegram_client=telegram_client)
+
+    @provide(scope=Scope.REQUEST)
+    def get_support_service(
+        self,
+        session: AsyncSession,
+        support_telegram_client: SupportTelegramClient,
+    ) -> services.SupportService:
+        return services.SupportService(
+            support_repository=repositories.SupportRepository(session=session),
+            user_repository=repositories.UserRepository(session=session),
+            support_telegram_client=support_telegram_client,
+        )
 
     @provide(scope=Scope.REQUEST)
     def get_like_service(

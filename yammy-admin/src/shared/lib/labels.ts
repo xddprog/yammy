@@ -23,6 +23,17 @@ const SUBSCRIPTION_TIER_LABELS: Record<string, string> = {
   premium: 'Premium',
 }
 
+const SUPPORT_REQUEST_TYPE_LABELS: Record<string, string> = {
+  suggestion: 'Предложение',
+  problem: 'Проблема',
+  bug: 'Баг',
+}
+
+const SUPPORT_STATUS_LABELS: Record<string, string> = {
+  open: 'Открыт',
+  closed: 'Закрыт',
+}
+
 export function labelRole(role: string): string {
   return ROLE_LABELS[role] ?? role
 }
@@ -37,6 +48,14 @@ export function labelReportReason(reason: string): string {
 
 export function labelSubscriptionTier(tier: string): string {
   return SUBSCRIPTION_TIER_LABELS[tier] ?? tier
+}
+
+export function labelSupportRequestType(type: string): string {
+  return SUPPORT_REQUEST_TYPE_LABELS[type] ?? type
+}
+
+export function labelSupportStatus(status: string): string {
+  return SUPPORT_STATUS_LABELS[status] ?? status
 }
 
 export const t = {
@@ -75,6 +94,22 @@ export const t = {
   users: 'Пользователи',
   profiles: 'Профили',
   reports: 'Жалобы',
+  support: 'Поддержка',
+  supportInbox: 'Тикеты поддержки',
+  supportAll: 'Все',
+  supportOpenOnly: 'Открытые',
+  supportNoTickets: 'Тикетов нет',
+  supportReply: 'Ответить',
+  supportReplyPlaceholder: 'Текст ответа…',
+  supportCloseTicket: 'Закрыть тикет',
+  supportReopenTicket: 'Открыть снова',
+  supportTicketType: 'Тип',
+  supportTicketStatus: 'Статус',
+  supportTelegramId: 'Telegram ID',
+  supportUser: 'Пользователь',
+  supportMessages: 'Переписка',
+  supportFromUser: 'Пользователь',
+  supportFromStaff: 'Поддержка',
 
   period1d: '1 день',
   period7d: '7 дней',

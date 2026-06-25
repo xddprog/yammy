@@ -13,6 +13,8 @@ from .report import Report
 from .appearance_rating_pair import AppearanceRatingPair
 from .ai_search_history import AiSearchHistory
 from .tarot_compatibility_history import TarotCompatibilityHistory
+from .support_conversation import SupportConversation
+from .support_message import SupportMessage
 
 
 __all__ = [
@@ -33,4 +35,6 @@ __all__ = [
     "AppearanceRatingPair",
     "AiSearchHistory",
     "TarotCompatibilityHistory",
+    "SupportConversation",
+    "SupportMessage",
 ]

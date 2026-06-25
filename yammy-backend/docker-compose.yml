@@ -58,6 +58,19 @@ services:
     volumes:
       - ./static:/app/static
 
+  support-bot:
+    image: *backend-image
+    container_name: support-bot
+    command: python -m app.support_bot
+    <<: *app-env-file
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    networks:
+      - app-network
+    ports:
+      - "127.0.0.1:8001:8001"
+
   scheduler:
     image: *backend-image
     container_name: taskiq-scheduler
