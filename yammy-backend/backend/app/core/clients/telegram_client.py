@@ -1,7 +1,6 @@
 from typing import Any
 
-import aiohttp
-
+from app.core.clients.telegram_proxy import create_telegram_client_session
 from app.infrastructure.config.config import TELEGRAM_CONFIG
 from app.infrastructure.logging.logger import get_logger
 
@@ -60,7 +59,7 @@ class TelegramClient:
             payload["reply_markup"] = reply_markup
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with create_telegram_client_session() as session:
                 async with session.post(url, json=payload) as response:
                     if response.status == 200:
                         logger.info(
@@ -98,7 +97,7 @@ class TelegramClient:
             payload["secret_token"] = secret_token
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with create_telegram_client_session() as session:
                 async with session.post(api_url, json=payload) as response:
                     data = await response.json()
                     if response.status == 200 and data.get("ok"):

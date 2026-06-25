@@ -130,6 +130,10 @@ class TelegramConfig(Config):
         default="",
         description="Secret token для проверки заголовка X-Telegram-Bot-Api-Secret-Token",
     )
+    PROXY: str = Field(
+        default="",
+        description="SOCKS5/HTTP прокси для исходящих запросов к api.telegram.org",
+    )
     DEV_STUB_TELEGRAM_ID: int = Field(default=1212345678)
 
 
