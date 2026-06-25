@@ -8,7 +8,13 @@ import { ERouteNames } from '@/shared/lib/routeVariables'
 import { topHeaderScrimLayerClassNames, type TopHeaderScrimVariant } from '@/widgets'
 import { Navbar } from '@/widgets/navbar'
 
-const pageEase = [0.22, 0.61, 0.36, 1] as const
+const pageTransition = {
+  type: 'spring' as const,
+  stiffness: 260,
+  damping: 28,
+  mass: 0.9,
+}
+const pageSlidePx = 14
 
 function resolveMainTabKey(pathname: string): string {
   if (pathname.includes(`/${ERouteNames.CHATS_ROUTE}`)) return 'chats'
@@ -62,7 +68,7 @@ const RootPage = (): JSX.Element => {
     prevTabIndexRef.current = tabIndex
   }, [tabIndex])
 
-  const slideOffset = directionRef.current * 8
+  const slideOffset = directionRef.current * pageSlidePx
 
   return (
     <PresenceProvider>
@@ -75,10 +81,10 @@ const RootPage = (): JSX.Element => {
               initial={
                 skipEnterAnimationRef.current
                   ? false
-                  : { opacity: 0.94, x: slideOffset }
+                  : { opacity: 0.97, x: slideOffset }
               }
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.16, ease: pageEase }}
+              transition={pageTransition}
             >
               <Outlet />
             </motion.div>
