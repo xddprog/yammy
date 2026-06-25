@@ -10,6 +10,7 @@ import type { ProfilePhotoItem, UserLanguage } from '@/entities/user/types/types
 import type { FiltersState } from '@/features/matches-filter/model/types'
 import { ProfileModerationBanner } from '@/features/profile-moderation/ui/profileModerationBanner'
 import { useFiltersState } from '@/features/matches-filter/model/useFiltersState'
+import { AppPageLoader } from '@/app/ui/AppPageLoader'
 import { showErrorToast } from '@/shared'
 import { stickyTopHeaderClassNames } from '@/widgets'
 
@@ -99,6 +100,9 @@ const ProfilePage = (): JSX.Element => {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden overflow-x-hidden bg-background px-4 text-foreground">
+      {screen === 'edit' && updateUserProfileMutation.isPending ? (
+        <AppPageLoader fullscreen backdrop="blur" />
+      ) : null}
       <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none pb-28 no-scrollbar">
         <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-6">
           <header className={stickyTopHeaderClassNames()} aria-hidden />
