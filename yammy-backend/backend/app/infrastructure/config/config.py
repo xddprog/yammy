@@ -140,6 +140,14 @@ class SupportTelegramConfig(Config):
     WEBHOOK_PATH: str = Field(default="/webhook")
     LISTEN_HOST: str = Field(default="0.0.0.0")
     LISTEN_PORT: int = Field(default=8001)
+    PROXY: str = Field(
+        default="",
+        description="SOCKS5/HTTP прокси для исходящих запросов к api.telegram.org (например socks5://host.docker.internal:10808)",
+    )
+    USE_WEBHOOK: bool = Field(
+        default=True,
+        description="False = long polling (только исходящие к Telegram API, без входящего webhook)",
+    )
 
 
 class ElasticsearchConfig(Config):

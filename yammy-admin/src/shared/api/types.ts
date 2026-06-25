@@ -101,6 +101,8 @@ export type SupportMessageItem = {
   content: string
   admin_id: string | null
   created_at: string | null
+  attachment_type: 'photo' | 'document' | null
+  attachment_url: string | null
 }
 
 export type FilterDeleteResult = {

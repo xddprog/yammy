@@ -11,6 +11,7 @@ from app.infrastructure.database.models.support_conversation import SupportConve
 from app.infrastructure.database.models.support_message import SupportMessage
 from app.infrastructure.database.models.user import User
 from app.utils.constants.enums import (
+    SupportAttachmentTypeEnum,
     SupportConversationStatusEnum,
     SupportMessageDirectionEnum,
     SupportRequestTypeEnum,
@@ -125,6 +126,9 @@ class SupportRepository(SqlAlchemyRepository[SupportConversation]):
         content: str,
         admin_id: UUID | None = None,
         telegram_message_id: int | None = None,
+        attachment_type: SupportAttachmentTypeEnum | None = None,
+        telegram_file_id: str | None = None,
+        telegram_file_unique_id: str | None = None,
     ) -> SupportMessage:
         message = SupportMessage(
             conversation_id=conversation_id,
@@ -132,6 +136,9 @@ class SupportRepository(SqlAlchemyRepository[SupportConversation]):
             content=content,
             admin_id=admin_id,
             telegram_message_id=telegram_message_id,
+            attachment_type=attachment_type,
+            telegram_file_id=telegram_file_id,
+            telegram_file_unique_id=telegram_file_unique_id,
         )
         self.session.add(message)
         now = datetime.now(timezone.utc)

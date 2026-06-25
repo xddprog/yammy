@@ -11,9 +11,11 @@ from app.core.dto.support import (
 from app.core.repositories.support_repository import SupportRepository
 from app.core.repositories.user_repository import UserRepository
 from app.infrastructure.database.models.support_conversation import SupportConversation
+from app.infrastructure.database.models.support_message import SupportMessage
 from app.infrastructure.database.models.user import User
 from app.infrastructure.errors.base import NotFoundException
 from app.utils.constants.enums import (
+    SupportAttachmentTypeEnum,
     SupportConversationStatusEnum,
     SupportMessageDirectionEnum,
     SupportRequestTypeEnum,
@@ -45,6 +47,9 @@ class SupportService:
         request_type: SupportRequestTypeEnum,
         content: str,
         telegram_message_id: int | None = None,
+        attachment_type: SupportAttachmentTypeEnum | None = None,
+        telegram_file_id: str | None = None,
+        telegram_file_unique_id: str | None = None,
     ) -> SupportConversation:
         if telegram_message_id is not None:
             existing = await self._support.get_by_telegram_message_id(telegram_message_id)
@@ -59,16 +64,20 @@ class SupportService:
             user_id=user.id if user else None,
             request_type=request_type,
         )
+        ticket_id = conversation.id
         await self._support.add_message(
-            conversation_id=conversation.id,
+            conversation_id=ticket_id,
             direction=SupportMessageDirectionEnum.USER,
             content=content,
             telegram_message_id=telegram_message_id,
+            attachment_type=attachment_type,
+            telegram_file_id=telegram_file_id,
+            telegram_file_unique_id=telegram_file_unique_id,
         )
         await self._support.commit()
         await self._telegram.send_message(
             telegram_id,
-            TICKET_CREATED_REPLY.format(ticket_id=str(conversation.id)[:8]),
+            TICKET_CREATED_REPLY.format(ticket_id=str(ticket_id)[:8]),
         )
         return conversation
 
@@ -77,6 +86,9 @@ class SupportService:
         telegram_id: int,
         content: str,
         telegram_message_id: int | None = None,
+        attachment_type: SupportAttachmentTypeEnum | None = None,
+        telegram_file_id: str | None = None,
+        telegram_file_unique_id: str | None = None,
     ) -> SupportConversation | None:
         if telegram_message_id is not None:
             existing = await self._support.get_by_telegram_message_id(telegram_message_id)
@@ -87,16 +99,20 @@ class SupportService:
         if conversation is None:
             return None
 
+        ticket_id = conversation.id
         await self._support.add_message(
-            conversation_id=conversation.id,
+            conversation_id=ticket_id,
             direction=SupportMessageDirectionEnum.USER,
             content=content,
             telegram_message_id=telegram_message_id,
+            attachment_type=attachment_type,
+            telegram_file_id=telegram_file_id,
+            telegram_file_unique_id=telegram_file_unique_id,
         )
         await self._support.commit()
         await self._telegram.send_message(
             telegram_id,
-            MESSAGE_APPENDED_REPLY.format(ticket_id=str(conversation.id)[:8]),
+            MESSAGE_APPENDED_REPLY.format(ticket_id=str(ticket_id)[:8]),
         )
         return conversation
 
@@ -144,16 +160,21 @@ class SupportService:
             total=total,
             page=pagination.page,
             size=pagination.size,
-            items=[
-                SupportMessageSchema(
-                    id=m.id,
-                    direction=m.direction,
-                    content=m.content,
-                    admin_id=m.admin_id,
-                    created_at=m.created_at,
-                )
-                for m in messages
-            ],
+            items=[await self._to_message_schema(m) for m in messages],
+        )
+
+    async def _to_message_schema(self, message: SupportMessage) -> SupportMessageSchema:
+        attachment_url = None
+        if message.telegram_file_id:
+            attachment_url = await self._telegram.get_file_url(message.telegram_file_id)
+        return SupportMessageSchema(
+            id=message.id,
+            direction=message.direction,
+            content=message.content,
+            admin_id=message.admin_id,
+            created_at=message.created_at,
+            attachment_type=message.attachment_type,
+            attachment_url=attachment_url,
         )
 
     async def reply_as_staff(
@@ -166,6 +187,7 @@ class SupportService:
         if conversation is None:
             raise NotFoundException()
 
+        recipient_telegram_id = conversation.telegram_id
         message = await self._support.add_message(
             conversation_id=conversation_id,
             direction=SupportMessageDirectionEnum.STAFF,
@@ -174,16 +196,10 @@ class SupportService:
         )
         await self._support.commit()
         await self._telegram.send_message(
-            conversation.telegram_id,
+            recipient_telegram_id,
             f"{STAFF_REPLY_PREFIX}{content}",
         )
-        return SupportMessageSchema(
-            id=message.id,
-            direction=message.direction,
-            content=message.content,
-            admin_id=message.admin_id,
-            created_at=message.created_at,
-        )
+        return await self._to_message_schema(message)
 
     async def set_status(
         self,
@@ -193,10 +209,11 @@ class SupportService:
         conversation = await self._support.update_status(conversation_id, status)
         if conversation is None:
             raise NotFoundException()
+        recipient_telegram_id = conversation.telegram_id
         await self._support.commit()
         if status == SupportConversationStatusEnum.CLOSED:
             await self._telegram.send_message(
-                conversation.telegram_id,
+                recipient_telegram_id,
                 "Тикет закрыт. Чтобы создать новый — нажмите «Создать тикет» в меню.",
             )
         return await self.get_conversation_detail(conversation_id)

@@ -22,6 +22,11 @@ class SupportMessageDirectionEnum(str, Enum):
     STAFF = "staff"
 
 
+class SupportAttachmentTypeEnum(str, Enum):
+    PHOTO = "photo"
+    DOCUMENT = "document"
+
+
 class ProfileModerationStatusEnum(str, Enum):
     APPROVED = "approved"
     PENDING = "pending"
@@ -142,19 +147,3 @@ class AiSearchHistoryStatusEnum(str, Enum):
     SEARCHING = "searching"
     READY = "ready"
     FAILED = "failed"
-
-
-class SupportRequestTypeEnum(str, Enum):
-    SUGGESTION = "suggestion"
-    PROBLEM = "problem"
-    BUG = "bug"
-
-
-class SupportConversationStatusEnum(str, Enum):
-    OPEN = "open"
-    CLOSED = "closed"
-
-
-class SupportMessageDirectionEnum(str, Enum):
-    USER = "user"
-    STAFF = "staff"

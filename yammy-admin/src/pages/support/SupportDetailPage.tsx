@@ -120,6 +120,25 @@ export function SupportDetailPage() {
                   {formatDate(msg.created_at)}
                 </div>
                 <div className="whitespace-pre-wrap">{msg.content}</div>
+                {msg.attachment_url && msg.attachment_type === 'photo' && (
+                  <a href={msg.attachment_url} target="_blank" rel="noreferrer" className="mt-2 block">
+                    <img
+                      src={msg.attachment_url}
+                      alt=""
+                      className="max-h-64 rounded-lg object-contain"
+                    />
+                  </a>
+                )}
+                {msg.attachment_url && msg.attachment_type === 'document' && (
+                  <a
+                    href={msg.attachment_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block text-sky-400 hover:underline"
+                  >
+                    {t.supportOpenDocument}
+                  </a>
+                )}
               </div>
             ))}
           </div>

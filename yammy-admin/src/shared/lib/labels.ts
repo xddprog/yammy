@@ -110,6 +110,7 @@ export const t = {
   supportMessages: 'Переписка',
   supportFromUser: 'Пользователь',
   supportFromStaff: 'Поддержка',
+  supportOpenDocument: 'Открыть документ',
 
   period1d: '1 день',
   period7d: '7 дней',

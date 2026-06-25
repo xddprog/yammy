@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.utils.constants.enums import (
+    SupportAttachmentTypeEnum,
     SupportConversationStatusEnum,
     SupportMessageDirectionEnum,
     SupportRequestTypeEnum,
@@ -43,6 +44,8 @@ class SupportMessageSchema(BaseModel):
     content: str
     admin_id: UUID | None = None
     created_at: datetime | None
+    attachment_type: SupportAttachmentTypeEnum | None = None
+    attachment_url: str | None = None
 
 
 class SupportConversationDetailSchema(BaseModel):

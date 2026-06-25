@@ -6,6 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiohttp import web
 
+from app.core.clients.telegram_proxy import create_aiogram_session
 from app.infrastructure.config.config import APP_CONFIG, SUPPORT_TELEGRAM_CONFIG
 from app.infrastructure.database.adapters.pg_connection import DatabaseConnection
 from app.infrastructure.logging.logger import get_logger
@@ -86,11 +87,16 @@ async def main() -> None:
     if not token:
         raise RuntimeError("SUPPORT_TELEGRAM_CONFIG__BOT_TOKEN is required")
 
-    bot = Bot(token=token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    session = create_aiogram_session()
+    bot = Bot(
+        token=token,
+        session=session,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
     db_connection = DatabaseConnection()
     dp = create_dispatcher(db_connection)
 
-    if _webhook_public_url():
+    if _webhook_public_url() and SUPPORT_TELEGRAM_CONFIG.USE_WEBHOOK:
         await _run_webhook(bot, dp)
     else:
         await _run_polling(bot, dp)
