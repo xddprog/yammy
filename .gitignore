@@ -8,3 +8,5 @@ test_convert.*
 yammy-backend/backend/test_moderation/
 
 .VSCodeCounter/
+
+bibintobot/

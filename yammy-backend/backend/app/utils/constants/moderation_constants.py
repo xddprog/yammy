@@ -77,6 +77,9 @@ TEXT_MODERATION_ERROR_MESSAGES = {
 
 TEXT_MODERATION_DEFAULT_THRESHOLD: float = 0.85
 
+# Короткое описание не гоняем через ML — только длиннее этого порога (символов).
+TEXT_MODERATION_MIN_LENGTH_TO_CHECK: int = 100
+
 IMAGE_MODERATION_SAFE_ANCHOR = (
     "dating app profile photo, fully clothed everyday person, "
     "t-shirt blouse or tank top with deep v-neck or scoop neck showing some cleavage is normal, "

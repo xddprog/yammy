@@ -12,6 +12,7 @@ from app.utils.constants.moderation_constants import (
     IMAGE_MODERATION_CLIP_THRESHOLD_NSFW,
     IMAGE_MODERATION_ERROR_MESSAGES,
     TEXT_MODERATION_ERROR_MESSAGES,
+    TEXT_MODERATION_MIN_LENGTH_TO_CHECK,
 )
 
 logger = get_logger(__name__)
@@ -29,21 +30,22 @@ class ModerationService:
             if image.content_type not in ["image/jpeg", "image/png", "image/webp"]:
                 raise ImageProcessingError("некорректный тип файла")
 
-            if is_main:
-                faces_started = time.perf_counter()
-                faces = await self.ml_service.detect_faces(image)
-                logger.info(
-                    "moderate_image_timing",
-                    phase="detect_faces",
-                    is_main=is_main,
-                    seconds=round(time.perf_counter() - faces_started, 3),
-                    faces_count=len(faces) if faces else 0,
-                )
-                if not faces:
-                    raise ImageProcessingError("на фото должно быть видно лицо")
-                if len(faces) > 1:
-                    raise ImageProcessingError("на фото должен быть только 1 человек")
-                await image.seek(0)
+            # Временно отключено: проверка лица на главном фото (раскомментировать при необходимости).
+            # if is_main:
+            #     faces_started = time.perf_counter()
+            #     faces = await self.ml_service.detect_faces(image)
+            #     logger.info(
+            #         "moderate_image_timing",
+            #         phase="detect_faces",
+            #         is_main=is_main,
+            #         seconds=round(time.perf_counter() - faces_started, 3),
+            #         faces_count=len(faces) if faces else 0,
+            #     )
+            #     if not faces:
+            #         raise ImageProcessingError("на фото должно быть видно лицо")
+            #     if len(faces) > 1:
+            #         raise ImageProcessingError("на фото должен быть только 1 человек")
+            #     await image.seek(0)
 
             clip_started = time.perf_counter()
             is_safe, probabilities = await self.ml_service.moderate_content(image)
@@ -98,8 +100,8 @@ class ModerationService:
             raise
         except ValueError as e:
             logger.error("Error moderating image", error=e)
-            if "This can happen if the input is too small for the given kernel size" in str(e):
-                raise ImageProcessingError("на фото должно быть видно лицо")
+            # if "This can happen if the input is too small for the given kernel size" in str(e):
+            #     raise ImageProcessingError("на фото должно быть видно лицо")
             raise ImageProcessingError("ошибка при проверке изображения")
         except Exception as e:
             logger.error("Unexpected error moderating image", error=e, exc_info=True)
@@ -137,9 +139,12 @@ class ModerationService:
 
     async def moderate_text(self, text: str) -> bool:
         try:
-            if not text or len(text.strip()) < 3:
+            stripped = (text or "").strip()
+            if len(stripped) <= TEXT_MODERATION_MIN_LENGTH_TO_CHECK:
                 return True
-            
+            # if not text or len(text.strip()) < 3:
+            #     return True
+
             normalized_text = self._normalize_text(text)
             is_safe, probabilities = await self.ml_service.moderate_text(normalized_text)
             

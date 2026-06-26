@@ -193,7 +193,7 @@ const OnboardingPage = (): JSX.Element => {
         onPrimary={() => goStep(3)}
       >
         <p className="mb-4 text-sm font-light text-muted-foreground">
-          Минимум одно, на главном — ваше лицо
+          Минимум одно фото
         </p>
         <ProfilePhotosEditor
           photos={photos}
