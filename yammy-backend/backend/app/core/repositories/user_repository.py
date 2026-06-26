@@ -62,6 +62,32 @@ class UserRepository(SqlAlchemyRepository[User]):
     async def get_by_telegram_id(self, telegram_id: int) -> User | None:
         return await self.get_by_filter(one_or_none=True, telegram_id=telegram_id)
 
+    async def get_by_referral_code(self, referral_code: str) -> User | None:
+        return await self.get_by_filter(one_or_none=True, referral_code=referral_code)
+
+    async def grant_referral_rewards(
+        self,
+        user_id: UUID,
+        *,
+        superlikes: int = 0,
+        boosts: int = 0,
+    ) -> None:
+        if superlikes <= 0 and boosts <= 0:
+            return
+
+        values: dict[str, Any] = {"updated_at": func.now()}
+        if superlikes > 0:
+            values["superlikes_balance"] = User.superlikes_balance + superlikes
+        if boosts > 0:
+            values["boosts_balance"] = User.boosts_balance + boosts
+
+        await self.session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(**values)
+        )
+        await self.session.commit()
+
     async def update_last_seen(self, user_id: UUID, last_seen: datetime) -> None:
         await self.session.execute(
             update(User)

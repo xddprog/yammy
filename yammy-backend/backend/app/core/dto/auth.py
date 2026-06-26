@@ -42,6 +42,7 @@ class OnboardingFinishRequest(BaseModel):
     bio: str | None = None
     notifications_enabled: bool = True
     language: UserLanguageEnum | None = None
+    referral_code: str | None = None
 
     @model_validator(mode="after")
     def validate_photos(self):

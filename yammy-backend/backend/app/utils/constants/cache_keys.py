@@ -42,6 +42,12 @@ class UniversityCacheKeys:
     NAMES = "universities:names"
 
 
+class ReferralCacheKeys:
+    @staticmethod
+    def pending(telegram_id: int) -> str:
+        return f"referral:pending:{telegram_id}"
+
+
 class PresenceKeys:
     ONLINE_SET = "presence:online"
     LAST_SEEN_BUFFER = "presence:last_seen:buffer"

@@ -399,7 +399,7 @@ const ProfileReferralSheetContent = memo(function ProfileReferralSheetContent({
   return (
     <SheetShell title="Пригласить друзей" close={close}>
       <p className="mb-3 text-[13px] font-[200] leading-snug text-muted-foreground">
-        Отправьте ссылку другу. Когда зарегистрируется по ней — засчитаем реферала.
+        Отправьте ссылку другу. Когда он зарегистрируется по ней — вы получите +1 суперлайк и +1 буст.
       </p>
       <div className="flex flex-col gap-2 pb-1">
         <div className="flex items-end gap-2">

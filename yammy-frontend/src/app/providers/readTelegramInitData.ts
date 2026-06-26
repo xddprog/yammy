@@ -59,6 +59,19 @@ export function readTelegramInitDataFromLaunch(): string | null {
   return readInitDataFromSessionStorage()
 }
 
+/** Реферальный код из start_param (deep link t.me/bot?start=REF…). */
+export function readTelegramStartParamFromLaunch(): string | null {
+  const fromBridge = (
+    window as Window & { Telegram?: { WebApp?: { initDataUnsafe?: { start_param?: string } } } }
+  ).Telegram?.WebApp?.initDataUnsafe?.start_param?.trim()
+  if (fromBridge) {
+    return fromBridge
+  }
+
+  const fromHash = parseTelegramHashParams(window.location.hash).tgWebAppStartParam?.trim()
+  return fromHash || null
+}
+
 /** Кеширует initData для повторного чтения после навигации / перезагрузки внутри сессии. */
 export function rememberTelegramInitData(initData: string): void {
   const trimmed = initData.trim()

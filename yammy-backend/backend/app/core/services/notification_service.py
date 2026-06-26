@@ -79,3 +79,15 @@ class NotificationService:
             f"Взаимная оценка внешности! {link}",
             reply_markup=self._mini_app_markup(),
         )
+
+    async def notify_referral_reward(self, referrer: User, referee_name: str) -> None:
+        if not referrer.notifications_enabled:
+            return
+        await self._telegram.send_message(
+            referrer.telegram_id,
+            (
+                f"{referee_name} зарегистрировался по вашей ссылке! "
+                f"Начислили +1 суперлайк и +1 буст{_OPEN_APP_HINT}"
+            ),
+            reply_markup=self._mini_app_markup(),
+        )

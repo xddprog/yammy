@@ -8,6 +8,7 @@ from app.core.dto.auth import OnboardingFinishRequest
 from app.core.dto.user import ImageOrderUpdateSchema, UserPhoto, UserProfileSchema, UserUpdateRequest
 from app.core.services.image_service import ImageService
 from app.core.services.moderation_service import ModerationService
+from app.core.services.referral_service import ReferralService
 from app.core.services.user_index_service import UserIndexService
 from app.infrastructure.database.models.user import User
 from app.infrastructure.errors.base import BadRequestException, ConflictException, NotFoundException
@@ -23,6 +24,7 @@ class UserService:
         image_service: ImageService,
         moderation_service: ModerationService,
         user_index_service: UserIndexService,
+        referral_service: ReferralService,
     ):
         self.user_repository = user_repository
         self.like_repository = like_repository
@@ -30,6 +32,7 @@ class UserService:
         self.image_service = image_service
         self.moderation_service = moderation_service
         self.user_index_service = user_index_service
+        self.referral_service = referral_service
 
     async def _enqueue_reindex_user(self, user_id: UUID, include_personality_vector: bool = False) -> None:
         from app.core.tasks.user_index_tasks import reindex_user_in_es
@@ -107,15 +110,28 @@ class UserService:
             file_path = await self.image_service.upload_and_convert(image, f"users/{user_id}")
             persisted_photos.append((file_path, photo.order, photo.is_main))
 
-        user_fields = form.model_dump(exclude={"filters", "photos"}, exclude_none=True)
+        referred_by_id = await self.referral_service.resolve_referrer_id(
+            telegram_id,
+            form.referral_code,
+        )
+
+        user_fields = form.model_dump(
+            exclude={"filters", "photos", "referral_code"},
+            exclude_none=True,
+        )
         user = await self.user_repository.add_item(
             id=user_id,
             telegram_id=telegram_id,
             filters_ids=form.filters,
             photos=persisted_photos,
             referral_code=f"REF{uuid.uuid4().hex[:12].upper()}",
+            referred_by_id=referred_by_id,
             **user_fields,
         )
+        if referred_by_id:
+            await self.referral_service.grant_referrer_reward(referred_by_id, user.name)
+            await self.referral_service.clear_pending(telegram_id)
+
         await self.user_index_service.upsert_user(
             user.id,
             include_personality_vector=True,

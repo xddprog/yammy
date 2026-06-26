@@ -1,6 +1,7 @@
 from typing import Any
 
 from app.core.clients.telegram_client import TelegramClient
+from app.core.services.referral_service import ReferralService
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -17,8 +18,13 @@ START_WELCOME_TEXT = """Привет! 👋 Добро пожаловать в Ya
 
 
 class TelegramBotService:
-    def __init__(self, telegram_client: TelegramClient):
+    def __init__(
+        self,
+        telegram_client: TelegramClient,
+        referral_service: ReferralService,
+    ):
         self._telegram = telegram_client
+        self._referral_service = referral_service
 
     async def handle_update(self, update: dict[str, Any]) -> None:
         message = update.get("message")
@@ -33,6 +39,13 @@ class TelegramBotService:
         chat_id = chat.get("id")
         if chat_id is None:
             return
+
+        from_user = message.get("from") or {}
+        telegram_id = from_user.get("id")
+        if telegram_id is not None:
+            parts = text.split(maxsplit=1)
+            if len(parts) > 1:
+                await self._referral_service.save_pending_referral(telegram_id, parts[1])
 
         await self._telegram.send_message(
             chat_id,

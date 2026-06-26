@@ -21,6 +21,7 @@ from app.core.dto.auth import (
 from app.core.dto.admin import AdminSchema
 from app.core.repositories.admin_repository import AdminRepository
 from app.core.repositories.user_repository import UserRepository
+from app.core.services.referral_service import ReferralService
 from app.infrastructure.database.models.admin import Admin
 from app.infrastructure.database.models.user import User
 from app.infrastructure.errors.auth_errors import ForbiddenException, InvalidCredentials, InvalidTelegramData
@@ -29,9 +30,15 @@ from app.infrastructure.config.config import APP_CONFIG, JWT_CONFIG, TELEGRAM_CO
 
 
 class AuthService:
-    def __init__(self, admin_repository: AdminRepository, user_repository: UserRepository):
+    def __init__(
+        self,
+        admin_repository: AdminRepository,
+        user_repository: UserRepository,
+        referral_service: ReferralService | None = None,
+    ):
         self.admin_repository = admin_repository
         self.user_repository = user_repository
+        self.referral_service = referral_service
         self.pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
     def _hash_password(self, password: str) -> str:
@@ -169,7 +176,7 @@ class AuthService:
             digestmod=hashlib.sha256,
         ).hexdigest()
 
-    def _verify_telegram_init_data(self, init_data: str) -> Tuple[int, Optional[str]]:
+    def _verify_telegram_init_data(self, init_data: str) -> Tuple[int, Optional[str], Optional[str]]:
         data = dict(parse_qsl(init_data.strip(), keep_blank_values=True))
 
         if "hash" not in data:
@@ -203,7 +210,8 @@ class AuthService:
         if not telegram_id:
             raise InvalidTelegramData("Отсутствует ID пользователя")
 
-        return telegram_id, username
+        start_param = data.get("start_param") or None
+        return telegram_id, username, start_param
 
     async def _authenticate_telegram_stub(self) -> TokenSchema:
         telegram_id = TELEGRAM_CONFIG.DEV_STUB_TELEGRAM_ID
@@ -219,7 +227,7 @@ class AuthService:
         )
 
     async def _authenticate_telegram_webapp(self, form: TelegramAuthSchema) -> TokenSchema:
-        telegram_id, _username = self._verify_telegram_init_data(form.init_data)
+        telegram_id, _username, start_param = self._verify_telegram_init_data(form.init_data)
 
         user = await self.user_repository.get_by_telegram_id(telegram_id)
         if user:
@@ -227,6 +235,9 @@ class AuthService:
                 access_token=self.create_access_token(str(user.id)),
                 refresh_token=self.create_refresh_token(str(user.id)),
             )
+
+        if start_param and self.referral_service:
+            await self.referral_service.save_pending_referral(telegram_id, start_param)
 
         return TokenSchema(
             access_token=self._create_onboarding_access_token(telegram_id),

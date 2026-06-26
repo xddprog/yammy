@@ -58,6 +58,7 @@ export class AuthService {
   public async finishOnboarding(
     profile: UserUpdateRequestDto & {
       photos: { order: number; is_main: boolean }[]
+      referral_code?: string
     },
     images: File[],
   ): Promise<TokenPair> {
