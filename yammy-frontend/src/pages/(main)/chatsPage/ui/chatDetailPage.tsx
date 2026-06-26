@@ -9,6 +9,7 @@ import { ERouteNames } from '@/shared/lib/routeVariables'
 import { useChatWebSocket, usePresence, usePresenceSubscription } from '@/entities/chat'
 import type { ChatMessage } from '@/entities/chat'
 import { ChatHeader, MessageInput, MessageList } from '@/features/chats'
+import { isMessageEditableByAge } from '@/features/chats/lib/messageEdit'
 import { AppPageLoader } from '@/app/ui/AppPageLoader'
 import { useMatchesOverlay } from '@/features/matches-feed/ui/matches-card/matchesOverlay'
 import { TarotCompatibilitySheetContentMemo } from '@/features/tarot-compatibility/ui/tarotCompatibilitySheet'
@@ -191,6 +192,7 @@ const ChatDetailPage = () => {
     message.uploadStatus !== 'uploading' &&
     !message.isDeleted &&
     message.senderId === 'me' &&
+    isMessageEditableByAge(message.createdAt) &&
     (Boolean(message.text?.trim()) || Boolean(message.images?.length))
 
   const canDeleteMessage = (message: ChatMessage): boolean =>

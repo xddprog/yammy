@@ -1,6 +1,7 @@
 import base64
 import io
 import uuid
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import UploadFile
@@ -13,6 +14,7 @@ from app.core.services.notification_service import NotificationService
 from app.core.services.presence_service import PresenceService
 from app.infrastructure.errors.base import BadRequestException
 from app.infrastructure.errors.base import NotFoundException
+from app.utils.constants.message_constants import MESSAGE_EDIT_WINDOW
 
 
 MAX_IMAGES_COUNT = 5
@@ -123,6 +125,15 @@ class MessageService:
             raise NotFoundException("Сообщение не найдено")
 
         await self._ensure_can_interact_with_chat_messages(message.chat_id, user_id)
+
+        created_at = message.created_at
+        if created_at is not None:
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) - created_at > MESSAGE_EDIT_WINDOW:
+                raise BadRequestException(
+                    "Сообщение можно редактировать только в течение 24 часов после отправки"
+                )
 
         update_values = form.model_dump(exclude_none=True)
         if "content" in update_values:

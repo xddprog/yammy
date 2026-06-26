@@ -10,9 +10,13 @@ export interface MessageLayoutMeta {
   displayTimestamp: string
 }
 
-function getCalendarDayKey(iso: string): string {
+function getMinuteKey(iso: string): string {
   const date = new Date(iso)
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+  if (Number.isNaN(date.getTime())) {
+    return iso
+  }
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
 function formatMessageTime(iso: string): string {
@@ -23,10 +27,7 @@ function canGroupMessages(previous: ChatMessage, current: ChatMessage): boolean 
   if (previous.senderId !== current.senderId) {
     return false
   }
-  if (previous.isDeleted || current.isDeleted) {
-    return false
-  }
-  return getCalendarDayKey(previous.createdAt) === getCalendarDayKey(current.createdAt)
+  return getMinuteKey(previous.createdAt) === getMinuteKey(current.createdAt)
 }
 
 export function buildMessageLayoutMeta(messages: ChatMessage[]): MessageLayoutMeta[] {
